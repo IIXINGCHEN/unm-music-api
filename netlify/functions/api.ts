@@ -87,7 +87,28 @@ export async function handler(arg0: any, arg1: any, arg2?: any): Promise<any> {
     request = buildRequest("GET", (context?.pathname as string) || "/", {}, null);
   }
 
-  const res: Response = await app.fetch(request, { context } as any);
+  let res: Response;
+  try {
+    res = await Promise.race([
+      app.fetch(request, { context } as any),
+      new Promise<Response>((_, reject) =>
+        setTimeout(() => reject(new Error("APP_FETCH_TIMEOUT_10S")), 10000)
+      ),
+    ]) as Response;
+  } catch (fetchErr: any) {
+    const diag = JSON.stringify({
+      error: fetchErr?.message || "app.fetch failed",
+      phase: "app.fetch",
+      requestUrl: request.url,
+      requestMethod: request.method,
+    });
+    const payload = JSON.stringify({ code: 503, message: "Function internal diagnostics", diag: JSON.parse(diag) });
+    if (isCallbackStyle) {
+      arg2(null, { statusCode: 503, headers: { "content-type": "application/json" }, body: payload, isBase64Encoded: false });
+      return;
+    }
+    return new Response(payload, { status: 503, headers: { "content-type": "application/json" } });
+  }
 
   if (isCallbackStyle) {
     // 旧版回调签名：转换为 Lambda 风格响应对象
