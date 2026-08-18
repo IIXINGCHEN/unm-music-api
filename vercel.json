@@ -4,7 +4,6 @@
   "outputDirectory": "public",
   "functions": {
     "api/index.ts": {
-      "runtime": "@vercel/node@5",
       "includeFiles": "node_modules/@unblockneteasemusic/server/**"
     }
   },
