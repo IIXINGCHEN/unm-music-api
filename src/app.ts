@@ -3,7 +3,9 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { serveStatic } from "@hono/node-server/serve-static";
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { env, APP_INFO, HTTP_CONFIG } from "./config/index.js";
 import { routes } from "./routes/index.js";
 import { monitorService } from "./services/monitor.js";
@@ -32,7 +34,7 @@ app.use("*", async (c, next) => {
   const userAgent = c.req.header("user-agent") || "";
   const fullUrl = c.req.url;
   const query = c.req.query();
-  const status = c.res.status || 200;
+  const status = (c.res as any).status || 200;
 
   monitorService.record({
     method: c.req.method,
@@ -125,31 +127,60 @@ app.use("*", async (c, next) => {
 // 6. 挂载 API 业务与监控路由
 app.route("/", routes);
 
-// 7. 首页与监控大盘页面服务
-app.get("/", async (c) => {
-  try {
-    const htmlPath = path.resolve(process.cwd(), "public", "index.html");
-    const html = await fs.readFile(htmlPath, "utf-8");
-    return c.html(html);
-  } catch {
-    return c.json(
-      successResponse(
-        { version: APP_INFO.VERSION, status: "running" },
-        "UNM-Server 服务正常运行"
-      )
-    );
+// 7. 首页与监控大盘页面服务（多环境路径解析：本地 cwd / Serverless 源码目录）
+function resolvePublicFile(...names: string[]): string | null {
+  const fromMeta = (rel: string) => {
+    try {
+      return path.resolve(fileURLToPath(new URL(rel, import.meta.url)), ...names);
+    } catch {
+      return "";
+    }
+  };
+  const candidates = [
+    path.resolve(process.cwd(), "public", ...names),
+    path.resolve(process.cwd(), "src", "public", ...names),
+    path.resolve(process.cwd(), "..", "public", ...names),
+    path.resolve(process.cwd(), "..", "src", "public", ...names),
+    path.resolve(path.dirname(process.argv[1] || process.cwd()), "public", ...names),
+    fromMeta("./public"),
+    fromMeta("../../public"),
+  ];
+  for (const p of candidates) {
+    if (p && fsSync.existsSync(p)) return p;
   }
+  return null;
+}
+
+app.get("/", async (c) => {
+  const htmlPath = resolvePublicFile("index.html");
+  if (htmlPath) {
+    try {
+      const html = await fs.readFile(htmlPath, "utf-8");
+      return c.html(html);
+    } catch {
+      /* fallthrough */
+    }
+  }
+  return c.json(
+    successResponse(
+      { version: APP_INFO.VERSION, status: "running" },
+      "UNM-Server 服务正常运行"
+    )
+  );
 });
 
 // 监控大盘路由 (/dashboard & /monitor)
 const handleDashboard = async (c: any) => {
-  try {
-    const htmlPath = path.resolve(process.cwd(), "public", "dashboard.html");
-    const html = await fs.readFile(htmlPath, "utf-8");
-    return c.html(html);
-  } catch {
-    return c.text("Dashboard not found", 404);
+  const htmlPath = resolvePublicFile("dashboard.html");
+  if (htmlPath) {
+    try {
+      const html = await fs.readFile(htmlPath, "utf-8");
+      return c.html(html);
+    } catch {
+      /* fallthrough */
+    }
   }
+  return c.text("Dashboard not found", 404);
 };
 
 app.get("/dashboard", handleDashboard);
@@ -162,13 +193,16 @@ app.use("/*", serveStatic({ root: "./public" }));
 app.notFound(async (c) => {
   const accept = c.req.header("Accept") || "";
   if (accept.includes("text/html")) {
-    try {
-      const notFoundPath = path.resolve(process.cwd(), "public", "404.html");
-      const html = await fs.readFile(notFoundPath, "utf-8");
-      return c.html(html, 404);
-    } catch {
-      return c.text("404 Not Found", 404);
+    const notFoundPath = resolvePublicFile("404.html");
+    if (notFoundPath) {
+      try {
+        const html = await fs.readFile(notFoundPath, "utf-8");
+        return c.html(html, 404);
+      } catch {
+        /* fallthrough */
+      }
     }
+    return c.text("404 Not Found", 404);
   }
 
   return c.json<ApiResponse>(errorResponse(404, "请求的 API 接口不存在"), 404);
