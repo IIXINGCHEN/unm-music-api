@@ -1,15 +1,5 @@
 import { app } from "../../src/app.js";
 
-// Netlify Functions 双签名兼容适配层
-//
-// 背景：函数经 esbuild 打包为 CJS 后，Netlify 按旧版签名调用：
-//   handler(event, context, callback)  —— event 是 Lambda 风格对象
-// 而非新版标准签名 handler(Request, context)。
-// 旧签名下 req.url / req.headers / req.text 均不存在，导致
-// Invalid URL / getPath undefined / req.text is not a function 等崩溃。
-//
-// 此适配层检测两种签名并统一转换为标准 Request 后交给 Hono。
-
 export const config = {
   path: "/*",
   preferStatic: true,
@@ -21,119 +11,111 @@ type LegacyEvent = {
   rawUrl?: string;
   headers?: Record<string, string>;
   queryStringParameters?: Record<string, string>;
+  multiValueQueryStringParameters?: Record<string, string[]>;
   body?: string | null;
   isBase64Encoded?: boolean;
 };
 
 type NetlifyContext = {
+  callbackWaitsForEmptyEventLoop?: boolean;
   pathname?: string;
   [key: string]: unknown;
 };
 
 function isLegacyEvent(arg: any): arg is LegacyEvent {
   return arg && typeof arg === "object" && !("text" in arg) &&
-    ("httpMethod" in arg || "rawUrl" in arg || "path" in arg);
+    ("httpMethod" in arg || "rawUrl" in arg || "path" in arg || "headers" in arg);
 }
 
-function buildRequest(
-  method: string,
-  rawUrl: string,
-  headers: Record<string, string>,
-  body: string | null,
-): Request {
-  let url: URL;
-  try {
-    url = new URL(rawUrl);
-  } catch {
-    url = new URL(rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`, "https://netlify.local");
-  }
+function buildRequestFromEvent(ev: LegacyEvent): Request {
+  const method = ev.httpMethod || "GET";
+  const rawPath = ev.path || "/";
 
-  // 剥离 Netlify 函数路径前缀，还原业务路径
+  // 剥离 Netlify 函数路径前缀，还原真实的 API 路由 (如 /.netlify/functions/api/info -> /info)
   const fnPrefix = "/.netlify/functions/api";
-  if (url.pathname.startsWith(fnPrefix)) {
-    const rest = url.pathname.slice(fnPrefix.length) || "/";
-    return new Request(new URL(rest + url.search, url.origin).toString(), {
-      method,
-      headers,
-      body: ["GET", "HEAD"].includes(method) ? undefined : (body || undefined),
-    });
+  const cleanPath = rawPath.startsWith(fnPrefix)
+    ? rawPath.slice(fnPrefix.length) || "/"
+    : rawPath;
+
+  // 组装 Query 参数
+  const searchParams = new URLSearchParams();
+  if (ev.queryStringParameters) {
+    for (const [k, v] of Object.entries(ev.queryStringParameters)) {
+      if (v !== undefined && v !== null) {
+        searchParams.append(k, String(v));
+      }
+    }
   }
 
-  return new Request(url.toString(), {
+  const search = searchParams.toString();
+  const fullUrl = `https://netlify.local${cleanPath}${search ? "?" + search : ""}`;
+
+  let body: string | Buffer | undefined = undefined;
+  if (!["GET", "HEAD"].includes(method.toUpperCase()) && ev.body) {
+    body = ev.isBase64Encoded
+      ? Buffer.from(ev.body, "base64")
+      : ev.body;
+  }
+
+  return new Request(fullUrl, {
     method,
-    headers,
-    body: ["GET", "HEAD"].includes(method) ? undefined : (body || undefined),
+    headers: ev.headers || {},
+    body,
   });
 }
 
 export async function handler(arg0: any, arg1: any, arg2?: any): Promise<any> {
-  // 检测旧版回调式签名 handler(event, context, callback)
+  const context: NetlifyContext = (arg1 && typeof arg1 === "object" ? arg1 : {}) as NetlifyContext;
+  // 关键：禁止 Lambda 等待 Node.js 事件循环清空（防止 background timers / 连接池导致 30 秒超时）
+  context.callbackWaitsForEmptyEventLoop = false;
+
   const isCallbackStyle = typeof arg2 === "function";
-  let context: NetlifyContext = arg1 || {};
+
   let request: Request;
-
   if (isLegacyEvent(arg0)) {
-    // 旧版签名：Lambda event 对象
-    const ev = arg0;
-    const qs = ev.queryStringParameters || {};
-    const search = new URLSearchParams(qs).toString();
-    const rawUrl = ev.rawUrl || `${(ev.path || "/")}${search ? "?" + search : ""}`;
-    request = buildRequest(ev.httpMethod || "GET", rawUrl, ev.headers || {}, ev.body || null);
+    request = buildRequestFromEvent(arg0);
   } else if (arg0 instanceof Request) {
-    // 新版签名：标准 Request（保留前缀剥离逻辑）
-    request = buildRequest(arg0.method, arg0.url, Object.fromEntries(arg0.headers.entries()), null);
+    const incoming = new URL(arg0.url);
+    const fnPrefix = "/.netlify/functions/api";
+    let path = incoming.pathname;
+    if (path.startsWith(fnPrefix)) {
+      path = path.slice(fnPrefix.length) || "/";
+    }
+    request = new Request(new URL(path + incoming.search, incoming.origin).toString(), arg0);
   } else {
-    // 未知形态：尽力兜底
-    request = buildRequest("GET", (context?.pathname as string) || "/", {}, null);
+    request = new Request("https://netlify.local/", { method: "GET" });
   }
 
-  let res: Response;
-  try {
-    res = await Promise.race([
-      app.fetch(request, { context } as any),
-      new Promise<Response>((_, reject) =>
-        setTimeout(() => reject(new Error("APP_FETCH_TIMEOUT_10S")), 10000)
-      ),
-    ]) as Response;
-  } catch (fetchErr: any) {
-    const diag = JSON.stringify({
-      error: fetchErr?.message || "app.fetch failed",
-      phase: "app.fetch",
-      requestUrl: request.url,
-      requestMethod: request.method,
-    });
-    const payload = JSON.stringify({ code: 503, message: "Function internal diagnostics", diag: JSON.parse(diag) });
-    if (isCallbackStyle) {
-      arg2(null, { statusCode: 503, headers: { "content-type": "application/json" }, body: payload, isBase64Encoded: false });
-      return;
-    }
-    return new Response(payload, { status: 503, headers: { "content-type": "application/json" } });
+  const res: Response = await app.fetch(request, { context } as any);
+
+  // 构造标准 Lambda 响应对象
+  const headers: Record<string, string> = {};
+  res.headers.forEach((v, k) => {
+    headers[k] = v;
+  });
+
+  const contentType = res.headers.get("content-type") || "";
+  let body: string = "";
+  let isBase64Encoded = false;
+
+  if (["GET", "HEAD"].includes(request.method) || contentType.includes("json") || contentType.includes("text") || contentType.includes("html")) {
+    body = await res.text();
+  } else {
+    const buf = new Uint8Array(await res.arrayBuffer());
+    body = Buffer.from(buf).toString("base64");
+    isBase64Encoded = true;
   }
+
+  const lambdaResult = {
+    statusCode: res.status,
+    headers,
+    body,
+    isBase64Encoded,
+  };
 
   if (isCallbackStyle) {
-    // 旧版回调签名：转换为 Lambda 风格响应对象
-    const headers: Record<string, string> = {};
-    res.headers.forEach((v, k) => {
-      headers[k] = v;
-    });
-    let body: string = "";
-    let isBase64Encoded = false;
-    const contentType = res.headers.get("content-type") || "";
-    if (["GET", "HEAD"].includes(request.method) || contentType.includes("json") || contentType.includes("text")) {
-      body = await res.text();
-    } else {
-      const buf = new Uint8Array(await res.arrayBuffer());
-      body = Buffer.from(buf).toString("base64");
-      isBase64Encoded = true;
-    }
-    arg2(null, {
-      statusCode: res.status,
-      headers,
-      body,
-      isBase64Encoded,
-    });
-    return;
+    arg2(null, lambdaResult);
   }
 
-  return res;
+  return lambdaResult;
 }

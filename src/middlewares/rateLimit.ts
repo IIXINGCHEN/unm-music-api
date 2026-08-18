@@ -9,8 +9,8 @@ interface IpRecord {
 
 const ipMap = new Map<string, IpRecord>();
 
-// 定期清理过期的 IP 记录，防止内存泄漏 (每 2 分钟清理一次)
-setInterval(() => {
+// 定期清理过期的 IP 记录，防止内存泄漏 (每 2 分钟清理一次，unref 避免阻塞 Serverless 事件循环)
+const cleanupTimer = setInterval(() => {
   const now = Date.now();
   const windowMs = env.RATE_LIMIT_WINDOW_MS;
   for (const [ip, record] of ipMap.entries()) {
@@ -20,6 +20,10 @@ setInterval(() => {
     }
   }
 }, 120000);
+
+if (typeof cleanupTimer.unref === "function") {
+  cleanupTimer.unref();
+}
 
 /**
  * 轻量级滑动窗口 API 速率限制中间件
