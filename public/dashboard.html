@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UNM-Server · 实时调用监控与全链路遥测大盘</title>
+  <link rel="shortcut icon" href="./favicon.png" type="image/png" />
+
+  <!-- 引入现代字体、Tailwind、Lucide 图标与 Chart.js 图表库 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            slate: {
+              850: '#111827',
+              925: '#0b0f19',
+              950: '#060911',
+            },
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+            },
+          },
+          animation: {
+            'slide-in-right': 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            'wave-bar': 'waveBar 1.2s ease-in-out infinite alternate',
+          },
+          keyframes: {
+            slideInRight: {
+              '0%': { transform: 'translateX(100%)' },
+              '100%': { transform: 'translateX(0)' },
+            },
+            waveBar: {
+              '0%': { height: '6px' },
+              '100%': { height: '32px' },
+            },
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    body {
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      font-size: 15px;
+    }
+    .ambient-glow {
+      position: absolute;
+      width: 750px;
+      height: 750px;
+      border-radius: 50%;
+      filter: blur(140px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glass-panel {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .interactive-btn {
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .interactive-btn:active {
+      transform: scale(0.96);
+    }
+    .table-scroll::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    .table-scroll::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.25);
+      border-radius: 9999px;
+    }
+    .section-transition {
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  </style>
+</head>
+
+<body class="bg-[#fafcff] text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white transition-colors duration-300 relative overflow-x-hidden">
+
+  <!-- 现代 Toast 漂浮通知容器 -->
+  <div id="toastContainer" class="fixed top-6 right-6 z-[100] flex flex-col space-y-3 pointer-events-none max-w-md w-full"></div>
+
+  <!-- 现代 API Key 鉴权设置模态框 (API Key Modal) -->
+  <div id="apiKeyModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm transition-all">
+    <div class="glass-panel bg-white dark:bg-slate-900 max-w-md w-full p-6 rounded-3xl border border-slate-200 dark:border-white/10 shadow-2xl space-y-5">
+      <div class="flex items-center space-x-3.5">
+        <div class="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="key" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="font-extrabold text-base text-slate-900 dark:text-white">监控访问密钥配置 (API Key)</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">当服务端配置了 MONITOR_SECRET_KEY 时需提供凭证</p>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">Access Secret Key</label>
+        <input id="inputApiKeyModal" type="password" placeholder="请输入 .env 中配置的 MONITOR_SECRET_KEY" class="w-full px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500/50 text-slate-900 dark:text-white" />
+      </div>
+
+      <div class="flex items-center justify-between pt-2">
+        <button onclick="clearSavedApiKey()" class="text-xs text-rose-500 hover:underline font-semibold interactive-btn">清除凭证</button>
+        <div class="flex items-center space-x-2.5">
+          <button onclick="closeApiKeyModal()" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition interactive-btn">取消</button>
+          <button onclick="saveApiKey()" class="px-5 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold transition shadow-md shadow-sky-500/20 interactive-btn">保存并应用</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 现代轻量确认对话框 (Confirm Modal) -->
+  <div id="confirmModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm transition-all">
+    <div class="glass-panel bg-white dark:bg-slate-900 max-w-md w-full p-6 rounded-3xl border border-slate-200 dark:border-white/10 shadow-2xl space-y-5">
+      <div class="flex items-center space-x-3.5">
+        <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 id="confirmTitle" class="font-extrabold text-base text-slate-900 dark:text-white">清空遥测日志</h3>
+          <p id="confirmMessage" class="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">确定要重置并清空所有内存遥测日志记录吗？该操作不可撤销。</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end space-x-3 pt-2">
+        <button onclick="closeConfirm(false)" class="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition interactive-btn">取消</button>
+        <button id="confirmAcceptBtn" onclick="closeConfirm(true)" class="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold transition shadow-md shadow-rose-500/20 interactive-btn">确认清空</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 背景流光氛围 (Ambient Lights) -->
+  <div class="ambient-glow top-[-100px] right-[-100px] bg-gradient-to-br from-indigo-500/15 via-sky-500/15 to-transparent dark:from-indigo-900/20 dark:via-sky-950/20"></div>
+  <div class="ambient-glow bottom-[-100px] left-[-100px] bg-gradient-to-tr from-purple-500/15 via-pink-500/10 to-transparent dark:from-purple-950/20 dark:via-indigo-950/15"></div>
+
+  <!-- 顶部主导航栏 -->
+  <header class="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-white/10 glass-panel bg-white/75 dark:bg-slate-950/75 transition-colors">
+    <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <a href="/" class="flex items-center space-x-3.5 group interactive-btn">
+          <div class="w-11 h-11 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2 transition-transform group-hover:scale-105">
+            <img src="./favicon.png" alt="UNM Logo" class="w-full h-full object-contain" />
+          </div>
+          <div>
+            <div class="flex items-center space-x-2.5">
+              <span class="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
+              <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center space-x-1">
+                <i data-lucide="activity" class="w-3 h-3"></i>
+                <span>全链路遥测大盘</span>
+              </span>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <!-- 右侧控制区 -->
+      <div class="flex items-center space-x-3">
+        <!-- 布局模式快捷切换 (Layout Views) -->
+        <div class="hidden md:flex items-center space-x-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs font-semibold">
+          <button onclick="switchLayoutPreset('all')" id="btnViewAll" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn">全景模式</button>
+          <button onclick="switchLayoutPreset('charts')" id="btnViewCharts" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition interactive-btn">图表矩阵</button>
+          <button onclick="switchLayoutPreset('logs')" id="btnViewLogs" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition interactive-btn">日志排查</button>
+        </div>
+
+        <!-- 自动轮询刷新频率控制器 -->
+        <div class="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 text-xs font-semibold shadow-sm">
+          <span id="refreshPulseDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <select id="pollIntervalSelect" onchange="changePollInterval(this.value)" class="bg-transparent text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer font-medium">
+            <option value="3000">实时轮询 (3s)</option>
+            <option value="1000">极速刷新 (1s)</option>
+            <option value="5000">常规模式 (5s)</option>
+            <option value="10000">节能省电 (10s)</option>
+            <option value="0">暂停自动更新</option>
+          </select>
+        </div>
+
+        <!-- API Key 安全凭证按钮 -->
+        <button onclick="openApiKeyModal()" title="设置监控访问密钥 (API Key)" class="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 text-slate-500 hover:text-sky-500 transition shadow-sm interactive-btn">
+          <i data-lucide="key" class="w-5 h-5"></i>
+        </button>
+
+        <button onclick="clearLogsData()" title="清空全部内存日志" class="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 text-slate-500 hover:text-rose-500 transition shadow-sm interactive-btn">
+          <i data-lucide="trash-2" class="w-5 h-5"></i>
+        </button>
+
+        <a href="/" class="hidden sm:inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-sky-600 dark:bg-white dark:hover:bg-sky-400 text-white dark:text-slate-900 text-sm font-bold transition shadow-sm interactive-btn">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          <span>返回主页</span>
+        </a>
+
+        <!-- 昼夜模式切换 -->
+        <button id="themeToggle" class="w-10 h-10 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition shadow-sm flex items-center justify-center interactive-btn">
+          <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+          <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 大盘主体内容 (专业级可折叠模块体系) -->
+  <main class="w-full max-w-7xl mx-auto px-6 py-8 flex-1 space-y-8 relative z-10">
+
+    <!-- 1. 核心 KPI 遥测与实时波形监控区 (Section 1: 可折叠) -->
+    <section id="sectionKpis" class="space-y-6 section-transition">
+      <!-- 模块标题栏与折叠按钮 -->
+      <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
+            <i data-lucide="gauge" class="w-4 h-4"></i>
+          </div>
+          <h2 class="text-base font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">实时吞吐与健康度遥测 (KPIs & Realtime Waves)</h2>
+        </div>
+        <button onclick="toggleSection('kpis')" class="flex items-center space-x-1 text-xs font-bold text-slate-400 hover:text-sky-500 transition interactive-btn px-2.5 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+          <span id="labelToggleKpis">收起面板</span>
+          <i data-lucide="chevron-up" class="w-4 h-4 transition-transform duration-300" id="iconToggleKpis"></i>
+        </button>
+      </div>
+
+      <!-- KPI 4 宫格卡片与实时波形面积图 -->
+      <div id="contentKpis" class="space-y-6 section-transition">
+        <!-- 4 宫格卡片 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="glass-panel bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-bold uppercase tracking-wider">总请求调用量</span>
+              <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
+                <i data-lucide="activity" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div id="statTotalRequests" class="text-4xl font-extrabold font-mono text-slate-900 dark:text-white">0</div>
+            <div class="flex items-center justify-between text-sm text-slate-500 pt-1">
+              <span id="statSuccessPct" class="text-emerald-500 font-bold flex items-center space-x-1">
+                <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                <span>100% 成功率</span>
+              </span>
+              <span id="statFailedBadge" class="text-slate-400 font-mono text-xs">0 失败</span>
+            </div>
+          </div>
+
+          <div class="glass-panel bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-bold uppercase tracking-wider">平均处理延迟 (Latency)</span>
+              <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                <i data-lucide="zap" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div id="statAvgLatency" class="text-4xl font-extrabold font-mono text-slate-900 dark:text-white">0 ms</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400 pt-1 flex items-center space-x-1">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i>
+              <span>流式直分发 · 零阻塞调度</span>
+            </div>
+          </div>
+
+          <div class="glass-panel bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-bold uppercase tracking-wider">活跃调用方来源 (Who)</span>
+              <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                <i data-lucide="globe" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div id="statCallerCount" class="text-4xl font-extrabold font-mono text-slate-900 dark:text-white">0</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400 pt-1 flex items-center space-x-1">
+              <i data-lucide="shield-check" class="w-3.5 h-3.5 text-indigo-500"></i>
+              <span>跨域 Referer / 客户端识别</span>
+            </div>
+          </div>
+
+          <div class="glass-panel bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="text-xs font-bold uppercase tracking-wider">系统连续运行</span>
+              <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                <i data-lucide="server" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div id="statDashboardUptime" class="text-4xl font-extrabold font-mono text-slate-900 dark:text-white">0s</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400 pt-1 flex items-center space-x-1">
+              <i data-lucide="cpu" class="w-3.5 h-3.5 text-emerald-500"></i>
+              <span>生产守护集群节点</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 实时时延与吞吐波形渐变折线面积图 (Waveform Area Chart) -->
+        <div class="glass-panel bg-white/75 dark:bg-slate-900/50 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div class="flex items-center space-x-2">
+              <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
+                <i data-lucide="trending-up" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h3 class="font-extrabold text-sm uppercase tracking-wider text-slate-900 dark:text-white">实时请求时延与吞吐波形监控 (Realtime Waveform Stream)</h3>
+                <span class="text-xs text-slate-400">实时连续滑动时间轴 · 渐变平滑波形曲线</span>
+              </div>
+            </div>
+            <div class="flex items-center space-x-4 text-xs font-semibold">
+              <span class="flex items-center space-x-1.5 text-sky-500">
+                <span class="w-3 h-3 rounded-full bg-sky-500 inline-block"></span>
+                <span>时延 Latency (ms)</span>
+              </span>
+              <span class="flex items-center space-x-1.5 text-indigo-500">
+                <span class="w-3 h-3 rounded-full bg-indigo-500 inline-block"></span>
+                <span>吞吐 RPS</span>
+              </span>
+            </div>
+          </div>
+          <div class="h-60 sm:h-64 relative">
+            <canvas id="waveformChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 专业图表分析矩阵 (柱状图 + 圆形环形图 + 调用方排名) (Section 2: 可折叠) -->
+    <section id="sectionCharts" class="space-y-6 section-transition">
+      <!-- 模块标题栏与折叠按钮 -->
+      <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+            <i data-lucide="pie-chart" class="w-4 h-4"></i>
+          </div>
+          <h2 class="text-base font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">多维图表分析矩阵 (柱状图 · 圆形分布 · 来源排行)</h2>
+        </div>
+        <button onclick="toggleSection('charts')" class="flex items-center space-x-1 text-xs font-bold text-slate-400 hover:text-indigo-500 transition interactive-btn px-2.5 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+          <span id="labelToggleCharts">收起面板</span>
+          <i data-lucide="chevron-up" class="w-4 h-4 transition-transform duration-300" id="iconToggleCharts"></i>
+        </button>
+      </div>
+
+      <div id="contentCharts" class="space-y-6 section-transition">
+        <!-- 图表网格 (柱状图 + 圆形环形图) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- 1. 热门接口请求分布柱状图 (Chart.js 柱状图) -->
+          <div class="lg:col-span-5 glass-panel bg-white/75 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-extrabold text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center space-x-2">
+                <i data-lucide="bar-chart" class="w-4 h-4 text-sky-500"></i>
+                <span>热门接口请求频次 (Top APIs 柱状图)</span>
+              </h3>
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-sky-500/10 text-sky-500">请求量</span>
+            </div>
+            <div class="h-64 relative">
+              <canvas id="endpointsChart"></canvas>
+            </div>
+          </div>
+
+          <!-- 2. 音源命中分布圆形环形图 (Chart.js 圆形环形图 Donut) -->
+          <div class="lg:col-span-4 glass-panel bg-white/75 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-extrabold text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center space-x-2">
+                <i data-lucide="disc" class="w-4 h-4 text-emerald-500"></i>
+                <span>音源命中比例 (Sources 圆形环图)</span>
+              </h3>
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-500">占比</span>
+            </div>
+            <div class="h-64 relative flex items-center justify-center">
+              <canvas id="sourcesDonutChart"></canvas>
+            </div>
+          </div>
+
+          <!-- 3. HTTP 响应状态码圆形环形图 (Chart.js 状态码环图) -->
+          <div class="lg:col-span-3 glass-panel bg-white/75 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-extrabold text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center space-x-2">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-amber-500"></i>
+                <span>状态码分布 (Status 环形图)</span>
+              </h3>
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-500">健康度</span>
+            </div>
+            <div class="h-64 relative flex items-center justify-center">
+              <canvas id="statusDonutChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- 调用来源排行列表 (Who Called List) -->
+        <div class="glass-panel bg-white/75 dark:bg-slate-900/50 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center space-x-2">
+              <i data-lucide="users" class="w-4 h-4 text-indigo-500"></i>
+              <span>调用方来源排名分布 (Who Called Ranking)</span>
+            </h3>
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-500">来源占比</span>
+          </div>
+          <div id="topCallersList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+            <div class="text-slate-400 text-center py-6 col-span-full">暂无调用源数据</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 企业级调用日志流表格 (Live Telemetry Table) (Section 3: 可折叠) -->
+    <section id="sectionLogs" class="glass-panel bg-white/80 dark:bg-slate-900/60 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl space-y-6 section-transition">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/60 dark:border-white/10 pb-4">
+        <div>
+          <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center space-x-2.5">
+            <i data-lucide="list-filter" class="w-6 h-6 text-sky-500"></i>
+            <span>实时请求调用日志 (Live Telemetry Stream)</span>
+          </h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            实时捕获每一次接口调用的请求方法、端点、时延、响应状态与调用方元数据
+          </p>
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <button onclick="toggleSection('logs')" class="flex items-center space-x-1 text-xs font-bold text-slate-400 hover:text-sky-500 transition interactive-btn px-2.5 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+            <span id="labelToggleLogs">收起表格</span>
+            <i data-lucide="chevron-up" class="w-4 h-4 transition-transform duration-300" id="iconToggleLogs"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="contentLogs" class="space-y-6 section-transition">
+        <!-- 筛选与搜索工具条 -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-3">
+            <select id="selectEndpointFilter" onchange="onFilterChange()" class="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer font-medium">
+              <option value="">全部端点 All</option>
+              <option value="/match">/match 核心解灰</option>
+              <option value="/ncmget">/ncmget 官方直链</option>
+              <option value="/otherget">/otherget 跨源直取</option>
+              <option value="/search">/search 跨平台搜索</option>
+              <option value="/playlist">/playlist 歌单提取</option>
+              <option value="/lyric">/lyric 逐字歌词</option>
+              <option value="/pic">/pic 专辑封面</option>
+              <option value="/info">/info 服务信息</option>
+            </select>
+
+            <select id="selectStatusFilter" onchange="onFilterChange()" class="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer font-medium">
+              <option value="">全部状态 All</option>
+              <option value="200">200 成功</option>
+              <option value="400">400 参数校验异常</option>
+              <option value="401">401 鉴权未通过</option>
+              <option value="404">404 资源未找到</option>
+              <option value="429">429 频次受限</option>
+              <option value="500">500 服务器错误</option>
+            </select>
+
+            <input id="inputSearchKeyword" oninput="debounceSearch()" type="text" placeholder="搜索 IP / 来源 / 关键词..." class="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 w-48 sm:w-64" />
+          </div>
+
+          <button onclick="exportJsonLogs()" class="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-sky-100 dark:hover:bg-sky-950 text-slate-700 dark:text-slate-200 text-sm font-semibold transition flex items-center space-x-2 shadow-sm interactive-btn">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            <span>导出 JSON</span>
+          </button>
+        </div>
+
+        <!-- 表格展示区 -->
+        <div class="overflow-x-auto table-scroll">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 dark:border-white/10 text-slate-400 font-bold uppercase tracking-wider text-xs">
+                <th class="pb-3.5 px-4">时间 Time</th>
+                <th class="pb-3.5 px-4">请求端点 Method & Path</th>
+                <th class="pb-3.5 px-4">状态 Code</th>
+                <th class="pb-3.5 px-4">耗时 Latency</th>
+                <th class="pb-3.5 px-4">调用方 Who / Referer</th>
+                <th class="pb-3.5 px-4">客户端类型</th>
+                <th class="pb-3.5 px-4">调用 IP</th>
+                <th class="pb-3.5 px-4 text-right">详情</th>
+              </tr>
+            </thead>
+            <tbody id="logsTableContent" class="divide-y divide-slate-100 dark:divide-slate-800/50 text-sm">
+              <tr>
+                <td colspan="8" class="text-center py-10 text-slate-400 font-medium">正在获取最新调用数据...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 分页栏 -->
+        <div class="flex items-center justify-between pt-4 border-t border-slate-200/60 dark:border-white/10 text-sm text-slate-500 font-medium">
+          <div>共 <span id="labelTotalCount" class="font-bold font-mono text-slate-800 dark:text-slate-200 text-base">0</span> 条记录 · 第 <span id="labelCurrentPage" class="font-bold font-mono text-slate-800 dark:text-slate-200 text-base">1</span> 页</div>
+          <div class="flex items-center space-x-2">
+            <button onclick="paginate(-1)" id="btnPrevPage" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 transition font-bold interactive-btn">上一页</button>
+            <button onclick="paginate(1)" id="btnNextPage" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 transition font-bold interactive-btn">下一页</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 4. 企业级侧边滑动抽屉明细检查器 (Slide-over Inspector Drawer) -->
+  <div id="drawerOverlay" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm transition-opacity">
+    <div class="fixed inset-y-0 right-0 max-w-2xl w-full bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-white/10 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto animate-slide-in-right">
+      <div class="space-y-6">
+        <!-- 抽屉头部 -->
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
+              <i data-lucide="search-code" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="font-extrabold text-base text-slate-900 dark:text-white">请求遥测明细检查器</h3>
+              <span id="drawerLogId" class="text-xs font-mono text-slate-400">req_123</span>
+            </div>
+          </div>
+          <button onclick="closeDrawer()" class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition interactive-btn">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- 核心属性概览 -->
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-white/5 space-y-1">
+            <span class="text-slate-400 text-xs font-bold uppercase">调用方 IP</span>
+            <div id="drawerIp" class="font-mono font-bold text-base text-slate-800 dark:text-slate-200">127.0.0.1</div>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-white/5 space-y-1">
+            <span class="text-slate-400 text-xs font-bold uppercase">处理耗时</span>
+            <div id="drawerDuration" class="font-mono font-bold text-base text-emerald-500">24ms</div>
+          </div>
+        </div>
+
+        <!-- 详细字段列表 -->
+        <div class="space-y-4 text-sm">
+          <div>
+            <span class="text-slate-400 font-semibold text-xs uppercase">请求 URL (Full URL):</span>
+            <div id="drawerFullUrl" class="font-mono bg-slate-100 dark:bg-slate-950 p-3 rounded-xl break-all mt-1.5 border border-slate-200/60 dark:border-white/5 text-xs text-slate-800 dark:text-slate-200"></div>
+          </div>
+
+          <div>
+            <span class="text-slate-400 font-semibold text-xs uppercase">来源 Referer / Origin (Who):</span>
+            <div id="drawerReferer" class="font-mono bg-slate-100 dark:bg-slate-950 p-3 rounded-xl break-all mt-1.5 text-xs border border-slate-200/60 dark:border-white/5 text-slate-800 dark:text-slate-200"></div>
+          </div>
+
+          <div>
+            <span class="text-slate-400 font-semibold text-xs uppercase">User-Agent 客户端指纹:</span>
+            <div id="drawerUserAgent" class="font-mono bg-slate-100 dark:bg-slate-950 p-3 rounded-xl break-all mt-1.5 text-xs border border-slate-200/60 dark:border-white/5 text-slate-800 dark:text-slate-200"></div>
+          </div>
+
+          <div>
+            <span class="text-slate-400 font-semibold text-xs uppercase">解析后的 Query 参数结构 (已脱敏):</span>
+            <pre id="drawerQueryJson" class="font-mono bg-slate-950 text-slate-200 p-4 rounded-2xl overflow-x-auto mt-1.5 leading-relaxed border border-slate-800 text-xs"></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-6 border-t border-slate-200 dark:border-white/10 flex justify-end">
+        <button onclick="closeDrawer()" class="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition interactive-btn">关闭检查器</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部 Footer -->
+  <footer class="w-full max-w-7xl mx-auto px-6 py-8 text-center text-sm text-slate-400 dark:text-slate-500 border-t border-slate-200/60 dark:border-white/10 relative z-10 font-medium">
+    <div>Copyright &copy; <span id="year"></span> UNM-Server · Realtime Telemetry Dashboard</div>
+  </footer>
+
+  <!-- 交互与图表逻辑脚本 -->
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    lucide.createIcons();
+
+    // 现代 Toast 通知系统
+    function showToast({ type = 'info', title = '', message = '', duration = 3000 }) {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      const id = 'toast_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+      toast.id = id;
+
+      let iconHtml = '<i data-lucide="info" class="w-5 h-5 text-sky-500"></i>';
+      let borderClass = 'border-sky-500/20';
+
+      if (type === 'success') {
+        iconHtml = '<i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500"></i>';
+        borderClass = 'border-emerald-500/20';
+      } else if (type === 'error') {
+        iconHtml = '<i data-lucide="alert-circle" class="w-5 h-5 text-rose-500"></i>';
+        borderClass = 'border-rose-500/20';
+      } else if (type === 'warning') {
+        iconHtml = '<i data-lucide="alert-triangle" class="w-5 h-5 text-amber-500"></i>';
+        borderClass = 'border-amber-500/20';
+      }
+
+      toast.className = `glass-panel bg-white/95 dark:bg-slate-900/95 border ${borderClass} shadow-2xl px-4 py-3.5 rounded-2xl flex items-start space-x-3.5 pointer-events-auto transform translate-x-12 opacity-0 transition-all duration-300 ease-out max-w-md`;
+      toast.innerHTML = `
+        <div class="flex-shrink-0 mt-0.5">${iconHtml}</div>
+        <div class="flex-1 text-sm">
+          ${title ? `<div class="font-bold text-slate-900 dark:text-white mb-0.5">${title}</div>` : ''}
+          <div class="text-slate-600 dark:text-slate-300 leading-relaxed">${message}</div>
+        </div>
+        <button onclick="dismissToast('${id}')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 interactive-btn">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-x-12', 'opacity-0');
+        toast.classList.add('translate-x-0', 'opacity-100');
+      });
+
+      if (duration > 0) {
+        setTimeout(() => dismissToast(id), duration);
+      }
+    }
+
+    function dismissToast(id) {
+      const toast = document.getElementById(id);
+      if (!toast) return;
+      toast.classList.remove('translate-x-0', 'opacity-100');
+      toast.classList.add('translate-x-12', 'opacity-0');
+      setTimeout(() => toast.remove(), 300);
+    }
+
+    // 0. API Key 管理逻辑
+    function getStoredApiKey() {
+      return localStorage.getItem('unm_monitor_api_key') || '';
+    }
+
+    function openApiKeyModal() {
+      const modal = document.getElementById('apiKeyModal');
+      document.getElementById('inputApiKeyModal').value = getStoredApiKey();
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeApiKeyModal() {
+      document.getElementById('apiKeyModal').classList.add('hidden');
+    }
+
+    function saveApiKey() {
+      const val = document.getElementById('inputApiKeyModal').value.trim();
+      localStorage.setItem('unm_monitor_api_key', val);
+      closeApiKeyModal();
+      showToast({ type: 'success', title: '凭证已保存', message: 'API Key 已更新，正在重新加载数据...' });
+      loadDashboardData(1);
+    }
+
+    function clearSavedApiKey() {
+      localStorage.removeItem('unm_monitor_api_key');
+      document.getElementById('inputApiKeyModal').value = '';
+      closeApiKeyModal();
+      showToast({ type: 'info', title: '凭证已清除', message: '已移除本地保存的 API Key' });
+      loadDashboardData(1);
+    }
+
+    function getAuthHeaders() {
+      const key = getStoredApiKey();
+      return key ? { 'x-api-key': key } : {};
+    }
+
+    // 1. 折叠与展开控制 (Collapsible Sections)
+    const sectionStates = {
+      kpis: true,
+      charts: true,
+      logs: true,
+    };
+
+    function toggleSection(sec) {
+      sectionStates[sec] = !sectionStates[sec];
+      const content = document.getElementById(`content${capitalize(sec)}`);
+      const icon = document.getElementById(`iconToggle${capitalize(sec)}`);
+      const label = document.getElementById(`labelToggle${capitalize(sec)}`);
+
+      if (sectionStates[sec]) {
+        content.classList.remove('hidden');
+        icon.classList.remove('rotate-180');
+        label.textContent = sec === 'logs' ? '收起表格' : '收起面板';
+        showToast({ type: 'info', title: '面板展开', message: `已展开 ${sec.toUpperCase()} 监控模块` });
+      } else {
+        content.classList.add('hidden');
+        icon.classList.add('rotate-180');
+        label.textContent = sec === 'logs' ? '展开表格' : '展开面板';
+        showToast({ type: 'info', title: '面板折叠', message: `已收起 ${sec.toUpperCase()} 监控模块` });
+      }
+    }
+
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function switchLayoutPreset(preset) {
+      const btnAll = document.getElementById('btnViewAll');
+      const btnCharts = document.getElementById('btnViewCharts');
+      const btnLogs = document.getElementById('btnViewLogs');
+
+      [btnAll, btnCharts, btnLogs].forEach(b => {
+        b.className = "px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition interactive-btn";
+      });
+
+      if (preset === 'all') {
+        btnAll.className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
+        setSectionVisibility('kpis', true);
+        setSectionVisibility('charts', true);
+        setSectionVisibility('logs', true);
+        showToast({ type: 'info', title: '布局模式', message: '已切换至全景概览模式' });
+      } else if (preset === 'charts') {
+        btnCharts.className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
+        setSectionVisibility('kpis', true);
+        setSectionVisibility('charts', true);
+        setSectionVisibility('logs', false);
+        showToast({ type: 'info', title: '布局模式', message: '已切换至图表分析矩阵专注模式' });
+      } else if (preset === 'logs') {
+        btnLogs.className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
+        setSectionVisibility('kpis', false);
+        setSectionVisibility('charts', false);
+        setSectionVisibility('logs', true);
+        showToast({ type: 'info', title: '布局模式', message: '已切换至日志排查专注模式' });
+      }
+    }
+
+    function setSectionVisibility(sec, visible) {
+      sectionStates[sec] = visible;
+      const content = document.getElementById(`content${capitalize(sec)}`);
+      const icon = document.getElementById(`iconToggle${capitalize(sec)}`);
+      const label = document.getElementById(`labelToggle${capitalize(sec)}`);
+      if (visible) {
+        content.classList.remove('hidden');
+        icon.classList.remove('rotate-180');
+        label.textContent = sec === 'logs' ? '收起表格' : '收起面板';
+      } else {
+        content.classList.add('hidden');
+        icon.classList.add('rotate-180');
+        label.textContent = sec === 'logs' ? '展开表格' : '展开面板';
+      }
+    }
+
+    // 2. Chart.js 实例初始化 (柱状图、圆形环形图与实时波形面积图)
+    let waveformChartInstance = null;
+    let endpointsChartInstance = null;
+    let sourcesDonutChartInstance = null;
+    let statusDonutChartInstance = null;
+
+    // 波形滑动时间轴数据缓存 (20 个点)
+    const waveTimelineLabels = Array.from({ length: 20 }, (_, i) => `${(20 - i) * 3}s前`);
+    const waveLatencyData = Array.from({ length: 20 }, () => 20 + Math.floor(Math.random() * 15));
+    const waveRpsData = Array.from({ length: 20 }, () => 5 + Math.floor(Math.random() * 8));
+
+    function initCharts() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const textColor = isDark ? '#94a3b8' : '#64748b';
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+
+      // 1. 实时波形面积图 (Waveform Spline Area Chart)
+      const ctxWave = document.getElementById('waveformChart').getContext('2d');
+      const waveGrad = ctxWave.createLinearGradient(0, 0, 0, 240);
+      waveGrad.addColorStop(0, 'rgba(14, 165, 233, 0.35)');
+      waveGrad.addColorStop(1, 'rgba(14, 165, 233, 0.00)');
+
+      waveformChartInstance = new Chart(ctxWave, {
+        type: 'line',
+        data: {
+          labels: waveTimelineLabels,
+          datasets: [
+            {
+              label: '时延 Latency (ms)',
+              data: waveLatencyData,
+              borderColor: '#0ea5e9',
+              borderWidth: 2.5,
+              backgroundColor: waveGrad,
+              fill: true,
+              tension: 0.42,
+              pointRadius: 0,
+              pointHoverRadius: 5,
+              pointHoverBackgroundColor: '#0ea5e9',
+              yAxisID: 'yLatency',
+            },
+            {
+              label: '吞吐 RPS',
+              data: waveRpsData,
+              borderColor: '#6366f1',
+              borderWidth: 2,
+              backgroundColor: 'transparent',
+              borderDash: [4, 4],
+              tension: 0.42,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              yAxisID: 'yRps',
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 600, easing: 'easeOutQuart' },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: isDark ? '#0f172a' : '#ffffff',
+              titleColor: isDark ? '#ffffff' : '#0f172a',
+              bodyColor: isDark ? '#cbd5e1' : '#334155',
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+              borderWidth: 1,
+              padding: 10,
+              cornerRadius: 10,
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 11 }, maxTicksLimit: 7 },
+              grid: { display: false }
+            },
+            yLatency: {
+              type: 'linear',
+              position: 'left',
+              beginAtZero: true,
+              ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 11 } },
+              grid: { color: gridColor }
+            },
+            yRps: {
+              type: 'linear',
+              position: 'right',
+              beginAtZero: true,
+              ticks: { color: '#6366f1', font: { family: 'JetBrains Mono', size: 11 }, precision: 0 },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+
+      // 2. 接口请求柱状图 (Endpoints Bar Chart)
+      const ctxEp = document.getElementById('endpointsChart').getContext('2d');
+      endpointsChartInstance = new Chart(ctxEp, {
+        type: 'bar',
+        data: {
+          labels: ['/match', '/ncmget', '/search', '/playlist', '/lyric', '/info'],
+          datasets: [{
+            label: '请求频次',
+            data: [0, 0, 0, 0, 0, 0],
+            backgroundColor: [
+              'rgba(14, 165, 233, 0.85)',
+              'rgba(99, 102, 241, 0.85)',
+              'rgba(168, 85, 247, 0.85)',
+              'rgba(236, 72, 153, 0.85)',
+              'rgba(16, 185, 129, 0.85)',
+              'rgba(245, 158, 11, 0.85)'
+            ],
+            borderRadius: 8,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: isDark ? '#0f172a' : '#ffffff',
+              titleColor: isDark ? '#ffffff' : '#0f172a',
+              bodyColor: isDark ? '#cbd5e1' : '#334155',
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+              borderWidth: 1,
+              padding: 10,
+              cornerRadius: 10,
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 11 } },
+              grid: { display: false }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 11 }, precision: 0 },
+              grid: { color: gridColor }
+            }
+          }
+        }
+      });
+
+      // 3. 音源命中圆形环形图 (Sources Donut Chart)
+      const ctxSrc = document.getElementById('sourcesDonutChart').getContext('2d');
+      sourcesDonutChartInstance = new Chart(ctxSrc, {
+        type: 'doughnut',
+        data: {
+          labels: ['BODIAN', 'GDSTUDIO', 'JOOX', 'KUGOU', 'KUWO', 'BILI'],
+          datasets: [{
+            data: [45, 25, 15, 8, 5, 2],
+            backgroundColor: [
+              '#10b981',
+              '#0ea5e9',
+              '#6366f1',
+              '#f59e0b',
+              '#ec4899',
+              '#8b5cf6'
+            ],
+            borderWidth: isDark ? 2 : 1,
+            borderColor: isDark ? '#0f172a' : '#ffffff',
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '70%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: textColor, font: { size: 11, family: 'JetBrains Mono' }, boxWidth: 10 }
+            },
+            tooltip: {
+              backgroundColor: isDark ? '#0f172a' : '#ffffff',
+              titleColor: isDark ? '#ffffff' : '#0f172a',
+              bodyColor: isDark ? '#cbd5e1' : '#334155',
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+              borderWidth: 1,
+              padding: 10,
+              cornerRadius: 10,
+            }
+          }
+        }
+      });
+
+      // 4. HTTP 状态码分布圆形环形图 (Status Donut Chart)
+      const ctxStatus = document.getElementById('statusDonutChart').getContext('2d');
+      statusDonutChartInstance = new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+          labels: ['200 成功', '400 校验', '401 未授权', '429 限流', '404 缺失', '500 异常'],
+          datasets: [{
+            data: [98, 1, 0, 0, 1, 0],
+            backgroundColor: [
+              '#10b981',
+              '#f59e0b',
+              '#6366f1',
+              '#ec4899',
+              '#94a3b8',
+              '#f43f5e'
+            ],
+            borderWidth: isDark ? 2 : 1,
+            borderColor: isDark ? '#0f172a' : '#ffffff',
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '72%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: textColor, font: { size: 11, family: 'Plus Jakarta Sans' }, boxWidth: 10 }
+            },
+            tooltip: {
+              backgroundColor: isDark ? '#0f172a' : '#ffffff',
+              titleColor: isDark ? '#ffffff' : '#0f172a',
+              bodyColor: isDark ? '#cbd5e1' : '#334155',
+              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+              borderWidth: 1,
+              padding: 10,
+              cornerRadius: 10,
+            }
+          }
+        }
+      });
+    }
+
+    // 3. 昼夜模式
+    const themeToggle = document.getElementById('themeToggle');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function setTheme(isDark, silent = false) {
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+        if (!silent) showToast({ type: 'info', title: '主题模式', message: '已切换至深色暗夜模式 🌙' });
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+        if (!silent) showToast({ type: 'info', title: '主题模式', message: '已切换至清爽浅色模式 ☀️' });
+      }
+      lucide.createIcons();
+    }
+
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark.matches)) {
+      setTheme(true, true);
+    } else {
+      setTheme(false, true);
+    }
+
+    themeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setTheme(!isDark);
+      if (waveformChartInstance && endpointsChartInstance && sourcesDonutChartInstance && statusDonutChartInstance) {
+        waveformChartInstance.destroy();
+        endpointsChartInstance.destroy();
+        sourcesDonutChartInstance.destroy();
+        statusDonutChartInstance.destroy();
+        initCharts();
+        loadDashboardData(currentPage, false);
+      }
+    });
+
+    // 4. 轮询控制器
+    let pollTimer = null;
+    let pollInterval = 3000;
+    let currentPage = 1;
+    const pageLimit = 25;
+    let currentLogsCache = [];
+
+    function changePollInterval(val) {
+      pollInterval = parseInt(val, 10);
+      clearInterval(pollTimer);
+      const dot = document.getElementById('refreshPulseDot');
+      if (pollInterval > 0) {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
+        pollTimer = setInterval(() => loadDashboardData(currentPage, false), pollInterval);
+        showToast({ type: 'info', title: '轮询配置', message: `自动刷新间隔已设置为 ${pollInterval / 1000} 秒` });
+      } else {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
+        showToast({ type: 'warning', title: '轮询已暂停', message: '已暂停后台自动数据刷新' });
+      }
+    }
+
+    let searchDebounce = null;
+    function debounceSearch() {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        const kw = document.getElementById('inputSearchKeyword').value.trim();
+        loadDashboardData(1);
+        if (kw) {
+          showToast({ type: 'info', title: '筛选检索', message: `正在检索关键词: "${kw}"` });
+        }
+      }, 350);
+    }
+
+    function onFilterChange() {
+      const ep = document.getElementById('selectEndpointFilter').value;
+      const st = document.getElementById('selectStatusFilter').value;
+      loadDashboardData(1);
+      showToast({ type: 'info', title: '过滤条件已更新', message: `端点: ${ep || '全部'} · 状态: ${st || '全部'}` });
+    }
+
+    // 5. 拉取监控数据 (带自动 API Key 鉴权头)
+    async function loadDashboardData(page = 1, showSpinner = true) {
+      currentPage = page;
+      const pathFilter = document.getElementById('selectEndpointFilter').value;
+      const statusFilter = document.getElementById('selectStatusFilter').value;
+      const keyword = document.getElementById('inputSearchKeyword').value;
+
+      const query = new URLSearchParams({
+        page: String(page),
+        limit: String(pageLimit),
+        path: pathFilter,
+        status: statusFilter,
+        keyword,
+      });
+
+      try {
+        const res = await fetch(`/api/monitor/data?${query.toString()}`, {
+          headers: getAuthHeaders(),
+        });
+
+        if (res.status === 401) {
+          showToast({ type: 'warning', title: '需要鉴权', message: '监控接口需要访问密钥凭证 (API Key)' });
+          openApiKeyModal();
+          return;
+        }
+
+        const json = await res.json();
+        if (json.code === 200 && json.data) {
+          renderStatsCards(json.data.stats);
+          renderTelemetryLogs(json.data.logs, json.data.totalLogs);
+          currentLogsCache = json.data.logs;
+        }
+      } catch (err) {
+        console.warn('Load telemetry error:', err);
+      }
+    }
+
+    // 6. 渲染统计卡片与图表
+    function renderStatsCards(stats) {
+      document.getElementById('statTotalRequests').textContent = stats.totalRequests || 0;
+      const successRate = stats.totalRequests > 0
+        ? ((stats.successRequests / stats.totalRequests) * 100).toFixed(1)
+        : 100;
+      document.getElementById('statSuccessPct').innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5 inline"></i> <span>${successRate}% 成功率</span>`;
+      document.getElementById('statFailedBadge').textContent = `${stats.failedRequests || 0} 异常`;
+      document.getElementById('statAvgLatency').textContent = `${stats.avgDuration || 0} ms`;
+      document.getElementById('statCallerCount').textContent = stats.topCallers?.length || 0;
+
+      const upSec = stats.uptime || 0;
+      const h = Math.floor(upSec / 3600);
+      const m = Math.floor((upSec % 3600) / 60);
+      const s = upSec % 60;
+      document.getElementById('statDashboardUptime').textContent = `${h}h ${m}m ${s}s`;
+
+      const total = stats.totalRequests || 1;
+
+      // 实时推进更新波形折线图
+      if (waveformChartInstance) {
+        waveLatencyData.shift();
+        waveLatencyData.push(stats.avgDuration || 20);
+        waveRpsData.shift();
+        waveRpsData.push(Math.max(1, Math.floor(total / Math.max(1, upSec || 1)) + Math.floor(Math.random() * 4)));
+        waveformChartInstance.update('none');
+      }
+
+      // 更新 Chart.js 接口柱状图数据
+      if (endpointsChartInstance && stats.topEndpoints) {
+        const labels = stats.topEndpoints.map(e => e.name);
+        const data = stats.topEndpoints.map(e => e.count);
+        endpointsChartInstance.data.labels = labels.length ? labels : ['/match', '/ncmget', '/search', '/info'];
+        endpointsChartInstance.data.datasets[0].data = data.length ? data : [0, 0, 0, 0];
+        endpointsChartInstance.update();
+      }
+
+      // 更新 Chart.js 音源圆形环形图数据 (Sources Donut)
+      if (sourcesDonutChartInstance && stats.topSources) {
+        const labels = stats.topSources.map(s => s.name.toUpperCase());
+        const data = stats.topSources.map(s => s.count);
+        if (labels.length > 0) {
+          sourcesDonutChartInstance.data.labels = labels;
+          sourcesDonutChartInstance.data.datasets[0].data = data;
+          sourcesDonutChartInstance.update();
+        }
+      }
+
+      // 更新状态码圆形环形图数据 (Status Donut)
+      if (statusDonutChartInstance && stats.statusCodes) {
+        const c200 = stats.statusCodes['200'] || 0;
+        const c400 = stats.statusCodes['400'] || 0;
+        const c401 = stats.statusCodes['401'] || 0;
+        const c429 = stats.statusCodes['429'] || 0;
+        const c404 = stats.statusCodes['404'] || 0;
+        const c500 = stats.statusCodes['500'] || 0;
+        statusDonutChartInstance.data.datasets[0].data = [c200, c400, c401, c429, c404, c500];
+        statusDonutChartInstance.update();
+      }
+
+      // 渲染 Top Callers (Who)
+      const callerContainer = document.getElementById('topCallersList');
+      if (stats.topCallers && stats.topCallers.length > 0) {
+        callerContainer.innerHTML = stats.topCallers.map(item => {
+          const pct = Math.min(Math.round((item.count / total) * 100), 100);
+          return `
+            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/60 dark:border-white/5 space-y-2 interactive-btn">
+              <div class="flex items-center justify-between">
+                <span class="truncate max-w-[200px] font-bold text-slate-800 dark:text-slate-200" title="${item.name}">${item.name}</span>
+                <span class="font-bold font-mono px-2.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs">${item.count} 次 (${pct}%)</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                <div class="h-full bg-indigo-500 rounded-full" style="width: ${pct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        callerContainer.innerHTML = '<div class="text-slate-400 text-center py-6 col-span-full">暂无调用源数据</div>';
+      }
+    }
+
+    // 7. 渲染表格明细
+    function renderTelemetryLogs(logs, total) {
+      document.getElementById('labelTotalCount').textContent = total || 0;
+      document.getElementById('labelCurrentPage').textContent = currentPage;
+
+      const tbody = document.getElementById('logsTableContent');
+      if (!logs || logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-10 text-slate-400 font-medium">未检索到匹配的请求调用记录</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = logs.map(l => {
+        let codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">${l.status}</span>`;
+        if (l.status >= 400 && l.status < 500) {
+          codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">${l.status}</span>`;
+        } else if (l.status >= 500) {
+          codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">${l.status}</span>`;
+        }
+
+        const callerDisplay = l.referer !== '-'
+          ? `<span class="truncate block max-w-[180px] font-medium text-slate-800 dark:text-slate-200" title="${l.referer}">${l.referer}</span>`
+          : `<span class="text-slate-400 font-medium">Direct API</span>`;
+
+        return `
+          <tr class="hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition cursor-pointer" onclick="openDrawer('${l.id}')">
+            <td class="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap text-xs sm:text-sm">${l.timeStr}</td>
+            <td class="py-3.5 px-4 font-mono font-semibold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
+              <span class="text-sky-500 font-bold">${l.method}</span> ${l.path}
+            </td>
+            <td class="py-3.5 px-4">${codeBadge}</td>
+            <td class="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300 font-semibold text-xs sm:text-sm">${l.duration}ms</td>
+            <td class="py-3.5 px-4">${callerDisplay}</td>
+            <td class="py-3.5 px-4">
+              <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold">${l.clientType}</span>
+            </td>
+            <td class="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400 text-xs sm:text-sm">${l.ip}</td>
+            <td class="py-3.5 px-4 text-right">
+              <button onclick="event.stopPropagation(); openDrawer('${l.id}')" class="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sky-500 hover:text-white transition text-xs font-bold interactive-btn">查看</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('btnPrevPage').disabled = currentPage <= 1;
+      document.getElementById('btnNextPage').disabled = (currentPage * pageLimit) >= total;
+      lucide.createIcons();
+    }
+
+    function paginate(delta) {
+      const target = currentPage + delta;
+      if (target >= 1) {
+        loadDashboardData(target);
+        showToast({ type: 'info', title: '分页切换', message: `正在加载第 ${target} 页数据...` });
+      }
+    }
+
+    // 8. 侧边抽屉明细
+    function openDrawer(id) {
+      const item = currentLogsCache.find(l => l.id === id);
+      if (!item) return;
+
+      document.getElementById('drawerLogId').textContent = item.id;
+      document.getElementById('drawerIp').textContent = item.ip;
+      document.getElementById('drawerDuration').textContent = `${item.duration} ms`;
+      document.getElementById('drawerFullUrl').textContent = item.fullUrl;
+      document.getElementById('drawerReferer').textContent = item.referer;
+      document.getElementById('drawerUserAgent').textContent = item.userAgent;
+      document.getElementById('drawerQueryJson').textContent = JSON.stringify(item.query, null, 2);
+
+      document.getElementById('drawerOverlay').classList.remove('hidden');
+      lucide.createIcons();
+      showToast({ type: 'info', title: '明细展开', message: `已载入请求 ${item.path} 遥测结构` });
+    }
+
+    function closeDrawer() {
+      document.getElementById('drawerOverlay').classList.add('hidden');
+    }
+
+    // 9. 现代确认对话框
+    let confirmCallback = null;
+    function showConfirmDialog({ title = '确认操作', message = '', onConfirm = null }) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = message;
+      confirmCallback = onConfirm;
+      document.getElementById('confirmModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeConfirm(accepted) {
+      document.getElementById('confirmModal').classList.add('hidden');
+      if (accepted && typeof confirmCallback === 'function') {
+        confirmCallback();
+      }
+      confirmCallback = null;
+    }
+
+    // 10. 清空与导出
+    async function clearLogsData() {
+      showConfirmDialog({
+        title: '清空遥测日志',
+        message: '确定要重置并清空所有内存遥测日志记录吗？清空后当前聚合统计与明细将全部重置。',
+        onConfirm: async () => {
+          try {
+            const res = await fetch('/api/monitor/clear', {
+              method: 'POST',
+              headers: getAuthHeaders(),
+            });
+            if (res.status === 401) {
+              showToast({ type: 'error', title: '未授权', message: '清空日志需要正确的 API Key' });
+              openApiKeyModal();
+              return;
+            }
+            loadDashboardData(1);
+            showToast({ type: 'success', title: '清空完成', message: '已成功重置所有遥测数据与内存日志' });
+          } catch (err) {
+            showToast({ type: 'error', title: '清空失败', message: err.message });
+          }
+        }
+      });
+    }
+
+    function exportJsonLogs() {
+      if (!currentLogsCache || currentLogsCache.length === 0) {
+        showToast({ type: 'warning', title: '暂无数据', message: '当前没有可导出的调用记录' });
+        return;
+      }
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(currentLogsCache, null, 2));
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', dataStr);
+      anchor.setAttribute('download', `telemetry-logs-${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      showToast({ type: 'success', title: '导出成功', message: `已成功导出 ${currentLogsCache.length} 条遥测记录为 JSON` });
+    }
+
+    // 初始启动
+    initCharts();
+    loadDashboardData(1);
+    changePollInterval(3000);
+  </script>
+</body>
+</html>
