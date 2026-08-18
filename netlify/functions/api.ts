@@ -15,7 +15,15 @@ type NetlifyContext = {
 };
 
 export async function handler(req: Request, context: NetlifyContext): Promise<Response> {
-  const incoming = new URL(req.url);
+  // Netlify 传入的 req.url 在某些打包环境下为空/非法，逐级兜底重建
+  let incoming: URL;
+  try {
+    incoming = new URL(req.url);
+  } catch {
+    const rawPath = (context?.pathname as string) || "/";
+    incoming = new URL(rawPath, "https://netlify.local");
+  }
+
   let path = incoming.pathname;
 
   // 剥离 Netlify 函数路径前缀，还原业务路径
@@ -24,8 +32,17 @@ export async function handler(req: Request, context: NetlifyContext): Promise<Re
     path = path.slice(fnPrefix.length) || "/";
   }
 
-  const url = new URL(path + incoming.search, incoming.origin);
-  const rebuilt = new Request(url.toString(), req);
+  const origin = incoming.origin !== "null" && incoming.origin ? incoming.origin : "https://netlify.local";
+  const url = new URL(path + incoming.search, origin);
+
+  // 重建 Request（仅 GET/HEAD 等无体请求可直接复制；带体请求保守处理）
+  const init: RequestInit = {
+    method: req.method,
+    headers: req.headers,
+    body: ["GET", "HEAD"].includes(req.method) ? undefined : await req.text(),
+    redirect: "manual",
+  };
+  const rebuilt = new Request(url.toString(), init);
 
   // 提供执行上下文供 Hono 使用（保持 netlify adapter 兼容字段）
   return app.fetch(rebuilt, { context } as any);
