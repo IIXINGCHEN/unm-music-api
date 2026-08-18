@@ -1,7 +1,7 @@
 services:
   unm-server:
     container_name: unm-server
-    image: unm-server:2.0.0
+    image: ghcr.io/iixingchen/unm-music-api:latest
     build:
       context: .
       dockerfile: Dockerfile

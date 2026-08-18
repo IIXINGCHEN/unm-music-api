@@ -27,32 +27,35 @@
 
 ### 1. Linux 生产环境 Docker Compose 部署 (推荐)
 
-项目已内置经过生产优化的 `docker-compose.yml`、`Dockerfile` 与 `.dockerignore`：
+项目已配置 GitHub Actions 自动构建 **linux/amd64** 与 **linux/arm64** 双架构镜像并推送至 GitHub Container Registry (`ghcr.io`)，支持免编译秒级拉取：
 
 ```bash
-# 1. 克隆代码或将代码上传至 Linux 服务器
-git clone <repository-url> unm-server
+# 1. 下载或克隆仓库（或者仅下载 docker-compose.yml 与 .env.example）
+git clone https://github.com/IIXINGCHEN/unm-music-api.git unm-server
 cd unm-server
 
-# 2. 根据需要修改环境变量配置
+# 2. 配置环境变量（默认绑定 127.0.0.1:5678）
 cp .env.example .env
-# nano .env
 
-# 3. 使用 Docker Compose 一键构建并在后台启动
+# 3. 直接拉取预构建镜像并一键后台启动（无需在服务器本地编译）
+docker compose pull
 docker compose up -d
 
-# 4. 查看实时运行日志与健康状态
+# 4. 查看实时运行日志与健康检查状态
 docker compose logs -f
 docker compose ps
 ```
 
 常用运维命令：
 ```bash
+# 更新至最新镜像并平滑重启
+docker compose pull && docker compose up -d
+
+# 本地源码重新构建并重启
+docker compose up -d --build
+
 # 停止服务
 docker compose down
-
-# 重新构建并平滑重启
-docker compose up -d --build
 ```
 
 ---
