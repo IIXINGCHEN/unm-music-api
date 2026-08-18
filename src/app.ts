@@ -131,17 +131,24 @@ app.route("/", routes);
 function resolvePublicFile(...names: string[]): string | null {
   const fromMeta = (rel: string) => {
     try {
-      return path.resolve(fileURLToPath(new URL(rel, import.meta.url)), ...names);
+      if (typeof import.meta.url === "string" && import.meta.url) {
+        return path.resolve(fileURLToPath(new URL(rel, import.meta.url)), ...names);
+      }
     } catch {
-      return "";
+      /* import.meta 不可用（CJS 打包） */
     }
+    return "";
   };
+  const anyMod = globalThis as any;
+  const cjsDir =
+    typeof anyMod.__filename === "string" ? path.dirname(anyMod.__filename) : null;
   const candidates = [
     path.resolve(process.cwd(), "public", ...names),
     path.resolve(process.cwd(), "src", "public", ...names),
     path.resolve(process.cwd(), "..", "public", ...names),
     path.resolve(process.cwd(), "..", "src", "public", ...names),
     path.resolve(path.dirname(process.argv[1] || process.cwd()), "public", ...names),
+    ...(cjsDir ? [path.resolve(cjsDir, "public", ...names), path.resolve(cjsDir, "../public", ...names)] : []),
     fromMeta("./public"),
     fromMeta("../../public"),
   ];

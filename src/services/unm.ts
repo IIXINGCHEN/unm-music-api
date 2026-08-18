@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import path from "node:path";
 import axios from "axios";
 import {
   env,
@@ -12,7 +13,24 @@ import { gdstudio } from "./gdstudio.js";
 import { sanitizeParam, formatProxyUrl } from "../utils/string.js";
 import type { SongDetail, MatchedAudio, NcmAudioResult } from "../types/music.js";
 
-const require = createRequire(import.meta.url);
+// 安全创建 require 解析器：CJS 打包（Netlify Functions）下 import.meta.url 为空，
+// 回退使用 __filename；两者皆无时回退 process.cwd()
+function createSafeRequire(): NodeRequire {
+  try {
+    if (typeof import.meta.url === "string" && import.meta.url) {
+      return createRequire(import.meta.url);
+    }
+  } catch {
+    /* import.meta 不可用 */
+  }
+  const anyMod = globalThis as any;
+  if (typeof anyMod.__filename === "string" && anyMod.__filename) {
+    return createRequire(anyMod.__filename);
+  }
+  return createRequire(path.join(process.cwd(), "index.js"));
+}
+
+const require = createSafeRequire();
 const unmConsts = require("@unblockneteasemusic/server/src/consts");
 const unmMatch = require("@unblockneteasemusic/server");
 

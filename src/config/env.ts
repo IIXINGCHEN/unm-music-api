@@ -12,10 +12,33 @@ import {
 } from "./constants.js";
 
 // 确保准确加载 E:\API\ZGiYW3\UNM-Server\.env 文件
-const possibleEnvPaths = [
+// 安全获取模块自身路径：CJS 打包（Netlify Functions）下 import.meta.url 为空，
+// 回退使用 __filename / __dirname，两者皆无时跳过相对路径探测
+function getModuleDir(): string | null {
+  try {
+    if (typeof import.meta.url === "string" && import.meta.url) {
+      return path.dirname(fileURLToPath(import.meta.url));
+    }
+  } catch {
+    /* import.meta 不可用 */
+  }
+  const anyMod = globalThis as any;
+  if (typeof anyMod.__filename === "string") {
+    return path.dirname(anyMod.__filename);
+  }
+  return null;
+}
+
+const moduleDir = getModuleDir();
+const possibleEnvPaths: string[] = [
   path.resolve(process.cwd(), ".env"),
-  path.resolve(fileURLToPath(new URL("../../.env", import.meta.url))),
-  path.resolve(fileURLToPath(new URL("../.env", import.meta.url))),
+  ...(moduleDir
+    ? [
+        path.resolve(moduleDir, "..", ".env"),
+        path.resolve(moduleDir, "../..", ".env"),
+        path.resolve(moduleDir, "../../..", ".env"),
+      ]
+    : []),
 ];
 
 for (const envPath of possibleEnvPaths) {
