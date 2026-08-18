@@ -11,10 +11,9 @@ import { gdstudio } from "./gdstudio.js";
 import { sanitizeParam, formatProxyUrl } from "../utils/string.js";
 import type { SongDetail, MatchedAudio, NcmAudioResult } from "../types/music.js";
 
-// 静态导入 UNM 引擎（esbuild 可静态分析并打包进 Serverless bundle；
-// 此前用 createRequire 动态加载在 Netlify/Vercel 打包环境下无法被追踪）
+// 静态导入 UNM 引擎（Node.js ESM 规范要求深层导入必须显式指定 .js 扩展名）
 // @ts-ignore -- UNM 引擎无类型声明文件，运行时以 any 使用
-import * as unmConstsNS from "@unblockneteasemusic/server/src/consts";
+import * as unmConstsNS from "@unblockneteasemusic/server/src/consts.js";
 // @ts-ignore -- 同上
 import * as unmMatchNS from "@unblockneteasemusic/server";
 
