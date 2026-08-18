@@ -1,195 +1,131 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <title>404 | Linkbook API</title>
-    <link
-      rel="shortcut icon"
-      href="https://img.imsyy.top/logo/imsyy.png"
-      type="image/x-icon"
-    />
-    <link
-      rel="stylesheet"
-      href="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/font-awesome/6.0.0/css/all.min.css"
-    />
-    <style>
-      :root {
-        --text-color: #000;
-        --text-color-gray: #888;
-        --text-color-hover: #fff;
-        --icon-color: #444;
-      }
-      html.dark-mode {
-        --text-color: #fff;
-        --text-color-gray: #888;
-        --text-color-hover: #3c3c3c;
-        --icon-color: #cbcbcb;
-      }
-      * {
-        margin: 0;
-        padding: 0;
-        -webkit-user-select: none;
-        user-select: none;
-      }
-      html {
-        height: 100%;
-      }
-      body {
-        background-color: var(--text-color-hover);
-        color: var(--text-color);
-        font-family: "PingFang SC", "Open Sans", "Microsoft YaHei", sans-serif;
-        transition: background-color 0.5s, color 0.5s;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: space-between;
-        height: 100%;
-      }
-      .dark-mode body {
-        background-color: #2a2a2a;
-      }
-      main {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-      }
-      a {
-        text-decoration: none;
-        color: var(--text-color-gray);
-        transition: all 0.5s ease;
-      }
-      a:hover {
-        color: var(--text-color);
-      }
-      .ico {
-        margin: 4rem 2rem;
-        font-size: 6rem;
-        color: var(--text-color-gray);
-      }
-      .title {
-        font-size: 2rem;
-        font-weight: bold;
-      }
-      .text {
-        margin: 1rem;
-      }
-      .control button {
-        background-color: var(--text-color-hover);
-        border: var(--text-color) solid;
-        border-radius: 4px;
-        padding: 0.5rem 1rem;
-        transition: all 0.5s ease;
-        margin: 1rem 0.2rem;
-        color: var(--text-color);
-        cursor: pointer;
-      }
-      .control button:hover {
-        border: var(--text-color) solid;
-        background: var(--text-color);
-        color: var(--text-color-hover);
-      }
-      .control button i {
-        margin-right: 6px;
-      }
-      footer {
-        line-height: 1.75rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 140px;
-      }
-      footer .social {
-        color: var(--icon-color);
-        font-size: 15px;
-        display: flex;
-        align-items: center;
-        cursor: pointer;
-      }
-      footer .social i {
-        margin: 0 12px;
-      }
-      footer .point::before {
-        content: "·";
-        color: var(--text-color-gray);
-      }
-      .power,
-      .icp {
-        font-size: 14px;
-      }
-    </style>
-  </head>
-  <body>
-    <main>
-      <div class="ico"><i class="fa-solid fa-circle-exclamation"></i></div>
-      <div class="title">404 Not Found</div>
-      <div class="text">请检查您的路径</div>
-      <div class="control">
-        <button onclick="window.location.href = '/'">
-          <i class="fa-solid fa-house"></i>
-          <span>回到首页</span>
-        </button>
-      </div>
-    </main>
-    <footer>
-      <div class="social">
-        <i class="fa-brands fa-github" onclick="socialJump('github')"></i>
-        <div class="point"></div>
-        <i class="fa-solid fa-house" onclick="socialJump('home')"></i>
-        <div class="point"></div>
-        <i class="fa-solid fa-envelope" onclick="socialJump('email')"></i>
-      </div>
-      <div class="power">
-        Copyright © 2020
-        <script>
-          document.write(" - " + new Date().getFullYear());
-        </script>
-        <a href="https://imsyy.top/" target="_blank">無名</a>
-      </div>
-      <div class="icp">
-        <a href="https://beian.miit.gov.cn/" target="_blank"
-          >豫ICP备2022018134号-1</a
-        >
-      </div>
-    </footer>
-    <script>
-      // 跟随系统主题
-      const darkModeMediaQuery = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      );
-      const toggleDarkMode = (darkModeMediaQuery) => {
-        if (darkModeMediaQuery.matches) {
-          document.documentElement.classList.add("dark-mode");
-        } else {
-          document.documentElement.classList.remove("dark-mode");
-        }
-      };
-      darkModeMediaQuery.addListener(toggleDarkMode);
-      toggleDarkMode(darkModeMediaQuery);
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>404 · 页面或资源未找到 · UNM-Server</title>
+  <link rel="shortcut icon" href="./favicon.png" type="image/png" />
 
-      // 按钮事件
-      const clickFunction = () => {
-        window.location.href = "/api/links";
-      };
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
 
-      // 社交链接跳转
-      const socialJump = (type) => {
-        switch (type) {
-          case "github":
-            window.location.href = "https://github.com/imsyy/";
-            break;
-          case "home":
-            window.location.href = "https://www.imsyy.top/";
-            break;
-          case "email":
-            window.location.href = "mailto:one@imsyy.top";
-            break;
-          default:
-            break;
-        }
-      };
-    </script>
-  </body>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    body {
+      -webkit-font-smoothing: antialiased;
+    }
+    .mesh-gradient {
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.08) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.06) 0px, transparent 50%);
+    }
+    .dark .mesh-gradient {
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.08) 0px, transparent 50%);
+    }
+    .glass-card {
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between transition-colors duration-500 mesh-gradient">
+
+  <!-- 顶部精简导航 -->
+  <header class="w-full max-w-5xl mx-auto px-6 py-8 flex items-center justify-between">
+    <a href="/" class="flex items-center space-x-3 group">
+      <div class="w-9 h-9 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-center p-2 group-hover:scale-105 transition">
+        <img src="./favicon.png" alt="Logo" class="w-full h-full object-contain" />
+      </div>
+      <span class="font-bold text-base text-slate-900 dark:text-white">UNM-Server</span>
+    </a>
+
+    <button id="themeToggle" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition shadow-sm">
+      <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
+      <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
+    </button>
+  </header>
+
+  <!-- 404 主体内容区 (留白与现代卡片) -->
+  <main class="w-full max-w-xl mx-auto px-6 py-12 flex-1 flex flex-col items-center justify-center text-center">
+    <div class="glass-card bg-white/80 dark:bg-slate-900/60 p-10 sm:p-12 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-6 w-full">
+      <div class="w-16 h-16 rounded-2xl bg-sky-500/10 dark:bg-sky-500/20 text-sky-500 flex items-center justify-center mx-auto shadow-sm">
+        <i data-lucide="compass" class="w-8 h-8"></i>
+      </div>
+
+      <div class="space-y-2">
+        <div class="text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white font-mono">404</div>
+        <h1 class="text-xl font-bold text-slate-800 dark:text-slate-200">所请求的资源或路径不存在</h1>
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
+          请检查请求的 API 端点或 URL 路径是否正确。
+        </p>
+      </div>
+
+      <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="/" class="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-6 py-3 rounded-2xl bg-slate-900 hover:bg-sky-600 dark:bg-white dark:hover:bg-sky-400 text-white dark:text-slate-900 font-semibold text-sm transition shadow-sm">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          <span>返回服务首页</span>
+        </a>
+        <a href="/info" class="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-6 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+          <i data-lucide="info" class="w-4 h-4"></i>
+          <span>查看服务状态</span>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- 底部 Footer -->
+  <footer class="w-full max-w-5xl mx-auto px-6 py-8 text-center text-xs text-slate-400 border-t border-slate-200/60 dark:border-slate-800/60">
+    <div>Copyright &copy; <span id="year"></span> UNM-Server · All Rights Reserved</div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    lucide.createIcons();
+
+    const themeToggle = document.getElementById('themeToggle');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function setTheme(isDark) {
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      }
+      lucide.createIcons();
+    }
+
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark.matches)) {
+      setTheme(true);
+    } else {
+      setTheme(false);
+    }
+
+    themeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setTheme(!isDark);
+    });
+  </script>
+</body>
 </html>
