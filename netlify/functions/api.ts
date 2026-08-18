@@ -66,7 +66,10 @@ function buildRequest(
   });
 }
 
-export async function handler(arg0: any, context: NetlifyContext): Promise<Response> {
+export async function handler(arg0: any, arg1: any, arg2?: any): Promise<any> {
+  // 检测旧版回调式签名 handler(event, context, callback)
+  const isCallbackStyle = typeof arg2 === "function";
+  let context: NetlifyContext = arg1 || {};
   let request: Request;
 
   if (isLegacyEvent(arg0)) {
@@ -84,5 +87,32 @@ export async function handler(arg0: any, context: NetlifyContext): Promise<Respo
     request = buildRequest("GET", (context?.pathname as string) || "/", {}, null);
   }
 
-  return app.fetch(request, { context } as any);
+  const res: Response = await app.fetch(request, { context } as any);
+
+  if (isCallbackStyle) {
+    // 旧版回调签名：转换为 Lambda 风格响应对象
+    const headers: Record<string, string> = {};
+    res.headers.forEach((v, k) => {
+      headers[k] = v;
+    });
+    let body: string = "";
+    let isBase64Encoded = false;
+    const contentType = res.headers.get("content-type") || "";
+    if (["GET", "HEAD"].includes(request.method) || contentType.includes("json") || contentType.includes("text")) {
+      body = await res.text();
+    } else {
+      const buf = new Uint8Array(await res.arrayBuffer());
+      body = Buffer.from(buf).toString("base64");
+      isBase64Encoded = true;
+    }
+    arg2(null, {
+      statusCode: res.status,
+      headers,
+      body,
+      isBase64Encoded,
+    });
+    return;
+  }
+
+  return res;
 }
