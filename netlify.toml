@@ -7,10 +7,9 @@
   NODE_VERSION = "20"
   PNPM_VERSION = "10"
 
-# 强制函数以 ESM 打包，保证 import.meta.url 可用（CJS 下为空导致 Invalid URL 崩溃）
+# 函数打包配置：UNM 引擎改为静态 import，由 esbuild 完整打包进 bundle
 [functions]
   node_bundler = "esbuild"
-  external_node_modules = ["@unblockneteasemusic/server"]
 
 # 1. 静态资源直通规则
 [[redirects]]

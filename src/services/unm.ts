@@ -1,5 +1,3 @@
-import { createRequire } from "node:module";
-import path from "node:path";
 import axios from "axios";
 import {
   env,
@@ -13,26 +11,14 @@ import { gdstudio } from "./gdstudio.js";
 import { sanitizeParam, formatProxyUrl } from "../utils/string.js";
 import type { SongDetail, MatchedAudio, NcmAudioResult } from "../types/music.js";
 
-// 安全创建 require 解析器：CJS 打包（Netlify Functions）下 import.meta.url 为空，
-// 回退使用 __filename；两者皆无时回退 process.cwd()
-function createSafeRequire(): NodeRequire {
-  try {
-    if (typeof import.meta.url === "string" && import.meta.url) {
-      return createRequire(import.meta.url);
-    }
-  } catch {
-    /* import.meta 不可用 */
-  }
-  const anyMod = globalThis as any;
-  if (typeof anyMod.__filename === "string" && anyMod.__filename) {
-    return createRequire(anyMod.__filename);
-  }
-  return createRequire(path.join(process.cwd(), "index.js"));
-}
+// 静态导入 UNM 引擎（esbuild 可静态分析并打包进 Serverless bundle；
+// 此前用 createRequire 动态加载在 Netlify/Vercel 打包环境下无法被追踪）
+// @ts-ignore -- UNM 引擎无类型声明文件，运行时以 any 使用
+import * as unmConstsNS from "@unblockneteasemusic/server/src/consts";
+// @ts-ignore -- 同上
+import * as unmMatchNS from "@unblockneteasemusic/server";
 
-const require = createSafeRequire();
-const unmConsts = require("@unblockneteasemusic/server/src/consts");
-const unmMatch = require("@unblockneteasemusic/server");
+const unmConsts = unmConstsNS as any;
 
 /**
  * 获取所有支持的音源列表（与 @unblockneteasemusic/server 最新版 0.28.0 完全对齐）
@@ -172,10 +158,11 @@ export async function matchSong(
   // 1. 获取网易云元数据
   const detail = await getNeteaseSongDetail(cleanId);
 
-  // 2. 尝试使用 UNM 引擎进行多源匹配
+  // 2. 尝试使用 UNM 引擎进行多源匹配（ESM 命名空间下取 default 导出）
+  const unmMatchFn: any = (unmMatchNS as any).default ?? unmMatchNS;
   let matchResult: { url?: string; br?: number; size?: number; source?: string; md5?: string | null } | null = null;
   try {
-    matchResult = await unmMatch(cleanId, serverList);
+    matchResult = await unmMatchFn(cleanId, serverList);
   } catch {
     console.warn(`[UNM Match] UNM 引擎直接匹配未命中 (${cleanId})，启动备选智能降级...`);
   }
