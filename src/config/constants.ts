@@ -62,6 +62,7 @@ export const PROVIDER_CONFIG = {
 } as const;
 
 export const HTTP_CONFIG = {
+  DEFAULT_HOST: "127.0.0.1",
   DEFAULT_PORT: 5678,
   DEFAULT_TIMEOUT_MS: 10000,
   DEFAULT_ALLOWED_ORIGIN: "*",

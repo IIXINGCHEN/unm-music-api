@@ -11,7 +11,7 @@ import {
   AUDIO_CONFIG,
 } from "./constants.js";
 
-// 确保准确加载 E:\API\ZGiYW3\UNM-Server\.env 文件
+// 确保准确加载  文件
 // 安全获取模块自身路径：CJS 打包（Netlify Functions）下 import.meta.url 为空，
 // 回退使用 __filename / __dirname，两者皆无时跳过相对路径探测
 function getModuleDir(): string | null {
@@ -50,6 +50,7 @@ for (const envPath of possibleEnvPaths) {
 
 const envSchema = z.object({
   // 1. 基础服务配置
+  HOST: z.string().default(HTTP_CONFIG.DEFAULT_HOST),
   PORT: z
     .string()
     .optional()
