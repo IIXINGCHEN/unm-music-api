@@ -68,7 +68,7 @@ export const HTTP_CONFIG = {
   DEFAULT_PORT: 5678,
   DEFAULT_TIMEOUT_MS: 10000,
   DEFAULT_ALLOWED_ORIGIN: "*",
-  USER_AGENT: "UNM-Server/2.0.0 (TypeScript; Hono Edition)",
+  USER_AGENT: `UNM-Server/${APP_VERSION} (TypeScript; Hono Edition)`,
   BROWSER_USER_AGENT:
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 } as const;

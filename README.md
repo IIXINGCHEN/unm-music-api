@@ -1,6 +1,6 @@
 <img src="./public/favicon.png" alt="logo" width="140" height="140" align="right">
 
-# UNM-Server 2.0.0 (TypeScript + Hono Edition)
+# UNM-Server 3.0.1 (TypeScript + Hono Edition)
 
 网易云音乐解灰与跨平台音乐 API 服务，原生整合 **GD Studio API** 与 `@unblockneteasemusic/server` 0.28.0+，全面支持 **`home-4.1.7`** 前端主页及各类 Web 音乐播放器。
 
