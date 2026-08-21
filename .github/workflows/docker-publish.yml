@@ -11,6 +11,20 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      custom_tag:
+        description: "自定义镜像标签（可选，留空则自动按分支/语义化版本打标，如 v3.0.1）"
+        required: false
+        default: ""
+      platforms:
+        description: "编译构建的目标架构平台"
+        required: true
+        type: choice
+        default: "linux/amd64,linux/arm64"
+        options:
+          - "linux/amd64,linux/arm64"
+          - "linux/amd64"
+          - "linux/arm64"
 
 env:
   REGISTRY: ghcr.io
@@ -48,18 +62,19 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,format=short
+            type=raw,value=${{ inputs.custom_tag }},enable=${{ inputs.custom_tag != '' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ inputs.platforms || 'linux/amd64,linux/arm64' }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
