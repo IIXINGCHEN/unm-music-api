@@ -1,4 +1,5 @@
-import { sanitizeQuery, sanitizeUrl } from "../utils/security.js";
+import { MONITOR_CONFIG } from "../config/index.js";
+import { sanitizeQuery, sanitizeUrl } from "../utils/utilSecurity.js";
 
 export interface RequestLog {
   id: string;
@@ -18,6 +19,20 @@ export interface RequestLog {
   source: string; // 匹配到的音源
 }
 
+export interface RecordLogParams {
+  method: string;
+  path: string;
+  fullUrl: string;
+  query: Record<string, string>;
+  status: number;
+  duration: number;
+  ip: string;
+  referer: string;
+  origin: string;
+  userAgent: string;
+  source?: string;
+}
+
 export interface MonitorStats {
   totalRequests: number;
   successRequests: number;
@@ -31,7 +46,7 @@ export interface MonitorStats {
 }
 
 class MonitorService {
-  private maxLogs: number = 1000;
+  private maxLogs: number = MONITOR_CONFIG.DEFAULT_MAX_LOGS;
   private logs: RequestLog[] = [];
   private totalRequests: number = 0;
   private successRequests: number = 0;
@@ -75,19 +90,7 @@ class MonitorService {
   /**
    * 记录一次请求日志 (自动执行敏感数据脱敏)
    */
-  record(logData: {
-    method: string;
-    path: string;
-    fullUrl: string;
-    query: Record<string, string>;
-    status: number;
-    duration: number;
-    ip: string;
-    referer: string;
-    origin: string;
-    userAgent: string;
-    source?: string;
-  }): void {
+  record(logData: RecordLogParams): void {
     // 忽略监控自身与静态文件的高频打点
     if (logData.path.startsWith("/api/monitor") || logData.path.endsWith(".png") || logData.path.endsWith(".ico")) {
       return;

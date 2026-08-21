@@ -1,6 +1,20 @@
+import crypto from "node:crypto";
+
 /**
  * 安全防御与数据清洗工具库
  */
+
+/**
+ * 恒定时间安全字符串比较（基于 SHA-256 哈希散列与 timingSafeEqual，杜绝时序攻击）
+ */
+export function timingSafeCompare(a: string | undefined | null, b: string | undefined | null): boolean {
+  if (typeof a !== "string" || typeof b !== "string" || !a || !b) {
+    return false;
+  }
+  const hashA = crypto.createHash("sha256").update(a).digest();
+  const hashB = crypto.createHash("sha256").update(b).digest();
+  return crypto.timingSafeEqual(hashA, hashB);
+}
 
 /**
  * 校验来源 Origin / Referer 是否在授权白名单内（严格校验协议与 Hostname，杜绝 startsWith 弱匹配漏洞）

@@ -3,16 +3,14 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { serveStatic } from "@hono/node-server/serve-static";
 import fs from "node:fs/promises";
-import fsSync from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { env, APP_INFO, HTTP_CONFIG } from "./config/index.js";
 import { routes } from "./routes/index.js";
-import { monitorService } from "./services/monitor.js";
-import { rateLimitMiddleware } from "./middlewares/rateLimit.js";
-import { isAllowedDomain } from "./utils/security.js";
-import { errorResponse, successResponse } from "./utils/response.js";
-import type { ApiResponse } from "./types/api.js";
+import { monitorService } from "./services/serviceMonitor.js";
+import { rateLimitMiddleware } from "./middlewares/middlewareRateLimit.js";
+import { isAllowedDomain } from "./utils/utilSecurity.js";
+import { errorResponse, successResponse } from "./utils/utilResponse.js";
+import { resolvePublicFile } from "./utils/utilPath.js";
+import type { ApiResponse } from "./types/typeApi.js";
 
 const app = new Hono();
 
@@ -127,37 +125,7 @@ app.use("*", async (c, next) => {
 // 6. 挂载 API 业务与监控路由
 app.route("/", routes);
 
-// 7. 首页与监控大盘页面服务（多环境路径解析：本地 cwd / Serverless 源码目录）
-function resolvePublicFile(...names: string[]): string | null {
-  const fromMeta = (rel: string) => {
-    try {
-      if (typeof import.meta.url === "string" && import.meta.url) {
-        return path.resolve(fileURLToPath(new URL(rel, import.meta.url)), ...names);
-      }
-    } catch {
-      /* import.meta 不可用（CJS 打包） */
-    }
-    return "";
-  };
-  const anyMod = globalThis as any;
-  const cjsDir =
-    typeof anyMod.__filename === "string" ? path.dirname(anyMod.__filename) : null;
-  const candidates = [
-    path.resolve(process.cwd(), "public", ...names),
-    path.resolve(process.cwd(), "src", "public", ...names),
-    path.resolve(process.cwd(), "..", "public", ...names),
-    path.resolve(process.cwd(), "..", "src", "public", ...names),
-    path.resolve(path.dirname(process.argv[1] || process.cwd()), "public", ...names),
-    ...(cjsDir ? [path.resolve(cjsDir, "public", ...names), path.resolve(cjsDir, "../public", ...names)] : []),
-    fromMeta("./public"),
-    fromMeta("../../public"),
-  ];
-  for (const p of candidates) {
-    if (p && fsSync.existsSync(p)) return p;
-  }
-  return null;
-}
-
+// 7. 首页与监控大盘页面服务
 app.get("/", async (c) => {
   const htmlPath = resolvePublicFile("index.html");
   if (htmlPath) {

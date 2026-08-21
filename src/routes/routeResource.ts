@@ -1,10 +1,10 @@
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { env, AUDIO_CONFIG } from "../config/index.js";
-import { gdstudio } from "../services/gdstudio.js";
-import { successResponse, errorResponse } from "../utils/response.js";
-import type { ApiResponse } from "../types/api.js";
-import type { GDTrack, GDPicResponse, LyricResult } from "../types/music.js";
+import { gdStudio } from "../services/serviceGdStudio.js";
+import { successResponse, errorResponse } from "../utils/utilResponse.js";
+import type { ApiResponse } from "../types/typeApi.js";
+import type { GDTrack, GDPicResponse, LyricResult } from "../types/typeMusic.js";
 
 const resourceRoute = new Hono();
 
@@ -42,7 +42,7 @@ resourceRoute.get("/search", async (c) => {
   const pageNum = parseInt(pages || page || "1", 10) || AUDIO_CONFIG.DEFAULT_SEARCH_PAGE;
 
   try {
-    const results = await gdstudio.search(name, source || env.DEFAULT_SEARCH_SOURCE, count, pageNum);
+    const results = await gdStudio.search(name, source || env.DEFAULT_SEARCH_SOURCE, count, pageNum);
     return c.json<ApiResponse<GDTrack[]>>(successResponse(results, "搜索成功"));
   } catch (error: any) {
     console.error(`[Search Error] name=${name}:`, error.message);
@@ -63,7 +63,7 @@ const handlePicture = async (c: Context) => {
 
   const { id, source, size } = parsed.data;
   try {
-    const data = await gdstudio.getPic(id, source || env.DEFAULT_SEARCH_SOURCE, size);
+    const data = await gdStudio.getPic(id, source || env.DEFAULT_SEARCH_SOURCE, size);
     if (!data || !data.url) {
       return c.json<ApiResponse>(errorResponse(404, "未找到专辑封面"), 404);
     }
@@ -91,7 +91,7 @@ resourceRoute.get("/lyric", async (c) => {
 
   const { id, source } = parsed.data;
   try {
-    const data = await gdstudio.getLyric(id, source || env.DEFAULT_SEARCH_SOURCE);
+    const data = await gdStudio.getLyric(id, source || env.DEFAULT_SEARCH_SOURCE);
     return c.json<ApiResponse<LyricResult>>(successResponse(data));
   } catch (error: any) {
     console.error(`[Lyric Error] id=${id}:`, error.message);
@@ -107,7 +107,7 @@ resourceRoute.get("/playlist/:id", async (c) => {
   }
 
   try {
-    const songIds = await gdstudio.getPlaylistSongIds(playlistId);
+    const songIds = await gdStudio.getPlaylistSongIds(playlistId);
     if (!songIds || songIds.length === 0) {
       return c.json<ApiResponse>(errorResponse(404, "未找到该歌单或歌单为空"), 404);
     }

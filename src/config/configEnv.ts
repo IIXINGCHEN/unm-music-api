@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { z } from "zod";
 import {
@@ -9,25 +8,8 @@ import {
   CACHE_POLICY,
   PROVIDER_CONFIG,
   AUDIO_CONFIG,
-} from "./constants.js";
-
-// 确保准确加载  文件
-// 安全获取模块自身路径：CJS 打包（Netlify Functions）下 import.meta.url 为空，
-// 回退使用 __filename / __dirname，两者皆无时跳过相对路径探测
-function getModuleDir(): string | null {
-  try {
-    if (typeof import.meta.url === "string" && import.meta.url) {
-      return path.dirname(fileURLToPath(import.meta.url));
-    }
-  } catch {
-    /* import.meta 不可用 */
-  }
-  const anyMod = globalThis as any;
-  if (typeof anyMod.__filename === "string") {
-    return path.dirname(anyMod.__filename);
-  }
-  return null;
-}
+} from "./configConstants.js";
+import { getModuleDir } from "../utils/utilPath.js";
 
 const moduleDir = getModuleDir();
 const possibleEnvPaths: string[] = [

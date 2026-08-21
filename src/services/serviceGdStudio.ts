@@ -1,14 +1,14 @@
 import axios, { type AxiosInstance } from "axios";
-import { env, HTTP_CONFIG, AUDIO_CONFIG } from "../config/index.js";
-import { globalCache } from "./cache.js";
-import { sanitizeParam } from "../utils/string.js";
+import { env, HTTP_CONFIG, AUDIO_CONFIG, UPSTREAM_APIS } from "../config/index.js";
+import { globalCache } from "./serviceCache.js";
+import { sanitizeParam } from "../utils/utilString.js";
 import type {
   GDTrack,
   GDUrlResponse,
   GDPicResponse,
   GDLyricResponse,
   LyricResult,
-} from "../types/music.js";
+} from "../types/typeMusic.js";
 
 class GDStudioService {
   private client: AxiosInstance;
@@ -198,7 +198,7 @@ class GDStudioService {
 
     // 1. 优先尝试网易云官方歌单接口
     try {
-      const ncmUrl = `https://music.163.com/api/v6/playlist/detail?id=${encodeURIComponent(cleanId)}`;
+      const ncmUrl = `${UPSTREAM_APIS.NETEASE_PLAYLIST_DETAIL}?id=${encodeURIComponent(cleanId)}`;
       const res = await this.client.get<{
         playlist?: {
           trackIds?: Array<{ id: number | string }>;
@@ -206,7 +206,7 @@ class GDStudioService {
         };
       }>(ncmUrl, {
         headers: {
-          Referer: "https://music.163.com/",
+          Referer: UPSTREAM_APIS.NETEASE_REFERER,
           "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
         },
         timeout: 8000,
@@ -248,4 +248,5 @@ class GDStudioService {
   }
 }
 
-export const gdstudio = new GDStudioService();
+export const gdStudio = new GDStudioService();
+export const gdstudio = gdStudio;

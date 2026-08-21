@@ -28,9 +28,10 @@ RUN npm install -g pnpm@10
 COPY package.json pnpm-lock.yaml* ./
 RUN pnpm install --prod --frozen-lockfile || pnpm install --prod
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/public ./public
+COPY --from=builder --chown=node:node /app/dist ./dist
+COPY --from=builder --chown=node:node /app/public ./public
 
+USER node
 EXPOSE 5678
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

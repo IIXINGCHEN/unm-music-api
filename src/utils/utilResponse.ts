@@ -1,4 +1,4 @@
-import type { ApiResponse } from "../types/api.js";
+import type { ApiResponse } from "../types/typeApi.js";
 
 /**
  * 构造统一成功响应

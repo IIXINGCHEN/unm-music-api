@@ -1,7 +1,7 @@
 import { serve } from "@hono/node-server";
 import net from "node:net";
 import { app } from "./app.js";
-import { env } from "./config/env.js";
+import { env } from "./config/configEnv.js";
 
 // 检测端口与主机可用性
 function checkPort(port: number, host = env.HOST): Promise<boolean> {

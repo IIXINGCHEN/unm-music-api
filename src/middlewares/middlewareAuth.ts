@@ -1,7 +1,8 @@
 import type { MiddlewareHandler } from "hono";
 import { env } from "../config/index.js";
-import { errorResponse } from "../utils/response.js";
-import type { ApiResponse } from "../types/api.js";
+import { errorResponse } from "../utils/utilResponse.js";
+import { timingSafeCompare } from "../utils/utilSecurity.js";
+import type { ApiResponse } from "../types/typeApi.js";
 
 /**
  * 监控大盘与管理接口鉴权中间件
@@ -27,7 +28,7 @@ export const monitorAuthMiddleware: MiddlewareHandler = async (c, next) => {
 
   const clientKey = headerKey || bearerKey || queryKey;
 
-  if (clientKey === secretKey) {
+  if (clientKey && timingSafeCompare(clientKey, secretKey)) {
     return await next();
   }
 

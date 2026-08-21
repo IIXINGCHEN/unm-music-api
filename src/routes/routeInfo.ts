@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { env, APP_INFO } from "../config/index.js";
-import { globalCache } from "../services/cache.js";
-import { getAvailableProviders } from "../services/unm.js";
-import { successResponse } from "../utils/response.js";
-import type { ApiResponse, ServerInfoData, HealthData } from "../types/api.js";
+import { globalCache } from "../services/serviceCache.js";
+import { getAvailableProviders } from "../services/serviceUnm.js";
+import { successResponse } from "../utils/utilResponse.js";
+import type { ApiResponse, ServerInfoData, HealthData } from "../types/typeApi.js";
 
 const infoRoute = new Hono();
 const startTime = Date.now();

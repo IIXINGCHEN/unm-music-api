@@ -64,24 +64,24 @@ function buildRequestFromEvent(ev: LegacyEvent): Request {
   });
 }
 
-export async function handler(arg0: any, arg1: any, arg2?: any): Promise<any> {
-  const context: NetlifyContext = (arg1 && typeof arg1 === "object" ? arg1 : {}) as NetlifyContext;
+export async function handler(event: any, contextArg: any, callback?: any): Promise<any> {
+  const context: NetlifyContext = (contextArg && typeof contextArg === "object" ? contextArg : {}) as NetlifyContext;
   // 关键：禁止 Lambda 等待 Node.js 事件循环清空（防止 background timers / 连接池导致 30 秒超时）
   context.callbackWaitsForEmptyEventLoop = false;
 
-  const isCallbackStyle = typeof arg2 === "function";
+  const isCallbackStyle = typeof callback === "function";
 
   let request: Request;
-  if (isLegacyEvent(arg0)) {
-    request = buildRequestFromEvent(arg0);
-  } else if (arg0 instanceof Request) {
-    const incoming = new URL(arg0.url);
+  if (isLegacyEvent(event)) {
+    request = buildRequestFromEvent(event);
+  } else if (event instanceof Request) {
+    const incoming = new URL(event.url);
     const fnPrefix = "/.netlify/functions/api";
     let path = incoming.pathname;
     if (path.startsWith(fnPrefix)) {
       path = path.slice(fnPrefix.length) || "/";
     }
-    request = new Request(new URL(path + incoming.search, incoming.origin).toString(), arg0);
+    request = new Request(new URL(path + incoming.search, incoming.origin).toString(), event);
   } else {
     request = new Request("https://netlify.local/", { method: "GET" });
   }
@@ -114,7 +114,7 @@ export async function handler(arg0: any, arg1: any, arg2?: any): Promise<any> {
   };
 
   if (isCallbackStyle) {
-    arg2(null, lambdaResult);
+    callback(null, lambdaResult);
   }
 
   return lambdaResult;

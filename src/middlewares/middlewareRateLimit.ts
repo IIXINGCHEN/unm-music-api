@@ -1,7 +1,7 @@
 import type { MiddlewareHandler } from "hono";
-import { env } from "../config/index.js";
-import { errorResponse } from "../utils/response.js";
-import type { ApiResponse } from "../types/api.js";
+import { env, RATE_LIMIT_CONFIG } from "../config/index.js";
+import { errorResponse } from "../utils/utilResponse.js";
+import type { ApiResponse } from "../types/typeApi.js";
 
 interface IpRecord {
   timestamps: number[];
@@ -9,7 +9,7 @@ interface IpRecord {
 
 const ipMap = new Map<string, IpRecord>();
 
-// 定期清理过期的 IP 记录，防止内存泄漏 (每 2 分钟清理一次，unref 避免阻塞 Serverless 事件循环)
+// 定期清理过期的 IP 记录，防止内存泄漏 (unref 避免阻塞 Serverless 事件循环)
 const cleanupTimer = setInterval(() => {
   const now = Date.now();
   const windowMs = env.RATE_LIMIT_WINDOW_MS;
@@ -19,7 +19,7 @@ const cleanupTimer = setInterval(() => {
       ipMap.delete(ip);
     }
   }
-}, 120000);
+}, RATE_LIMIT_CONFIG.DEFAULT_CLEANUP_INTERVAL_MS);
 
 if (typeof cleanupTimer.unref === "function") {
   cleanupTimer.unref();

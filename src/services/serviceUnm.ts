@@ -6,10 +6,10 @@ import {
   UPSTREAM_APIS,
   HTTP_CONFIG,
 } from "../config/index.js";
-import { globalCache } from "./cache.js";
-import { gdstudio } from "./gdstudio.js";
-import { sanitizeParam, formatProxyUrl } from "../utils/string.js";
-import type { SongDetail, MatchedAudio, NcmAudioResult } from "../types/music.js";
+import { globalCache } from "./serviceCache.js";
+import { gdStudio } from "./serviceGdStudio.js";
+import { sanitizeParam, formatProxyUrl } from "../utils/utilString.js";
+import type { SongDetail, MatchedAudio, NcmAudioResult } from "../types/typeMusic.js";
 
 // 静态导入 UNM 引擎（Node.js ESM 规范要求深层导入必须显式指定 .js 扩展名）
 // @ts-ignore -- UNM 引擎无类型声明文件，运行时以 any 使用
@@ -40,11 +40,11 @@ export function setupUnmProviders(): void {
       try {
         const keyword = `${info.name || ""} ${info.artists?.[0]?.name || ""}`.trim();
         if (!keyword) return null;
-        const list = await gdstudio.search(keyword, env.DEFAULT_AUDIO_SOURCE, 5, 1);
+        const list = await gdStudio.search(keyword, env.DEFAULT_AUDIO_SOURCE, 5, 1);
         if (!Array.isArray(list) || list.length === 0) return null;
 
         const target = list.find((item) => item.name === info.name) || list[0];
-        const audio = await gdstudio.getUrl(target.id, env.DEFAULT_AUDIO_SOURCE, env.DEFAULT_BITRATE);
+        const audio = await gdStudio.getUrl(target.id, env.DEFAULT_AUDIO_SOURCE, info.br || env.DEFAULT_BITRATE);
         return audio?.url || null;
       } catch {
         return null;
@@ -56,21 +56,32 @@ export function setupUnmProviders(): void {
   unmConsts.PROVIDERS.pyncmd = {
     async check(info: any) {
       try {
-        const audio = await gdstudio.getUrl(info.id, env.DEFAULT_SEARCH_SOURCE, env.DEFAULT_BITRATE);
+        const audio = await gdStudio.getUrl(info.id, env.DEFAULT_SEARCH_SOURCE, info.br || env.DEFAULT_BITRATE);
         if (audio && audio.url) {
           return audio.url;
         }
-        return await unmConsts.PROVIDERS.gdstudio.check(info);
+        return await unmConsts.PROVIDERS.gdStudio.check(info);
       } catch {
         return null;
       }
     },
   };
 
-  // 3. 修复/增强 joox Provider（免自备 Cookie 解析）
+  // 3. 修复/增强 joox Provider（免自备 Cookie 解析，通过 GD Studio 检索）
   unmConsts.PROVIDERS.joox = {
     async check(info: any) {
-      return await unmConsts.PROVIDERS.gdstudio.check(info);
+      try {
+        const keyword = `${info.name || ""} ${info.artists?.[0]?.name || ""}`.trim();
+        if (!keyword) return null;
+        const list = await gdStudio.search(keyword, "joox", 5, 1);
+        if (!Array.isArray(list) || list.length === 0) return null;
+
+        const target = list.find((item) => item.name === info.name) || list[0];
+        const audio = await gdStudio.getUrl(target.id, "joox", info.br || env.DEFAULT_BITRATE);
+        return audio?.url || null;
+      } catch {
+        return null;
+      }
     },
   };
 
@@ -161,7 +172,17 @@ export async function matchSong(
   const unmMatchFn: any = (unmMatchNS as any).default ?? unmMatchNS;
   let matchResult: { url?: string; br?: number; size?: number; source?: string; md5?: string | null } | null = null;
   try {
-    matchResult = await unmMatchFn(cleanId, serverList);
+    const songData = detail
+      ? {
+          id: cleanId,
+          name: detail.name,
+          artists: detail.artist.split(" / ").map((n) => ({ name: n })),
+          album: { name: detail.album, picUrl: detail.picUrl },
+          duration: detail.duration,
+          br: cleanBr,
+        }
+      : undefined;
+    matchResult = await unmMatchFn(cleanId, serverList, songData);
   } catch {
     console.warn(`[UNM Match] UNM 引擎直接匹配未命中 (${cleanId})，启动备选智能降级...`);
   }
@@ -170,10 +191,10 @@ export async function matchSong(
   if (!matchResult || !matchResult.url) {
     if (detail && detail.name) {
       const keyword = `${detail.name} ${detail.artist}`.trim();
-      const gdList = await gdstudio.search(keyword, env.DEFAULT_AUDIO_SOURCE, 5, 1);
+      const gdList = await gdStudio.search(keyword, env.DEFAULT_AUDIO_SOURCE, 5, 1);
       if (Array.isArray(gdList) && gdList.length > 0) {
         const topTrack = gdList.find((t) => t.name === detail.name) || gdList[0];
-        const audio = await gdstudio.getUrl(topTrack.id, env.DEFAULT_AUDIO_SOURCE, cleanBr);
+        const audio = await gdStudio.getUrl(topTrack.id, env.DEFAULT_AUDIO_SOURCE, cleanBr);
         if (audio && audio.url) {
           matchResult = {
             url: audio.url,
@@ -189,7 +210,7 @@ export async function matchSong(
 
   // 4. 再次降级：直接尝试 GD Studio 的 netease 源
   if (!matchResult || !matchResult.url) {
-    const directNetease = await gdstudio.getUrl(cleanId, env.DEFAULT_SEARCH_SOURCE, cleanBr);
+    const directNetease = await gdStudio.getUrl(cleanId, env.DEFAULT_SEARCH_SOURCE, cleanBr);
     if (directNetease && directNetease.url) {
       matchResult = {
         url: directNetease.url,
@@ -239,7 +260,7 @@ export async function getNeteaseSong(
     ? Number(br)
     : env.DEFAULT_BITRATE;
 
-  const direct = await gdstudio.getUrl(cleanId, env.DEFAULT_SEARCH_SOURCE, cleanBr);
+  const direct = await gdStudio.getUrl(cleanId, env.DEFAULT_SEARCH_SOURCE, cleanBr);
   if (direct && direct.url) {
     const proxyUrl = formatProxyUrl(direct.url, env.PROXY_URL);
     return {
@@ -277,11 +298,11 @@ export async function getOtherSourceSong(name: string): Promise<{ url: string; s
   const cached = globalCache.get(cacheKey) as { url: string; source: string } | null;
   if (cached) return cached;
 
-  let searchRes = await gdstudio.search(cleanName, env.DEFAULT_AUDIO_SOURCE, 1, 1);
+  let searchRes = await gdStudio.search(cleanName, env.DEFAULT_AUDIO_SOURCE, 1, 1);
   let targetSource: string = env.DEFAULT_AUDIO_SOURCE;
 
   if (!searchRes || searchRes.length === 0) {
-    searchRes = await gdstudio.search(cleanName, "kuwo", 1, 1);
+    searchRes = await gdStudio.search(cleanName, "kuwo", 1, 1);
     targetSource = "kuwo";
   }
 
@@ -290,7 +311,7 @@ export async function getOtherSourceSong(name: string): Promise<{ url: string; s
   }
 
   const songId = searchRes[0].id || searchRes[0].url_id;
-  const audio = await gdstudio.getUrl(songId, targetSource, env.DEFAULT_BITRATE);
+  const audio = await gdStudio.getUrl(songId, targetSource, env.DEFAULT_BITRATE);
 
   if (!audio || !audio.url) {
     throw new Error("未能获取到音频播放链接");

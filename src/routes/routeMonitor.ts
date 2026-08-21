@@ -1,7 +1,8 @@
 import { Hono } from "hono";
-import { monitorService } from "../services/monitor.js";
-import { monitorAuthMiddleware } from "../middlewares/auth.js";
-import { successResponse } from "../utils/response.js";
+import { MONITOR_CONFIG } from "../config/index.js";
+import { monitorService } from "../services/serviceMonitor.js";
+import { monitorAuthMiddleware } from "../middlewares/middlewareAuth.js";
+import { successResponse } from "../utils/utilResponse.js";
 
 const monitorRoute = new Hono();
 
@@ -11,8 +12,8 @@ monitorRoute.use("/api/monitor/*", monitorAuthMiddleware);
 // 获取监控数据与请求明细
 monitorRoute.get("/api/monitor/data", (c) => {
   const query = c.req.query();
-  const page = query.page ? parseInt(query.page, 10) : 1;
-  const limit = query.limit ? parseInt(query.limit, 10) : 50;
+  const page = query.page ? parseInt(query.page, 10) : MONITOR_CONFIG.DEFAULT_PAGE;
+  const limit = query.limit ? parseInt(query.limit, 10) : MONITOR_CONFIG.DEFAULT_LIMIT;
   const path = query.path || "";
   const status = query.status || "";
   const keyword = query.keyword || "";
