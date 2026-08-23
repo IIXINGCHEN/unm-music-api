@@ -203,27 +203,6 @@ const handleDashboard = async (c: any) => {
 app.get("/dashboard", handleDashboard);
 app.get("/monitor", handleDashboard);
 
-// Product Design 交互原型路由 (/prototype)
-app.get("/prototype", async (c) => {
-  const htmlPath = resolvePublicFile("prototype.html");
-  if (htmlPath) {
-    try {
-      let html = await fs.readFile(htmlPath, "utf-8");
-      html = injectPageCss(html, await buildPageStyle(["assets/css/tailwind.css", "assets/css/main.css", "assets/css/player.css"]));
-      return new Response(html, {
-        status: 200,
-        headers: {
-          "Content-Type": "text/html; charset=UTF-8",
-          "Cache-Control": "no-cache",
-        },
-      });
-    } catch {
-      /* fallthrough */
-    }
-  }
-  return c.text("Prototype not found", 404);
-});
-
 app.use("/*", serveStatic({ root: "./public" }));
 
 // 8. 404 兜底处理
