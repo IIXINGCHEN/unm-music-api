@@ -12,7 +12,26 @@
   <script src="/vendor/tailwind.js"></script>
   <script src="/vendor/lucide.min.js"></script>
 
-  <script src="/assets/js/tailwind-config.404.js"></script>
+  <!-- 关键样式内联：首帧即正确底色 -->
+  <style>
+    html { background: #020617; color-scheme: dark; }
+    body { -webkit-font-smoothing: antialiased; }
+  </style>
+
+  <!-- Tailwind 运行时配置（内联） -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
 
   <link rel="stylesheet" href="/assets/css/404.css" />
 </head>
