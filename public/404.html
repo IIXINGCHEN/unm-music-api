@@ -6,20 +6,14 @@
   <title>404 · 页面或资源未找到 · UNM-Server</title>
   <link rel="shortcut icon" href="./favicon.png" type="image/png" />
 
+  <!-- 字体样式异步加载：不阻塞首帧 -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <!-- 构建期预编译 Tailwind（替代运行时 JIT） -->
-  <link rel="stylesheet" href="/assets/css/tailwind.css" />
-  <script src="/vendor/lucide.min.js"></script>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" /></noscript>
 
-  <!-- 关键样式内联：首帧即正确底色 -->
-  <style>
-    html { background: #020617; color-scheme: dark; }
-    body { -webkit-font-smoothing: antialiased; }
-  </style>
-
-  <link rel="stylesheet" href="/assets/css/404.css" />
+  <!--INLINE_PAGE_CSS-->
 </head>
 
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between transition-colors duration-500 mesh-gradient">

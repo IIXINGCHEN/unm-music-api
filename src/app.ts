@@ -126,11 +126,30 @@ app.use("*", async (c, next) => {
 app.route("/", routes);
 
 // 7. 首页与监控大盘页面服务
+// ---- 页面样式服务端内联：消除刷新时样式表往返造成的首帧闪烁（FOUC） ----
+const cssCache = new Map<string, { mtime: number; css: string }>();
+const readCss = async (file: string): Promise<string> => {
+  const path = resolvePublicFile(file);
+  if (!path) return "";
+  const st = await fs.stat(path);
+  const cached = cssCache.get(file);
+  if (cached && cached.mtime === st.mtimeMs) return cached.css;
+  const css = await fs.readFile(path, "utf-8");
+  cssCache.set(file, { mtime: st.mtimeMs, css });
+  return css;
+};
+const buildPageStyle = async (files: string[]): Promise<string> => {
+  const parts = await Promise.all(files.map((f) => readCss(f)));
+  return `<style>/* inline page css */${parts.join("\n")}</style>`;
+};
+const injectPageCss = (html: string, style: string) =>
+  html.includes("<!--INLINE_PAGE_CSS-->") ? html.replace("<!--INLINE_PAGE_CSS-->", () => style) : html;
 app.get("/", async (c) => {
   const htmlPath = resolvePublicFile("index.html");
   if (htmlPath) {
     try {
-      const html = await fs.readFile(htmlPath, "utf-8");
+      let html = await fs.readFile(htmlPath, "utf-8");
+      html = injectPageCss(html, await buildPageStyle(["assets/css/tailwind.css", "assets/css/main.css", "assets/css/player.css"]));
       // no-cache：确保部署后浏览器立即拉取新页面，防止旧 HTML 引用已删除资源导致无样式渲染
       return new Response(html, {
         status: 200,
@@ -156,7 +175,8 @@ const handleDashboard = async (c: any) => {
   const htmlPath = resolvePublicFile("dashboard.html");
   if (htmlPath) {
     try {
-      const html = await fs.readFile(htmlPath, "utf-8");
+      let html = await fs.readFile(htmlPath, "utf-8");
+      html = injectPageCss(html, await buildPageStyle(["assets/css/tailwind.css", "assets/css/dashboard.css"]));
       return new Response(html, {
         status: 200,
         headers: {
@@ -183,7 +203,8 @@ app.notFound(async (c) => {
     const notFoundPath = resolvePublicFile("404.html");
     if (notFoundPath) {
       try {
-        const html = await fs.readFile(notFoundPath, "utf-8");
+        let html = await fs.readFile(notFoundPath, "utf-8");
+        html = injectPageCss(html, await buildPageStyle(["assets/css/tailwind.css", "assets/css/404.css"]));
         return c.html(html, 404);
       } catch {
         /* fallthrough */
