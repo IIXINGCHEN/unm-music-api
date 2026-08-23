@@ -470,11 +470,11 @@
         <div class="p-4 sm:p-5 rounded-2xl bg-white/70 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-end w-full min-w-0">
             <div class="md:col-span-6 min-w-0" id="mainInputWrapper">
-              <label id="inputLabel" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">网易云歌曲 ID (例如: 191060 - 张杰《这，就是爱》)</label>
+              <label id="inputLabel" for="testInput" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">网易云歌曲 ID (例如: 191060 - 张杰《这，就是爱》)</label>
               <input id="testInput" type="text" value="191060" oninput="updateWorkbenchUrlPreview()" onkeydown="if(event.key==='Enter') executeApiTest()" class="w-full px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-mono text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
             </div>
             <div class="md:col-span-3 min-w-0" id="serverSelectWrapper">
-              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">音源平台 / 调度策略 (server)</label>
+              <label for="serverSelect" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">音源平台 / 调度策略 (server)</label>
               <select id="serverSelect" onchange="updateWorkbenchUrlPreview()" class="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-mono text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer text-slate-900 dark:text-white">
                 <option value="">自动竞速调度 (默认最佳)</option>
                 <option value="gdstudio">GD Studio (主核心)</option>
@@ -489,7 +489,7 @@
               </select>
             </div>
             <div class="md:col-span-3 min-w-0" id="bitrateContainer">
-              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">音质码率 / 格式 (br)</label>
+              <label for="bitrateSelect" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">音质码率 / 格式 (br)</label>
               <select id="bitrateSelect" onchange="updateWorkbenchUrlPreview()" class="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-mono text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer text-slate-900 dark:text-white">
                 <option value="999">999kbps (FLAC 无损最高品质)</option>
                 <option value="320" selected>320kbps (标准高保真)</option>
@@ -654,31 +654,66 @@
   <!-- HTML5 原生 Audio 引擎 -->
   <audio id="mainAudioPlayer" preload="none"></audio>
 
-  <!-- 底部悬浮播放器 -->
-  <div id="playerBar" class="fixed bottom-0 inset-x-0 z-[60] translate-y-full opacity-0 pointer-events-none transition-all duration-500 ease-out">
-    <div class="max-w-7xl mx-auto m-2.5 sm:m-4 rounded-2xl bg-slate-900/95 border border-white/10 shadow-2xl shadow-black/40 backdrop-blur-xl px-3.5 py-3 sm:px-5 sm:py-3.5 flex items-center gap-3 sm:gap-4">
-      <div id="playerVinyl" class="relative w-11 h-11 sm:w-14 sm:h-14 rounded-full vinyl-grooves flex-shrink-0 flex items-center justify-center ring-1 ring-white/10">
-        <div class="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 shadow-inner"></div>
-      </div>
-      <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-2 min-w-0">
-          <span id="playerTitle" class="font-bold text-sm text-white truncate">未在播放</span>
-          <span id="playerSource" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/25 font-mono uppercase flex-shrink-0">NCM</span>
+  <!-- 悬浮玻璃播放器（桌面右下角 / 移动端底部通栏卡片） -->
+  <div id="playerBar" class="fixed bottom-3 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 sm:w-[380px] z-[90] translate-y-8 opacity-0 pointer-events-none transition-all duration-500 ease-out">
+    <div class="rounded-3xl bg-white/90 dark:bg-slate-950/95 border border-slate-200/70 dark:border-white/10 shadow-2xl shadow-slate-900/25 dark:shadow-black/60 backdrop-blur-xl overflow-hidden">
+      <div class="p-4 pb-3">
+        <div class="flex items-start gap-3.5 min-w-0">
+          <div class="relative w-[68px] h-[68px] rounded-2xl flex-shrink-0 overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-slate-900">
+            <img id="playerCoverImg" alt="" class="hidden absolute inset-0 w-full h-full object-cover" />
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div id="playerVinyl" class="w-[52px] h-[52px] rounded-full vinyl-grooves relative flex items-center justify-center">
+                <div id="playerCoverGlow" class="absolute inset-0 rounded-full opacity-0 transition-opacity duration-700 pointer-events-none" style="box-shadow: 0 0 22px 3px rgba(56,189,248,.5)"></div>
+                <div class="relative w-3.5 h-3.5 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 ring-2 ring-slate-900"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex-1 min-w-0 pt-0.5">
+            <div class="flex items-center gap-2 min-w-0">
+              <h4 id="playerTitle" class="font-extrabold text-sm text-slate-900 dark:text-white truncate">未在播放</h4>
+              <span id="playerSource" class="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 font-mono uppercase flex-shrink-0">NCM</span>
+            </div>
+            <p id="playerArtist" class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">—</p>
+            <p id="playerLyricLine" class="text-[11px] text-sky-500 dark:text-sky-300/90 truncate mt-1.5 h-4 transition-opacity duration-300"></p>
+          </div>
+
+          <button onclick="playerClose()" aria-label="关闭播放器" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition interactive-btn flex-shrink-0">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
         </div>
-        <div class="text-[11px] sm:text-xs text-slate-400 truncate mt-0.5"><span id="playerArtist">—</span><span id="playerLyric" class="hidden md:inline text-sky-300/90"></span></div>
+
+        <div class="flex items-center gap-2 mt-3">
+          <span id="playerCurTime" class="font-mono text-[10px] text-slate-400 w-8 text-right flex-shrink-0">00:00</span>
+          <input id="playerProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="播放进度" class="flex-1 h-1 cursor-pointer" />
+          <span id="playerDurTime" class="font-mono text-[10px] text-slate-400 w-8 flex-shrink-0">00:00</span>
+        </div>
+
+        <div class="flex items-center justify-between mt-2.5">
+          <div class="hidden sm:flex items-center gap-2 flex-1 min-w-0">
+            <button id="playerMuteBtn" aria-label="静音切换" class="p-1.5 rounded-lg text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 transition interactive-btn"><i data-lucide="volume-2" class="w-4 h-4"></i></button>
+            <input id="playerVolSlider" type="range" min="0" max="100" value="80" step="1" aria-label="音量大小" class="w-[76px] h-1 cursor-pointer" />
+          </div>
+          <div class="flex items-center gap-1.5 mx-auto sm:mx-0 sm:flex-1 sm:justify-end">
+            <button onclick="playerToggleMode()" id="playerModeBtn" title="列表循环" aria-label="循环模式" class="p-2 rounded-xl text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn"><i data-lucide="repeat" class="w-4 h-4"></i></button>
+            <button onclick="playerPrev()" aria-label="上一首" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn"><i data-lucide="skip-back" class="w-4 h-4"></i></button>
+            <button onclick="playerTogglePlay()" id="playerPlayBtn" aria-label="播放或暂停" class="w-11 h-11 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white flex items-center justify-center shadow-lg shadow-sky-500/30 transition interactive-btn"><i data-lucide="play" class="w-5 h-5 ml-0.5"></i></button>
+            <button onclick="playerNext()" aria-label="下一首" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn"><i data-lucide="skip-forward" class="w-4 h-4"></i></button>
+            <button onclick="playerToggleQueue()" aria-label="播放队列" class="p-2 rounded-xl text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn relative">
+              <i data-lucide="list-music" class="w-4 h-4"></i>
+              <span id="playerQueueCount" class="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-sky-500 text-white text-[9px] font-mono font-bold flex items-center justify-center">0</span>
+            </button>
+          </div>
+        </div>
       </div>
-      <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-        <button onclick="playerPrev()" title="上一首" class="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition interactive-btn"><i data-lucide="skip-back" class="w-4 h-4"></i></button>
-        <button onclick="playerTogglePlay()" id="playerPlayBtn" title="播放/暂停" class="w-10 h-10 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white flex items-center justify-center shadow-lg shadow-sky-500/30 transition interactive-btn"><i data-lucide="play" class="w-4 h-4"></i></button>
-        <button onclick="playerNext()" title="下一首" class="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition interactive-btn"><i data-lucide="skip-forward" class="w-4 h-4"></i></button>
+
+      <div id="playerQueuePanel" class="hidden border-t border-slate-200/70 dark:border-white/10 bg-slate-50/60 dark:bg-slate-900/60">
+        <div class="flex items-center justify-between px-4 pt-2.5 pb-1.5">
+          <span class="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-400">播放队列</span>
+          <button onclick="clearQueue()" class="text-[10px] font-semibold text-slate-400 hover:text-rose-500 transition interactive-btn">清空</button>
+        </div>
+        <div id="playerQueueList" class="max-h-44 overflow-y-auto custom-scroll px-2 pb-2 space-y-0.5"></div>
       </div>
-      <div class="hidden lg:flex items-center gap-2.5 flex-1 min-w-[180px] max-w-xs">
-        <span id="playerCurTime" class="font-mono text-[10px] text-slate-400 w-8 text-right">00:00</span>
-        <input id="playerProgress" type="range" min="0" max="100" value="0" step="0.1" class="w-full h-1 cursor-pointer" />
-        <span id="playerDurTime" class="font-mono text-[10px] text-slate-400 w-8">00:00</span>
-      </div>
-      <button onclick="playerToggleMode()" id="playerModeBtn" title="列表循环" class="hidden sm:flex p-2 rounded-xl text-sky-400 hover:bg-white/10 transition interactive-btn flex-shrink-0"><i data-lucide="repeat" class="w-4 h-4"></i></button>
-      <button onclick="playerClose()" title="关闭播放器" class="p-2 rounded-xl text-slate-500 hover:text-white hover:bg-white/10 transition interactive-btn flex-shrink-0"><i data-lucide="x" class="w-4 h-4"></i></button>
     </div>
   </div>
 
@@ -832,34 +867,50 @@
       return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
     }
 
-    // --- 底部悬浮播放器 ---
+    // --- 悬浮玻璃播放器 ---
     const playerBarEl = document.getElementById('playerBar');
     const playerVinylEl = document.getElementById('playerVinyl');
     const playerProgressEl = document.getElementById('playerProgress');
+    const playerCoverImg = document.getElementById('playerCoverImg');
+    let _playerQueueOpen = false;
 
     function showPlayerBar() {
-      playerBarEl.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
+      playerBarEl.classList.remove('translate-y-8', 'opacity-0', 'pointer-events-none');
       if (!document.body.dataset.pbOriginal) document.body.dataset.pbOriginal = document.body.style.paddingBottom || '';
-      document.body.style.paddingBottom = '96px';
+      document.body.style.paddingBottom = '240px';
+      renderPlayerQueue();
     }
     function hidePlayerBar() {
-      playerBarEl.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+      playerBarEl.classList.add('translate-y-8', 'opacity-0', 'pointer-events-none');
       document.body.style.paddingBottom = document.body.dataset.pbOriginal || '';
     }
     function setPlayerPlayIcon(playing) {
       const btn = document.getElementById('playerPlayBtn');
-      btn.innerHTML = `<i data-lucide="${playing ? 'pause' : 'play'}" class="w-4 h-4"></i>`;
+      btn.innerHTML = `<i data-lucide="${playing ? 'pause' : 'play'}" class="w-5 h-5 ${playing ? '' : 'ml-0.5'}"></i>`;
       lucide.createIcons();
     }
     function syncPlayerPlayState(playing) {
+      isPlaying = playing;
       setPlayerPlayIcon(playing);
       playerVinylEl.classList.toggle('animate-spin-slow', playing);
+      document.getElementById('playerCoverGlow').classList.toggle('opacity-100', playing);
+      document.getElementById('playerCoverGlow').classList.toggle('opacity-0', !playing);
+      renderPlayerQueue();
     }
     function updatePlayerMeta(track) {
       document.getElementById('playerTitle').textContent = track.name || '未知曲目';
       document.getElementById('playerArtist').textContent = track.artist || '未知艺人';
       document.getElementById('playerSource').textContent = (track.source || 'ncm').toUpperCase();
-      document.getElementById('playerLyric').textContent = '';
+      document.getElementById('playerLyricLine').textContent = '';
+      if (track.picUrl) {
+        playerCoverImg.onerror = () => { playerCoverImg.classList.add('hidden'); playerVinylEl.classList.remove('hidden'); };
+        playerCoverImg.src = track.picUrl;
+        playerCoverImg.classList.remove('hidden');
+        playerVinylEl.classList.add('hidden');
+      } else {
+        playerCoverImg.classList.add('hidden');
+        playerVinylEl.classList.remove('hidden');
+      }
     }
     function playerTogglePlay() {
       if (!audio.src) { if (playQueue.length > 0) playTrackAt(Math.max(currentQueueIndex, 0)); return; }
@@ -885,6 +936,81 @@
       audio.pause();
       hidePlayerBar();
     }
+
+    // --- 音量控制（localStorage 记忆） ---
+    const playerVolEl = document.getElementById('playerVolSlider');
+    function applyVolume(v) {
+      audio.volume = v;
+      audio.muted = false;
+      const btn = document.getElementById('playerMuteBtn');
+      btn.innerHTML = `<i data-lucide="${v === 0 ? 'volume-x' : v < 0.5 ? 'volume-1' : 'volume-2'}" class="w-4 h-4"></i>`;
+      lucide.createIcons();
+      try { localStorage.setItem('unmPlayerVolume', String(v)); } catch (e) {}
+    }
+    if (playerVolEl) {
+      let saved = 0.8;
+      try { const s = parseFloat(localStorage.getItem('unmPlayerVolume')); if (!isNaN(s)) saved = Math.min(1, Math.max(0, s)); } catch (e) {}
+      playerVolEl.value = String(saved * 100);
+      audio.volume = saved;
+      playerVolEl.addEventListener('input', () => applyVolume(parseInt(playerVolEl.value, 10) / 100));
+      document.getElementById('playerMuteBtn').addEventListener('click', () => {
+        if (audio.muted || audio.volume === 0) {
+          applyVolume(parseInt(playerVolEl.value, 10) / 100 || 0.8);
+        } else {
+          audio.muted = true;
+          document.getElementById('playerMuteBtn').innerHTML = '<i data-lucide="volume-x" class="w-4 h-4"></i>';
+          lucide.createIcons();
+        }
+      });
+    }
+
+    // --- 播放队列抽屉 ---
+    function renderPlayerQueue() {
+      const list = document.getElementById('playerQueueList');
+      const count = document.getElementById('playerQueueCount');
+      if (!list || !count) return;
+      count.textContent = String(playQueue.length);
+      if (playQueue.length === 0) {
+        list.innerHTML = '<div class="py-6 text-center text-xs text-slate-400 dark:text-slate-500">队列为空 · 可在曲目列表点击「+」加入</div>';
+        return;
+      }
+      list.innerHTML = playQueue.map((t, i) => {
+        const active = i === currentQueueIndex;
+        return `<div onclick="playQueueIndex(${i})" class="group flex items-center gap-2.5 px-2.5 py-2 rounded-xl cursor-pointer transition interactive-btn ${active ? 'bg-sky-500/10 border border-sky-500/30' : 'border border-transparent hover:bg-slate-100 dark:hover:bg-white/5'}">
+          <span class="w-5 flex-shrink-0 text-center font-mono text-[10px] ${active ? 'text-sky-500 dark:text-sky-400' : 'text-slate-400'}">${active && isPlaying ? '<span class=\'inline-flex items-end h-3 gap-[2px]\'><span class=\'w-[3px] bg-sky-400 animate-wave-1\'></span><span class=\'w-[3px] bg-sky-400 animate-wave-3\'></span><span class=\'w-[3px] bg-sky-400 animate-wave-4\'></span></span>' : (i + 1)}</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs font-bold truncate ${active ? 'text-sky-600 dark:text-sky-300' : 'text-slate-700 dark:text-slate-300'}">${t.name}</div>
+            <div class="text-[10px] text-slate-400 truncate">${t.artist || ''}</div>
+          </div>
+          <button onclick="event.stopPropagation();removeFromQueue(${i})" aria-label="从队列移除" class="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-white/5 transition opacity-0 group-hover:opacity-100"><i data-lucide="x" class="w-3 h-3"></i></button>
+        </div>`;
+      }).join('');
+      lucide.createIcons();
+    }
+    function playQueueIndex(i) {
+      if (i < 0 || i >= playQueue.length) return;
+      currentQueueIndex = i;
+      playSongItem(playQueue[i]);
+    }
+    function removeFromQueue(i) {
+      if (i < 0 || i >= playQueue.length) return;
+      playQueue.splice(i, 1);
+      if (i < currentQueueIndex) currentQueueIndex--;
+      renderPlayerQueue();
+    }
+    function clearQueue() {
+      playQueue = [];
+      currentQueueIndex = -1;
+      renderPlayerQueue();
+      showToast({ type: 'info', title: '队列已清空', message: '当前曲目将继续播放' });
+    }
+    function playerToggleQueue() {
+      _playerQueueOpen = !_playerQueueOpen;
+      document.getElementById('playerQueuePanel').classList.toggle('hidden', !_playerQueueOpen);
+      if (_playerQueueOpen) renderPlayerQueue();
+    }
+
+    // --- 进度条拖拽 ---
     if (playerProgressEl) {
       playerProgressEl.addEventListener('input', () => { _seeking = true; });
       playerProgressEl.addEventListener('change', () => {
@@ -961,9 +1087,12 @@
       }
       if (activeIndex !== currentLyricIndex && activeIndex !== -1) {
         currentLyricIndex = activeIndex;
-        const lyricEl = document.getElementById('playerLyric');
-        const text = lyricsData[activeIndex].text;
-        if (lyricEl) lyricEl.textContent = text ? ` · ${text}` : '';
+        const lyricEl = document.getElementById('playerLyricLine');
+        if (lyricEl) {
+          lyricEl.textContent = lyricsData[activeIndex].text || '';
+          lyricEl.style.opacity = '0';
+          requestAnimationFrame(() => { lyricEl.style.opacity = '1'; });
+        }
       }
     }
 
@@ -1149,6 +1278,7 @@
       const track = currentSearchResults[idx];
       if (!track) return;
       playQueue.push(track);
+      renderPlayerQueue();
       showToast({ type: 'success', title: '已加入队列', message: `《${track.name}》` });
     }
 
@@ -1168,6 +1298,7 @@
       const targetList = filteredTracks.length > 0 ? filteredTracks : allFullTracks;
       if (targetList.length === 0) return;
       playQueue.push(...targetList);
+      renderPlayerQueue();
       showToast({ type: 'success', title: '已批量添加', message: `已将 ${targetList.length} 首曲目加入队列` });
     }
 
