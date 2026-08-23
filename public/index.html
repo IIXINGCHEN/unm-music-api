@@ -550,12 +550,83 @@
   <!-- HTML5 原生 Audio 引擎 -->
   <audio id="mainAudioPlayer" preload="none"></audio>
 
+  <!-- 展开大视图播放面板（点击迷你播放器封面/标题或展开按钮打开） -->
+  <div id="playerExpand" class="hidden fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-md overflow-y-auto" onclick="if(event.target===this) closePlayerExpand()">
+    <div class="min-h-full flex items-center justify-center p-4 sm:p-8">
+      <div class="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-950 border border-slate-200/70 dark:border-white/10 shadow-2xl shadow-black/40 p-5 sm:p-7 space-y-5 relative my-auto">
+        <!-- 头部 -->
+        <div class="flex items-center justify-between">
+          <div class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-sky-500">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Now Playing · 正在播放</span>
+          </div>
+          <button onclick="closePlayerExpand()" aria-label="收起播放面板" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition interactive-btn">
+            <i data-lucide="chevron-down" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- 大封面 / 黑胶 -->
+        <div class="flex justify-center">
+          <div class="relative w-52 h-52 sm:w-60 sm:h-60 rounded-3xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-slate-900 shadow-2xl shadow-sky-500/10">
+            <img id="expandCoverImg" alt="" class="hidden absolute inset-0 w-full h-full object-cover" />
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div id="expandVinyl" class="w-40 h-40 sm:w-44 sm:h-44 rounded-full vinyl-grooves relative flex items-center justify-center">
+                <div id="expandCoverGlow" class="absolute inset-0 rounded-full opacity-0 transition-opacity duration-700 pointer-events-none" style="box-shadow: 0 0 42px 6px rgba(56,189,248,.45)"></div>
+                <div class="relative w-9 h-9 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 ring-4 ring-slate-900 flex items-center justify-center">
+                  <div class="w-1.5 h-1.5 rounded-full bg-slate-900"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 曲目信息 -->
+        <div class="text-center space-y-1">
+          <h3 id="expandTitle" class="text-xl font-extrabold text-slate-900 dark:text-white truncate">未在播放</h3>
+          <div class="flex items-center justify-center gap-2">
+            <p id="expandArtist" class="text-sm text-slate-500 dark:text-slate-400 truncate">—</p>
+            <span id="expandSource" class="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 font-mono uppercase flex-shrink-0">NCM</span>
+          </div>
+        </div>
+
+        <!-- 歌词滚动面板 -->
+        <div id="expandLyrics" class="h-44 sm:h-52 overflow-y-auto custom-scroll rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/5 px-4 py-3 text-center">
+          <div class="h-full flex items-center justify-center text-xs text-slate-400">暂无歌词 · 纯音乐欣赏</div>
+        </div>
+
+        <!-- 进度 -->
+        <div class="flex items-center gap-2.5">
+          <span id="expandCurTime" class="font-mono text-[11px] text-slate-400 w-9 text-right flex-shrink-0">00:00</span>
+          <input id="expandProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="播放进度" class="flex-1 h-1 cursor-pointer" />
+          <span id="expandDurTime" class="font-mono text-[11px] text-slate-400 w-9 flex-shrink-0">00:00</span>
+        </div>
+
+        <!-- 主控制区 -->
+        <div class="flex items-center justify-center gap-3 sm:gap-4 pt-1">
+          <button onclick="playerToggleMode()" id="expandModeBtn" title="列表循环" aria-label="循环模式" class="p-2.5 rounded-xl text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn"><i data-lucide="repeat" class="w-5 h-5"></i></button>
+          <button onclick="playerPrev()" aria-label="上一首" class="p-3 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn"><i data-lucide="skip-back" class="w-6 h-6"></i></button>
+          <button onclick="playerTogglePlay()" id="expandPlayBtn" aria-label="播放或暂停" class="w-16 h-16 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white flex items-center justify-center shadow-xl shadow-sky-500/35 transition interactive-btn"><i data-lucide="play" class="w-7 h-7 ml-1"></i></button>
+          <button onclick="playerNext()" aria-label="下一首" class="p-3 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn"><i data-lucide="skip-forward" class="w-6 h-6"></i></button>
+          <div class="hidden sm:flex items-center gap-2">
+            <button id="expandMuteBtn" aria-label="静音切换" class="p-2.5 rounded-xl text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 transition interactive-btn"><i data-lucide="volume-2" class="w-5 h-5"></i></button>
+            <input id="expandVolSlider" type="range" min="0" max="100" value="80" step="1" aria-label="音量大小" class="w-20 h-1 cursor-pointer" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 一键回到顶部（播放器可见时自动上移避让） -->
+  <button id="backToTopBtn" onclick="scrollToTopSmooth()" aria-label="回到顶部" title="回到顶部" class="fixed right-5 bottom-5 sm:right-7 sm:bottom-7 z-[85] w-11 h-11 rounded-full bg-slate-900/90 dark:bg-slate-900 border border-white/10 shadow-xl backdrop-blur-xl text-slate-300 hover:text-sky-400 hover:border-sky-500/40 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none hidden items-center justify-center">
+    <i data-lucide="arrow-up" class="w-5 h-5"></i>
+  </button>
+
   <!-- 悬浮玻璃播放器（桌面右下角 / 移动端底部通栏卡片） -->
   <div id="playerBar" class="fixed bottom-3 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 sm:w-[380px] z-[90] translate-y-8 opacity-0 pointer-events-none transition-all duration-500 ease-out">
     <div class="rounded-3xl bg-white/90 dark:bg-slate-950/95 border border-slate-200/70 dark:border-white/10 shadow-2xl shadow-slate-900/25 dark:shadow-black/60 backdrop-blur-xl overflow-hidden">
       <div class="p-4 pb-3">
         <div class="flex items-start gap-3.5 min-w-0">
-          <div class="relative w-[68px] h-[68px] rounded-2xl flex-shrink-0 overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-slate-900">
+          <div onclick="openPlayerExpand()" title="展开大播放器" class="relative w-[68px] h-[68px] rounded-2xl flex-shrink-0 overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-slate-900 cursor-pointer hover:ring-sky-500/50 transition">
             <img id="playerCoverImg" alt="" class="hidden absolute inset-0 w-full h-full object-cover" />
             <div class="absolute inset-0 flex items-center justify-center">
               <div id="playerVinyl" class="w-[52px] h-[52px] rounded-full vinyl-grooves relative flex items-center justify-center">
@@ -565,7 +636,7 @@
             </div>
           </div>
 
-          <div class="flex-1 min-w-0 pt-0.5">
+          <div onclick="openPlayerExpand()" class="flex-1 min-w-0 pt-0.5 cursor-pointer">
             <div class="flex items-center gap-2 min-w-0">
               <h4 id="playerTitle" class="font-extrabold text-sm text-slate-900 dark:text-white truncate">未在播放</h4>
               <span id="playerSource" class="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 font-mono uppercase flex-shrink-0">NCM</span>
@@ -574,6 +645,9 @@
             <p id="playerLyricLine" class="text-[11px] text-sky-500 dark:text-sky-300/90 truncate mt-1.5 h-4 transition-opacity duration-300"></p>
           </div>
 
+          <button onclick="openPlayerExpand()" aria-label="展开大播放器" title="展开大播放器" class="p-1.5 rounded-xl text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/10 transition interactive-btn flex-shrink-0">
+            <i data-lucide="chevron-up" class="w-4 h-4"></i>
+          </button>
           <button onclick="playerClose()" aria-label="关闭播放器" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition interactive-btn flex-shrink-0">
             <i data-lucide="x" class="w-4 h-4"></i>
           </button>
