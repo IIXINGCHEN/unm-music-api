@@ -1,0 +1,16 @@
+/* ============================================================
+   UNM-Server 悬浮播放器专属样式：黑胶纹理 / 歌词行过渡
+   其余外观由 index.html 内 Tailwind 工具类构成
+   ============================================================ */
+
+/* 黑胶唱片纹理 */
+.vinyl-grooves {
+  background: repeating-radial-gradient(circle at 50% 50%,
+    rgba(0,0,0,0.92), rgba(0,0,0,0.92) 2px,
+    rgba(30,41,59,0.85) 3px, rgba(0,0,0,0.92) 4px);
+}
+.vinyl-paused { animation-play-state: paused !important; }
+
+/* 歌词行过渡（预留扩展：完整歌词面板） */
+.lyric-line { transition: all 0.25s ease-out; }
+.lyric-active { color: #38bdf8; font-size: 1.125rem; font-weight: 700; transform: scale(1.04); }

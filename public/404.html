@@ -12,39 +12,9 @@
   <script src="/vendor/tailwind.js"></script>
   <script src="/vendor/lucide.min.js"></script>
 
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
-            mono: ['"JetBrains Mono"', 'monospace'],
-          },
-        },
-      },
-    };
-  </script>
+  <script src="/assets/js/tailwind-config.404.js"></script>
 
-  <style>
-    body {
-      -webkit-font-smoothing: antialiased;
-    }
-    .mesh-gradient {
-      background-image: 
-        radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.08) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.06) 0px, transparent 50%);
-    }
-    .dark .mesh-gradient {
-      background-image: 
-        radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.12) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.08) 0px, transparent 50%);
-    }
-    .glass-card {
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/css/404.css" />
 </head>
 
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between transition-colors duration-500 mesh-gradient">
@@ -97,35 +67,7 @@
     <div>Copyright &copy; <span id="year"></span> UNM-Server · All Rights Reserved</div>
   </footer>
 
-  <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
-    lucide.createIcons();
-
-    const themeToggle = document.getElementById('themeToggle');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
-
-    function setTheme(isDark) {
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-      }
-      lucide.createIcons();
-    }
-
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark.matches)) {
-      setTheme(true);
-    } else {
-      setTheme(false);
-    }
-
-    themeToggle.addEventListener('click', () => {
-      const isDark = document.documentElement.classList.contains('dark');
-      setTheme(!isDark);
-    });
-  </script>
+  <!-- 页面逻辑：主题切换 -->
+  <script src="/assets/js/404.js"></script>
 </body>
 </html>

@@ -1,0 +1,38 @@
+/* ============================================================
+   UNM-Server 遥测大盘专属样式：环境光斑 / 表格滚动条 / 折叠过渡
+   ============================================================ */
+body {
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      -webkit-font-smoothing: antialiased;
+      font-size: 15px;
+    }
+    .ambient-glow {
+      position: absolute;
+      width: 750px;
+      height: 750px;
+      border-radius: 50%;
+      filter: blur(140px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glass-panel {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .interactive-btn {
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .interactive-btn:active {
+      transform: scale(0.96);
+    }
+    .table-scroll::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    .table-scroll::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.25);
+      border-radius: 9999px;
+    }
+    .section-transition {
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
