@@ -158,7 +158,8 @@ class GDStudioService {
   }
 
   /**
-   * 获取歌词
+   * 获取歌词（尽力而为：上游失败自动重试一次，仍失败则返回空歌词而非抛错，
+   * 歌词属可选增强数据，不应让播放主链路出现 500 噪音）
    */
   async getLyric(
     id: string | number,
@@ -169,14 +170,29 @@ class GDStudioService {
 
     const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
 
-    const data = await this.callApi<GDLyricResponse>(
-      "lyric",
-      {
-        source: cleanSource,
-        id: cleanId,
-      },
-      env.CACHE_TTL_LYRIC
-    );
+    const fetchOnce = () =>
+      this.callApi<GDLyricResponse>(
+        "lyric",
+        {
+          source: cleanSource,
+          id: cleanId,
+        },
+        env.CACHE_TTL_LYRIC
+      );
+
+    let data: GDLyricResponse | null = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        data = await fetchOnce();
+        break;
+      } catch (error: any) {
+        if (attempt === 0) {
+          console.warn(`[GDStudio] 歌词获取失败，重试一次 (id=${cleanId}): ${error.message}`);
+          continue;
+        }
+        console.error(`[GDStudio] 歌词获取最终失败 (id=${cleanId}): ${error.message}，降级为空歌词`);
+      }
+    }
 
     if (data && typeof data === "object") {
       return {
