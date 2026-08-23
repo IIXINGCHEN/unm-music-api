@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
   <title>UNM-Server · 企业级多音源音频流媒体与无损音乐 API 网关</title>
   <link rel="shortcut icon" href="./favicon.png" type="image/png" />
 
@@ -653,6 +654,34 @@
   <!-- HTML5 原生 Audio 引擎 -->
   <audio id="mainAudioPlayer" preload="none"></audio>
 
+  <!-- 底部悬浮播放器 -->
+  <div id="playerBar" class="fixed bottom-0 inset-x-0 z-[60] translate-y-full opacity-0 pointer-events-none transition-all duration-500 ease-out">
+    <div class="max-w-7xl mx-auto m-2.5 sm:m-4 rounded-2xl bg-slate-900/95 border border-white/10 shadow-2xl shadow-black/40 backdrop-blur-xl px-3.5 py-3 sm:px-5 sm:py-3.5 flex items-center gap-3 sm:gap-4">
+      <div id="playerVinyl" class="relative w-11 h-11 sm:w-14 sm:h-14 rounded-full vinyl-grooves flex-shrink-0 flex items-center justify-center ring-1 ring-white/10">
+        <div class="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 shadow-inner"></div>
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 min-w-0">
+          <span id="playerTitle" class="font-bold text-sm text-white truncate">未在播放</span>
+          <span id="playerSource" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/25 font-mono uppercase flex-shrink-0">NCM</span>
+        </div>
+        <div class="text-[11px] sm:text-xs text-slate-400 truncate mt-0.5"><span id="playerArtist">—</span><span id="playerLyric" class="hidden md:inline text-sky-300/90"></span></div>
+      </div>
+      <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        <button onclick="playerPrev()" title="上一首" class="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition interactive-btn"><i data-lucide="skip-back" class="w-4 h-4"></i></button>
+        <button onclick="playerTogglePlay()" id="playerPlayBtn" title="播放/暂停" class="w-10 h-10 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white flex items-center justify-center shadow-lg shadow-sky-500/30 transition interactive-btn"><i data-lucide="play" class="w-4 h-4"></i></button>
+        <button onclick="playerNext()" title="下一首" class="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition interactive-btn"><i data-lucide="skip-forward" class="w-4 h-4"></i></button>
+      </div>
+      <div class="hidden lg:flex items-center gap-2.5 flex-1 min-w-[180px] max-w-xs">
+        <span id="playerCurTime" class="font-mono text-[10px] text-slate-400 w-8 text-right">00:00</span>
+        <input id="playerProgress" type="range" min="0" max="100" value="0" step="0.1" class="w-full h-1 cursor-pointer" />
+        <span id="playerDurTime" class="font-mono text-[10px] text-slate-400 w-8">00:00</span>
+      </div>
+      <button onclick="playerToggleMode()" id="playerModeBtn" title="列表循环" class="hidden sm:flex p-2 rounded-xl text-sky-400 hover:bg-white/10 transition interactive-btn flex-shrink-0"><i data-lucide="repeat" class="w-4 h-4"></i></button>
+      <button onclick="playerClose()" title="关闭播放器" class="p-2 rounded-xl text-slate-500 hover:text-white hover:bg-white/10 transition interactive-btn flex-shrink-0"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+  </div>
+
   <!-- 前端应用逻辑 (ES6+ 零构建) -->
   <script>
     // --- 全局状态 ---
@@ -761,10 +790,26 @@
     const toggleSpecsTable = bindCollapse('btnSpecsToggle', 'iconSpecsToggle', 'specsTableContent', '_specsCollapsed');
 
     // --- 音频播放引擎 ---
+    let _seeking = false;
     audio.addEventListener('timeupdate', () => {
       if (!audio.duration) return;
       syncLyrics(audio.currentTime);
+      const progressEl = document.getElementById('playerProgress');
+      if (!_seeking && progressEl) {
+        progressEl.value = String((audio.currentTime / audio.duration) * 100);
+        const curEl = document.getElementById('playerCurTime');
+        if (curEl) curEl.textContent = formatTime(audio.currentTime);
+      }
     });
+
+    audio.addEventListener('loadedmetadata', () => {
+      if (!audio.duration) return;
+      const durEl = document.getElementById('playerDurTime');
+      if (durEl) durEl.textContent = formatTime(audio.duration);
+    });
+
+    audio.addEventListener('play', () => syncPlayerPlayState(true));
+    audio.addEventListener('pause', () => syncPlayerPlayState(false));
 
     audio.addEventListener('ended', () => {
       if (playMode === 'single') {
@@ -778,13 +823,74 @@
     });
 
     audio.addEventListener('error', () => {
-      showToast({ type: 'error', title: '音频播放失败', message: '该音源直链已失效或跨域受限' });
+      showToast({ type: 'error', title: '音频播放失败', message: '直链已失效、HTTPS 升级后音源不可达，或跨域受限（可在服务端配置 PROXY_URL 中转）' });
     });
 
     function formatTime(seconds) {
       if (isNaN(seconds) || seconds < 0) return '00:00';
       const m = Math.floor(seconds / 60), s = Math.floor(seconds % 60);
       return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    // --- 底部悬浮播放器 ---
+    const playerBarEl = document.getElementById('playerBar');
+    const playerVinylEl = document.getElementById('playerVinyl');
+    const playerProgressEl = document.getElementById('playerProgress');
+
+    function showPlayerBar() {
+      playerBarEl.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
+      if (!document.body.dataset.pbOriginal) document.body.dataset.pbOriginal = document.body.style.paddingBottom || '';
+      document.body.style.paddingBottom = '96px';
+    }
+    function hidePlayerBar() {
+      playerBarEl.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+      document.body.style.paddingBottom = document.body.dataset.pbOriginal || '';
+    }
+    function setPlayerPlayIcon(playing) {
+      const btn = document.getElementById('playerPlayBtn');
+      btn.innerHTML = `<i data-lucide="${playing ? 'pause' : 'play'}" class="w-4 h-4"></i>`;
+      lucide.createIcons();
+    }
+    function syncPlayerPlayState(playing) {
+      setPlayerPlayIcon(playing);
+      playerVinylEl.classList.toggle('animate-spin-slow', playing);
+    }
+    function updatePlayerMeta(track) {
+      document.getElementById('playerTitle').textContent = track.name || '未知曲目';
+      document.getElementById('playerArtist').textContent = track.artist || '未知艺人';
+      document.getElementById('playerSource').textContent = (track.source || 'ncm').toUpperCase();
+      document.getElementById('playerLyric').textContent = '';
+    }
+    function playerTogglePlay() {
+      if (!audio.src) { if (playQueue.length > 0) playTrackAt(Math.max(currentQueueIndex, 0)); return; }
+      if (audio.paused) audio.play().catch(() => {}); else audio.pause();
+    }
+    function playerNext() {
+      if (currentQueueIndex < playQueue.length - 1) playTrackAt(currentQueueIndex + 1);
+      else showToast({ type: 'info', title: '没有下一首了', message: '队列已到末尾，可继续添加曲目' });
+    }
+    function playerPrev() {
+      if (currentQueueIndex > 0) playTrackAt(currentQueueIndex - 1);
+      else showToast({ type: 'info', title: '已是第一首', message: '当前位于队列开头' });
+    }
+    function playerToggleMode() {
+      playMode = playMode === 'single' ? 'repeat' : 'single';
+      const btn = document.getElementById('playerModeBtn');
+      btn.innerHTML = `<i data-lucide="${playMode === 'single' ? 'repeat-1' : 'repeat'}" class="w-4 h-4"></i>`;
+      btn.title = playMode === 'single' ? '单曲循环' : '列表循环';
+      lucide.createIcons();
+      showToast({ type: 'info', title: '循环模式', message: playMode === 'single' ? '已切换为单曲循环' : '已切换为列表循环' });
+    }
+    function playerClose() {
+      audio.pause();
+      hidePlayerBar();
+    }
+    if (playerProgressEl) {
+      playerProgressEl.addEventListener('input', () => { _seeking = true; });
+      playerProgressEl.addEventListener('change', () => {
+        if (audio.duration) audio.currentTime = (parseFloat(playerProgressEl.value) / 100) * audio.duration;
+        _seeking = false;
+      });
     }
 
     async function playSongItem(track) {
@@ -801,8 +907,13 @@
             throw new Error(matchData.message || '无可用音源');
           }
         }
+        if (location.protocol === 'https:' && audioUrl.startsWith('http://')) {
+          audioUrl = audioUrl.replace(/^http:\/\//, 'https://');
+        }
+        updatePlayerMeta(track);
         audio.src = audioUrl;
         await audio.play();
+        showPlayerBar();
         showToast({ type: 'success', title: '开始播放', message: `《${track.name}》- ${track.artist}` });
         loadLyrics(track.id, track.source || 'netease');
       } catch (err) {
@@ -829,7 +940,7 @@
 
     function parseLRC(lrcText) {
       lyricsData = [];
-      const timeExp = /[(d{2}):(d{2}).(d{2,3})]/g;
+      const timeExp = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
       for (const line of lrcText.split('\n')) {
         const m = timeExp.exec(line);
         if (m) {
@@ -850,7 +961,9 @@
       }
       if (activeIndex !== currentLyricIndex && activeIndex !== -1) {
         currentLyricIndex = activeIndex;
-        // 当前歌词行已就绪 (可扩展 UI 显示)
+        const lyricEl = document.getElementById('playerLyric');
+        const text = lyricsData[activeIndex].text;
+        if (lyricEl) lyricEl.textContent = text ? ` · ${text}` : '';
       }
     }
 
