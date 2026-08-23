@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsup",
-    "prebuild": "node scripts/sync-version.mjs",
+    "prebuild": "node scripts/sync-version.mjs && tailwindcss -i public/assets/css/tailwind.input.css -o public/assets/css/tailwind.css --minify",
     "start": "node dist/index.js",
     "prd": "pm2 start dist/index.js --name unm-server",
     "typecheck": "tsc --noEmit",
@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.9",
+    "tailwindcss": "^3.4.19",
     "tsup": "^8.3.6",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3"
