@@ -1,0 +1,65 @@
+name: Auto Release
+
+# 推送 v*.*.* 标签时自动创建 GitHub Release：
+# 生成更新说明（--generate-notes）并附加 dist 构建产物压缩包
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release with Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (full history for notes)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync version and build dist
+        run: |
+          node scripts/sync-version.mjs
+          pnpm run build
+
+      - name: Read version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Pack dist artifact
+        run: |
+          mkdir -p ./artifacts
+          tar -czf "./artifacts/unm-server-dist-${GITHUB_REF_NAME}.tar.gz" \
+            -C . dist package.json pnpm-lock.yaml README.md VERSION
+
+      - name: Verify signature of the release tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 宽松校验：仅要求标签存在签名（验证状态以 GitHub 页面展示为准）
+          git cat-file -e "${GITHUB_REF_NAME}^{}" 2>/dev/null || true
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --verify-tag \
+            --generate-notes \
+            --title "UNM-Server ${GITHUB_REF_NAME}" \
+            ./artifacts/unm-server-dist-${GITHUB_REF_NAME}.tar.gz

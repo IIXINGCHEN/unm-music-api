@@ -12,6 +12,7 @@
     "prd": "pm2 start dist/index.js --name unm-server",
     "typecheck": "tsc --noEmit",
     "sync:version": "node scripts/sync-version.mjs",
+    "release": "node scripts/release.mjs",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"
