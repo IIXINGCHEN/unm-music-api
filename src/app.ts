@@ -131,7 +131,14 @@ app.get("/", async (c) => {
   if (htmlPath) {
     try {
       const html = await fs.readFile(htmlPath, "utf-8");
-      return c.html(html);
+      // no-cache：确保部署后浏览器立即拉取新页面，防止旧 HTML 引用已删除资源导致无样式渲染
+      return new Response(html, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=UTF-8",
+          "Cache-Control": "no-cache",
+        },
+      });
     } catch {
       /* fallthrough */
     }
@@ -150,7 +157,13 @@ const handleDashboard = async (c: any) => {
   if (htmlPath) {
     try {
       const html = await fs.readFile(htmlPath, "utf-8");
-      return c.html(html);
+      return new Response(html, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=UTF-8",
+          "Cache-Control": "no-cache",
+        },
+      });
     } catch {
       /* fallthrough */
     }
@@ -161,7 +174,6 @@ const handleDashboard = async (c: any) => {
 app.get("/dashboard", handleDashboard);
 app.get("/monitor", handleDashboard);
 
-// 静态文件目录服务
 app.use("/*", serveStatic({ root: "./public" }));
 
 // 8. 404 兜底处理
