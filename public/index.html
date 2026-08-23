@@ -148,7 +148,7 @@
           </div>
           <div class="flex items-center space-x-1.5 sm:space-x-2">
             <span class="font-extrabold text-base sm:text-xl tracking-tight text-slate-900 dark:text-white truncate">UNM-Server</span>
-            <span class="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex-shrink-0">v3.1 PRO</span>
+            <span class="app-version-badge text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex-shrink-0">v3.1 PRO</span>
           </div>
         </a>
 
@@ -602,7 +602,7 @@
             <div class="w-10 h-10 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2"><img src="./favicon.png" alt="UNM-Server Logo" class="w-full h-full object-contain" /></div>
             <div class="flex items-center space-x-2">
               <span class="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
-              <span class="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">v3.1 PRO</span>
+              <span class="app-version-badge text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">v3.1 PRO</span>
             </div>
           </div>
           <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">企业级跨源音乐流媒体与无损音频解析中台网关。基于 Hono + TypeScript 构建，提供智能解灰、FLAC 24-bit/192kHz 母带直连、实时 LRC 歌词与全链路遥测。</p>
@@ -1220,6 +1220,21 @@
         showToast({ type: 'error', title: '测试请求失败', message: e.message });
       }
     }
+
+    // 从后端 /info 同步统一版本号徽章（版本由根目录 VERSION 文件单点管理）
+    async function syncAppVersionBadge() {
+      try {
+        const res = await fetch('/info');
+        const json = await res.json();
+        const v = json?.data?.version;
+        if (v) {
+          document.querySelectorAll('.app-version-badge').forEach(el => {
+            el.textContent = `v${v} PRO`;
+          });
+        }
+      } catch (e) { /* 静态兜底文本保持不变 */ }
+    }
+    syncAppVersionBadge();
 
     updateWorkbenchUrlPreview();
   </script>
