@@ -31,3 +31,12 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+
+# Agent reviews, notes & local workspace caches (禁止入库)
+.agents/
+.agents/**
+.agents/eng-code-reviews/
+.agents/code-reviews/
+.agents/notes/
+.agents/validation/
+.agents/worktrees/

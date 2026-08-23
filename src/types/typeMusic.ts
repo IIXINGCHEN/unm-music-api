@@ -65,3 +65,23 @@ export interface LyricResult {
   lyric: string;
   tlyric: string;
 }
+
+export interface PlaylistTrack {
+  id: string;
+  name: string;
+  artist: string;
+  album: string;
+  picUrl: string;
+  duration: number;
+}
+
+export interface PlaylistDetail {
+  id: string;
+  name: string;
+  coverImgUrl: string;
+  description: string;
+  creator: string;
+  trackCount: number;
+  tracks: PlaylistTrack[];
+  songIds: string[];
+}

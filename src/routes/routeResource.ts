@@ -4,7 +4,7 @@ import { env, AUDIO_CONFIG } from "../config/index.js";
 import { gdStudio } from "../services/serviceGdStudio.js";
 import { successResponse, errorResponse } from "../utils/utilResponse.js";
 import type { ApiResponse } from "../types/typeApi.js";
-import type { GDTrack, GDPicResponse, LyricResult } from "../types/typeMusic.js";
+import type { GDTrack, GDPicResponse, LyricResult, PlaylistDetail } from "../types/typeMusic.js";
 
 const resourceRoute = new Hono();
 
@@ -99,22 +99,30 @@ resourceRoute.get("/lyric", async (c) => {
   }
 });
 
-// 歌单歌曲 ID 列表获取 (/playlist/:id)
+// 歌单详情与完整歌曲列表获取 (/playlist/:id)
 resourceRoute.get("/playlist/:id", async (c) => {
-  const playlistId = c.req.param("id")?.trim();
-  if (!playlistId) {
+  const playlistParam = c.req.param("id")?.trim();
+  if (!playlistParam) {
     return c.json<ApiResponse>(errorResponse(400, "无效的歌单 ID"), 400);
   }
 
+  const query = c.req.query();
+  const limit = query.limit ? parseInt(query.limit, 10) || 1000 : 1000;
+  const idsOnly = query.idsOnly === "true" || query.raw === "true";
+
   try {
-    const songIds = await gdStudio.getPlaylistSongIds(playlistId);
-    if (!songIds || songIds.length === 0) {
+    const detail = await gdStudio.getPlaylistDetail(playlistParam, limit);
+    if (!detail || (detail.songIds.length === 0 && detail.tracks.length === 0)) {
       return c.json<ApiResponse>(errorResponse(404, "未找到该歌单或歌单为空"), 404);
     }
 
-    return c.json<ApiResponse<string[]>>(successResponse(songIds, "获取歌单歌曲ID成功"));
+    if (idsOnly) {
+      return c.json<ApiResponse<string[]>>(successResponse(detail.songIds, "获取歌单歌曲ID成功"));
+    }
+
+    return c.json<ApiResponse<PlaylistDetail>>(successResponse(detail, "获取歌单详情成功"));
   } catch (error: any) {
-    console.error(`[Playlist Error] id=${playlistId}:`, error.message);
+    console.error(`[Playlist Error] id=${playlistParam}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `获取歌单失败: ${error.message}`), 500);
   }
 });

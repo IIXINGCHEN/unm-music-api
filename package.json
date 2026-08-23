@@ -1,6 +1,6 @@
 {
   "name": "unm-server",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "网易云解灰与跨平台音乐 API 服务 (Hono + TypeScript Modern Edition)",
   "main": "dist/index.js",
   "type": "module",

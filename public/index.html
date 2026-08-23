@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="scroll-smooth">
+<html lang="zh-CN" class="scroll-smooth dark">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UNM-Server · 企业级音乐解灰与跨源音频解析中台</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>UNM-Server · 企业级多音源音频流媒体与无损音乐 API 网关</title>
   <link rel="shortcut icon" href="./favicon.png" type="image/png" />
 
   <!-- 引入现代字体与设计系统 -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <script src="/vendor/tailwind.js"></script>
   <script src="/vendor/lucide.min.js"></script>
 
@@ -24,16 +24,29 @@
           },
           colors: {
             slate: {
-              850: '#111827',
-              925: '#0b0f19',
-              950: '#060911',
+              850: '#101626',
+              900: '#0b0f19',
+              925: '#070b14',
+              950: '#040711',
             },
             brand: {
               50: '#f0f9ff',
               100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
               500: '#0ea5e9',
               600: '#0284c7',
               700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            },
+            accent: {
+              gold: '#f59e0b',
+              amber: '#d97706',
+              rose: '#f43f5e',
+              purple: '#a855f7',
+              cyan: '#06b6d4',
             },
           },
           animation: {
@@ -43,15 +56,16 @@
             'wave-4': 'wave 1.3s ease-in-out infinite alternate 0.1s',
             'wave-5': 'wave 1.0s ease-in-out infinite alternate 0.3s',
             'pulse-glow': 'pulseGlow 4s ease-in-out infinite',
+            'spin-slow': 'spin 18s linear infinite',
           },
           keyframes: {
             wave: {
               '0%': { height: '4px' },
-              '100%': { height: '28px' },
+              '100%': { height: '24px' },
             },
             pulseGlow: {
-              '0%, 100%': { opacity: '0.4' },
-              '50%': { opacity: '0.8' },
+              '0%, 100%': { opacity: '0.3' },
+              '50%': { opacity: '0.7' },
             },
           },
         },
@@ -60,884 +74,1154 @@
   </script>
 
   <style>
+    /* 全局防横向溢出与零误差多端响应式 */
+    html, body {
+      overflow-x: hidden !important;
+      width: 100%;
+      max-width: 100vw;
+      margin: 0;
+      padding: 0;
+    }
     body {
       font-feature-settings: "cv02", "cv03", "cv04", "cv11";
       -webkit-font-smoothing: antialiased;
       font-size: 15px;
+      position: relative;
     }
+    *, *::before, *::after { box-sizing: border-box; }
     .ambient-glow {
       position: absolute;
-      width: 750px;
-      height: 750px;
+      width: 600px;
+      height: 600px;
       border-radius: 50%;
       filter: blur(140px);
       pointer-events: none;
       z-index: 0;
     }
-    .glass-panel {
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+    .glass-panel { backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+    .glass-card { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+    .interactive-btn { transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+    .interactive-btn:active { transform: scale(0.96); }
+    .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 9999px; }
+    .tab-active { background: rgba(14, 165, 233, 0.15); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    .lyric-line { transition: all 0.25s ease-out; }
+    .lyric-active { color: #38bdf8; font-size: 1.125rem; font-weight: 700; transform: scale(1.04); }
+    .vinyl-grooves {
+      background: repeating-radial-gradient(circle at 50% 50%,
+        rgba(0,0,0,0.92), rgba(0,0,0,0.92) 2px,
+        rgba(30,41,59,0.85) 3px, rgba(0,0,0,0.92) 4px);
     }
-    .interactive-btn {
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .interactive-btn:active {
-      transform: scale(0.96);
-    }
-    .code-scroll::-webkit-scrollbar {
-      height: 6px;
-      width: 6px;
-    }
-    .code-scroll::-webkit-scrollbar-thumb {
-      background: rgba(148, 163, 184, 0.2);
-      border-radius: 9999px;
-    }
-    .tab-active {
-      background: rgba(14, 165, 233, 0.12);
-      color: #0284c7;
-      border-color: rgba(14, 165, 233, 0.4);
-    }
-    .dark .tab-active {
-      background: rgba(14, 165, 233, 0.18);
-      color: #38bdf8;
-      border-color: rgba(56, 189, 248, 0.4);
-    }
+    .vinyl-paused { animation-play-state: paused !important; }
+    input[type=range] { accent-color: #0ea5e9; }
+
+    /* JSON 高亮着色器 */
+    .json-key { color: #38bdf8; font-weight: 600; }
+    .json-string { color: #34d399; }
+    .json-number { color: #f59e0b; font-weight: 600; }
+    .json-boolean { color: #a855f7; font-weight: 700; }
+    .json-null { color: #f43f5e; font-weight: 700; }
   </style>
 </head>
 
-<body class="bg-[#fafcff] text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white transition-colors duration-300 relative overflow-x-hidden">
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white transition-colors duration-300 relative w-full overflow-x-hidden">
 
   <!-- 现代 Toast 漂浮通知容器 -->
-  <div id="toastContainer" class="fixed top-6 right-6 z-[100] flex flex-col space-y-3 pointer-events-none max-w-md w-full"></div>
+  <div id="toastContainer" class="fixed top-5 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[140] flex flex-col space-y-3 pointer-events-none max-w-[calc(100vw-32px)]"></div>
 
-  <!-- 高端环境流光氛围背景 (Ambient Lights) -->
-  <div class="ambient-glow top-[-150px] left-1/2 -translate-x-1/2 bg-gradient-to-b from-sky-400/20 via-indigo-500/15 to-transparent dark:from-sky-600/15 dark:via-indigo-900/20 animate-pulse-glow"></div>
-  <div class="ambient-glow top-[40%] right-[-200px] bg-gradient-to-l from-purple-500/10 via-pink-500/5 to-transparent dark:from-purple-900/15"></div>
+  <!-- 高端环境流光呼吸背景 -->
+  <div class="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
+    <div class="ambient-glow top-[-150px] left-1/2 -translate-x-1/2 bg-gradient-to-b from-sky-400/20 via-indigo-500/15 to-transparent dark:from-sky-600/15 dark:via-indigo-950/30 animate-pulse-glow"></div>
+    <div class="ambient-glow top-[35%] right-[-120px] bg-gradient-to-l from-amber-500/10 via-rose-500/5 to-transparent dark:from-amber-600/10 dark:via-purple-900/15"></div>
+    <div class="ambient-glow top-[70%] left-[-120px] bg-gradient-to-r from-purple-500/10 via-cyan-500/5 to-transparent dark:from-purple-950/20"></div>
+  </div>
 
-  <!-- 顶部主导航栏 -->
-  <header class="sticky top-0 z-50 w-full border-b border-slate-200/80 dark:border-white/10 glass-panel bg-white/75 dark:bg-slate-950/75 transition-colors">
-    <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-      <!-- 品牌标识与版本 -->
-      <div class="flex items-center space-x-8">
-        <a href="/" class="flex items-center space-x-3.5 group interactive-btn">
-          <div class="w-11 h-11 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2 transition-transform group-hover:scale-105">
+  <!-- ========================================================================= -->
+  <!-- 1. 顶部 Sticky 玻璃导航栏 -->
+  <!-- ========================================================================= -->
+  <header class="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-white/10 glass-panel bg-white/80 dark:bg-slate-950/80 transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between w-full">
+      <div class="flex items-center space-x-3 sm:space-x-8 min-w-0">
+        <a href="/" class="flex items-center space-x-2.5 sm:space-x-3 group interactive-btn flex-shrink-0">
+          <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2 transition-transform group-hover:scale-105">
             <img src="./favicon.png" alt="UNM-Server Logo" class="w-full h-full object-contain" />
           </div>
-          <div class="flex items-center space-x-2.5">
-            <span class="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
-            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/60">v3.0.1</span>
+          <div class="flex items-center space-x-1.5 sm:space-x-2">
+            <span class="font-extrabold text-base sm:text-xl tracking-tight text-slate-900 dark:text-white truncate">UNM-Server</span>
+            <span class="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex-shrink-0">v3.1 PRO</span>
           </div>
         </a>
 
-        <!-- 锚点菜单导航 -->
-        <nav class="hidden md:flex items-center space-x-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
-          <a href="#workbench" class="px-3.5 py-2 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition interactive-btn">调试工作台</a>
-          <a href="#providers" class="px-3.5 py-2 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition interactive-btn">音源集群</a>
-          <a href="#specs" class="px-3.5 py-2 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition interactive-btn">REST 规范</a>
+        <nav class="hidden lg:flex items-center space-x-1 xl:space-x-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <a href="#playlist-station" class="px-3 py-1.5 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition interactive-btn flex items-center space-x-1.5"><i data-lucide="list-music" class="w-4 h-4 text-sky-500"></i><span>歌单视听</span></a>
+          <a href="#artist-spotlight" class="px-3 py-1.5 rounded-xl hover:text-rose-500 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition interactive-btn flex items-center space-x-1.5"><i data-lucide="mic-2" class="w-4 h-4 text-rose-500"></i><span>艺人专栏</span></a>
+          <a href="#workbench" class="px-3 py-1.5 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition interactive-btn flex items-center space-x-1.5"><i data-lucide="terminal" class="w-4 h-4 text-cyan-500"></i><span>API 调试台</span></a>
+          <a href="#providers" class="px-3 py-1.5 rounded-xl hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition interactive-btn flex items-center space-x-1.5"><i data-lucide="radio" class="w-4 h-4 text-emerald-500"></i><span>音源矩阵</span></a>
+          <a href="#vip-subscription" class="px-3 py-1.5 rounded-xl hover:text-amber-500 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition interactive-btn flex items-center space-x-1.5"><i data-lucide="crown" class="w-4 h-4 text-amber-500"></i><span>VIP 尊享</span></a>
+          <a href="#specs" class="px-3 py-1.5 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition interactive-btn">REST 规范</a>
         </nav>
       </div>
 
-      <!-- 右侧控制区 -->
-      <div class="flex items-center space-x-4">
-        <!-- 实时服务状态灯 -->
-        <div id="pingBadge" class="hidden sm:inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-bold">
+      <div class="flex items-center space-x-2 sm:space-x-3.5 flex-shrink-0">
+        <div id="pingBadge" class="hidden md:inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-bold">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="pingText">Ping: 12ms</span>
+          <span id="pingText">Ping: --ms</span>
         </div>
 
-        <!-- 监控大盘直达入口 -->
-        <a href="/dashboard" class="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition text-sm font-bold shadow-sm interactive-btn">
-          <i data-lucide="bar-chart-2" class="w-4 h-4 text-indigo-500"></i>
-          <span>监控看板</span>
+        <a href="/dashboard" class="inline-flex items-center space-x-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-bold text-xs sm:text-sm transition interactive-btn">
+          <i data-lucide="activity" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">遥测大盘</span>
         </a>
 
-        <!-- 昼夜主题切换 -->
-        <button id="themeToggle" class="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 flex items-center justify-center transition shadow-sm interactive-btn">
-          <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
-          <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
+        <button onclick="executeQuickTest()" class="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm transition shadow-md shadow-sky-500/20 interactive-btn">
+          <i data-lucide="zap" class="w-4 h-4"></i>
+          <span>一键极速测试</span>
+        </button>
+
+        <button id="themeToggle" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition shadow-sm flex items-center justify-center interactive-btn" title="切换深色/浅色模式">
+          <i data-lucide="moon" class="w-4 h-4 sm:w-5 sm:h-5 hidden dark:block"></i>
+          <i data-lucide="sun" class="w-4 h-4 sm:w-5 sm:h-5 block dark:hidden"></i>
+        </button>
+
+        <button onclick="toggleMobileDrawer()" class="lg:hidden w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 flex items-center justify-center interactive-btn" title="展开导航">
+          <i data-lucide="menu" class="w-5 h-5"></i>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- 主体内容 (专业级分区架构) -->
-  <main class="w-full max-w-7xl mx-auto px-6 py-12 flex-1 space-y-24 relative z-10">
+  <!-- 移动端导航抽屉 -->
+  <div id="mobileDrawer" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex-col justify-between p-6 transition-all duration-300 lg:hidden">
+    <div class="flex items-center justify-between border-b border-white/10 pb-4">
+      <div class="flex items-center space-x-3">
+        <img src="./favicon.png" class="w-8 h-8 object-contain" alt="Logo" />
+        <span class="font-extrabold text-lg text-white">UNM-Server</span>
+      </div>
+      <button onclick="toggleMobileDrawer()" class="p-2 rounded-xl bg-slate-900 text-slate-300"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="flex flex-col space-y-4 py-8 text-base font-bold text-slate-200">
+      <a href="#playlist-station" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3 rounded-2xl bg-slate-900/60 border border-white/5"><i data-lucide="list-music" class="w-5 h-5 text-sky-400"></i><span>精选歌单视听</span></a>
+      <a href="#artist-spotlight" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3 rounded-2xl bg-slate-900/60 border border-white/5"><i data-lucide="mic-2" class="w-5 h-5 text-rose-400"></i><span>艺人专访与专栏</span></a>
+      <a href="#workbench" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3 rounded-2xl bg-slate-900/60 border border-white/5"><i data-lucide="terminal" class="w-5 h-5 text-cyan-400"></i><span>API 在线调试台</span></a>
+      <a href="#providers" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3 rounded-2xl bg-slate-900/60 border border-white/5"><i data-lucide="radio" class="w-5 h-5 text-emerald-400"></i><span>13 大音源矩阵</span></a>
+      <a href="#vip-subscription" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3 rounded-2xl bg-slate-900/60 border border-white/5"><i data-lucide="crown" class="w-5 h-5 text-amber-400"></i><span>VIP 尊享通道</span></a>
+      <a href="/dashboard" class="flex items-center space-x-3 p-3 rounded-2xl bg-sky-500/20 text-sky-300 border border-sky-500/30"><i data-lucide="activity" class="w-5 h-5"></i><span>全链路遥测大盘</span></a>
+    </div>
+    <div class="border-t border-white/10 pt-4 text-center text-xs text-slate-400">UNM-Server Modern Architecture · Hono + TypeScript</div>
+  </div>
 
-    <!-- 1. Hero 标语与快速代码示例区 -->
-    <section class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center pt-4">
-      <div class="lg:col-span-6 space-y-6">
-        <div class="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 text-sm font-semibold tracking-wide">
-          <i data-lucide="layers" class="w-4 h-4"></i>
-          <span>企业级双引擎架构 · 13 音源全协议覆盖</span>
+  <main class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12 sm:space-y-20 flex-1 relative z-10 min-w-0">
+
+    <!-- Hero 核心展示区 -->
+    <section class="space-y-6 sm:space-y-8 w-full min-w-0">
+      <div class="flex items-center justify-center">
+        <div class="inline-flex items-center space-x-2 px-3 sm:px-4 py-1.5 rounded-full bg-slate-900/80 border border-slate-700/60 text-slate-300 text-xs sm:text-sm font-medium shadow-lg backdrop-blur-md">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span class="text-slate-400">最新状态:</span>
+          <span class="text-white font-bold">13 节点智能调度引擎运行中 · 99.99% SLA</span>
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
         </div>
+      </div>
 
-        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.18]">
-          高并发 · 低时延的<br />
-          <span class="bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent">跨平台音乐解灰中台</span>
+      <div class="text-center max-w-4xl mx-auto space-y-3 sm:space-y-4">
+        <h1 class="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.15]">
+          企业级跨源音乐流媒体与<br class="hidden sm:inline" />
+          <span class="bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">无损音频解析中台网关</span>
         </h1>
-
-        <p class="text-lg text-slate-600 dark:text-slate-300 leading-relaxed max-w-xl">
-          深度融合 GD Studio 高性能云端引擎与 UNM 0.28.0+ 解密内核。为前端播放器 (home-4.1.7) 与移动端客户端提供 100% 协议对齐的 320k / FLAC 高清直链解析、歌词提取与跨平台检索。
-        </p>
-
-        <!-- 快捷操作按钮 -->
-        <div class="flex flex-wrap items-center gap-4 pt-2">
-          <button onclick="triggerQuickTest()" class="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-slate-900 hover:bg-sky-600 dark:bg-white dark:hover:bg-sky-400 text-white dark:text-slate-900 font-bold text-sm transition-all shadow-md shadow-slate-900/10 interactive-btn">
-            <i data-lucide="play" class="w-4 h-4"></i>
-            <span>一键测试匹配</span>
-          </button>
-          <a href="#specs" class="inline-flex items-center space-x-2 px-6 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:border-sky-500/40 text-sm font-semibold transition shadow-sm interactive-btn">
-            <i data-lucide="file-code-2" class="w-4 h-4 text-slate-400"></i>
-            <span>查看 REST 契约</span>
-          </a>
-        </div>
-
-        <!-- 核心特性徽章 -->
-        <div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-200/60 dark:border-white/10">
-          <div class="space-y-1">
-            <div class="font-extrabold text-base text-slate-900 dark:text-white font-mono">320k / FLAC</div>
-            <div class="text-slate-500 dark:text-slate-400 text-xs">无损音质智能优先</div>
-          </div>
-          <div class="space-y-1">
-            <div class="font-extrabold text-base text-slate-900 dark:text-white font-mono">&lt; 30ms</div>
-            <div class="text-slate-500 dark:text-slate-400 text-xs">LRU 内存加速</div>
-          </div>
-          <div class="space-y-1">
-            <div class="font-extrabold text-base text-slate-900 dark:text-white font-mono">100% 零硬编码</div>
-            <div class="text-slate-500 dark:text-slate-400 text-xs">.env 全参数驱动</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 右侧多语言代码集成面板 (Developer Code Tabs) -->
-      <div class="lg:col-span-6">
-        <div class="rounded-2xl bg-slate-925 border border-slate-800/80 shadow-2xl overflow-hidden font-mono text-sm">
-          <!-- 语言选项卡 -->
-          <div class="flex items-center justify-between px-5 py-3.5 bg-slate-950/90 border-b border-slate-800">
-            <div class="flex items-center space-x-2">
-              <span class="w-3 h-3 rounded-full bg-rose-500/80 inline-block"></span>
-              <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
-              <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
-              <span class="ml-2 text-xs text-slate-400 font-sans font-semibold">快速集成示例 Quick Integration</span>
-            </div>
-
-            <div class="flex items-center space-x-1" id="codeLangTabs">
-              <button onclick="switchCodeLang('curl')" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-sky-400 bg-sky-950 border border-sky-800 interactive-btn" data-lang="curl">cURL</button>
-              <button onclick="switchCodeLang('js')" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white interactive-btn" data-lang="js">JavaScript</button>
-              <button onclick="switchCodeLang('python')" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white interactive-btn" data-lang="python">Python</button>
-              <button onclick="switchCodeLang('axios')" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white interactive-btn" data-lang="axios">Node.js</button>
-            </div>
-          </div>
-
-          <!-- 代码展示区 -->
-          <div class="p-5 relative">
-            <button onclick="copyCode()" title="复制示例代码" class="absolute top-4 right-4 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition interactive-btn">
-              <i data-lucide="copy" class="w-4 h-4" id="copyIcon"></i>
-            </button>
-            <pre class="text-slate-200 leading-relaxed overflow-x-auto code-scroll max-h-60 text-sm"><code id="codeBlock">curl -X GET "match?id=186016&br=320" \
-  -H "Accept: application/json"</code></pre>
-          </div>
-
-          <!-- 响应状态条 -->
-          <div class="px-5 py-3 bg-slate-950 border-t border-slate-800 text-xs flex items-center justify-between text-slate-400">
-            <span class="flex items-center space-x-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-              <span class="font-semibold text-slate-300">HTTP/1.1 200 OK · application/json</span>
-            </span>
-            <span class="font-mono text-sky-400 font-bold">matched: "bodian" (320kbps)</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 2. 专业级指标仪表板 (Realtime Telemetry Grid) -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div class="glass-panel bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
-        <div class="flex items-center justify-between text-slate-400">
-          <span class="text-xs font-bold uppercase tracking-wider">持续运行时长</span>
-          <i data-lucide="clock-3" class="w-5 h-5 text-sky-500"></i>
-        </div>
-        <div id="statUptime" class="text-3xl font-extrabold font-mono text-slate-900 dark:text-white">加载中...</div>
-        <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center space-x-1.5 font-medium">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>守护进程健康稳定运行</span>
-        </div>
-      </div>
-
-      <div class="glass-panel bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
-        <div class="flex items-center justify-between text-slate-400">
-          <span class="text-xs font-bold uppercase tracking-wider">Node 内核内存</span>
-          <div class="w-5 h-5 text-indigo-500 font-mono text-xs font-bold">RSS</div>
-        </div>
-        <div id="statMemory" class="text-3xl font-extrabold font-mono text-slate-900 dark:text-white">-- MB</div>
-        <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">轻量极速 Hono 运行态</div>
-      </div>
-
-      <div class="glass-panel bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
-        <div class="flex items-center justify-between text-slate-400">
-          <span class="text-xs font-bold uppercase tracking-wider">LRU 缓存加速率</span>
-          <i data-lucide="zap" class="w-5 h-5 text-amber-500"></i>
-        </div>
-        <div id="statCacheHitRate" class="text-3xl font-extrabold font-mono text-slate-900 dark:text-white">-- %</div>
-        <div id="statCacheCount" class="text-xs text-slate-500 dark:text-slate-400 font-mono font-medium">0 条目热加载就绪</div>
-      </div>
-
-      <div class="glass-panel bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
-        <div class="flex items-center justify-between text-slate-400">
-          <span class="text-xs font-bold uppercase tracking-wider">活跃音源总数</span>
-          <i data-lucide="radio" class="w-5 h-5 text-emerald-500"></i>
-        </div>
-        <div id="statProviderCount" class="text-3xl font-extrabold font-mono text-slate-900 dark:text-white">13 个音源</div>
-        <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">智能并发竞速调度</div>
-      </div>
-    </section>
-
-    <!-- 3. 专业在线调试工作台 (Interactive API Workbench) -->
-    <section id="workbench" class="glass-panel bg-white/80 dark:bg-slate-900/60 p-6 sm:p-10 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl space-y-8">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/60 dark:border-white/10 pb-6">
-        <div>
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
-              <i data-lucide="terminal" class="w-5 h-5"></i>
-            </div>
-            <h2 class="text-2xl font-extrabold text-slate-900 dark:text-white">在线 API 交互调试台</h2>
-          </div>
-          <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">
-            支持解灰匹配、网易直链、跨平台搜索、歌词解析与歌单抓取的全流程沙盒测试
-          </p>
-        </div>
-
-        <!-- 接口类型切换 Tabs -->
-        <div class="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/5 text-sm font-semibold" id="apiTabs">
-          <button onclick="switchApiTab('match')" class="px-4 py-2 rounded-xl tab-active transition interactive-btn" data-tab="match">/match 核心解灰</button>
-          <button onclick="switchApiTab('ncmget')" class="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn" data-tab="ncmget">/ncmget 直链</button>
-          <button onclick="switchApiTab('search')" class="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn" data-tab="search">/search 搜索</button>
-          <button onclick="switchApiTab('lyric')" class="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn" data-tab="lyric">/lyric 歌词</button>
-          <button onclick="switchApiTab('playlist')" class="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn" data-tab="playlist">/playlist 歌单</button>
-        </div>
-      </div>
-
-      <!-- 参数配置区 -->
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-        <div class="md:col-span-7">
-          <label id="inputLabel" class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">网易云歌曲 ID (例如: 186016 - 周杰伦《晴天》)</label>
-          <div class="relative">
-            <input id="testInput" type="text" value="186016" class="w-full px-4 py-3 rounded-2xl bg-slate-100/90 dark:bg-slate-950/90 border border-slate-200 dark:border-white/10 font-mono text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
-          </div>
-        </div>
-
-        <div class="md:col-span-3">
-          <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">音质码率 / 格式</label>
-          <select id="bitrateSelect" onchange="showToast({ type: 'info', title: '音质变更', message: '已调整目标请求码率为: ' + this.options[this.selectedIndex].text })" class="w-full px-4 py-3 rounded-2xl bg-slate-100/90 dark:bg-slate-950/90 border border-slate-200 dark:border-white/10 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer">
-            <option value="320">320kbps (标准高保真)</option>
-            <option value="999">999kbps (FLAC 无损最高品质)</option>
-            <option value="192">192kbps (中等音质)</option>
-            <option value="128">128kbps (标准流畅)</option>
-          </select>
-        </div>
-
-        <div class="md:col-span-2 flex items-end">
-          <button onclick="executeApiTest()" id="executeBtn" class="w-full py-3 px-5 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm transition flex items-center justify-center space-x-2 shadow-md shadow-sky-500/20 interactive-btn">
-            <i data-lucide="send" class="w-4 h-4"></i>
-            <span>发送请求</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- 快速填充预设 -->
-      <div class="flex flex-wrap items-center gap-2.5 text-sm text-slate-500">
-        <span class="text-xs font-bold text-slate-400">快速预设:</span>
-        <button onclick="fillPreset('1962165898', 'match', '最伟大的作品')" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-sky-500 transition interactive-btn font-medium text-xs">《最伟大的作品》</button>
-        <button onclick="fillPreset('186016', 'match', '晴天')" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-sky-500 transition interactive-btn font-medium text-xs">《晴天》</button>
-        <button onclick="fillPreset('1901371647', 'match', '孤勇者')" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-sky-500 transition interactive-btn font-medium text-xs">《孤勇者》</button>
-        <button onclick="fillPreset('8401628431', 'playlist', '热门歌单')" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-sky-500 transition interactive-btn font-medium text-xs">网易云热门歌单</button>
-      </div>
-
-      <!-- 响应输出卡片 (包含播放器与 JSON 树) -->
-      <div id="resultPanel" class="p-6 rounded-2xl bg-slate-950 border border-slate-800 text-slate-200 space-y-4 font-mono text-sm">
-        <!-- 响应头状态条 -->
-        <div class="flex flex-wrap items-center justify-between pb-3 border-b border-slate-800 text-xs">
-          <div class="flex items-center space-x-3.5">
-            <span class="px-2.5 py-1 rounded-md font-bold bg-emerald-500/20 text-emerald-400" id="resStatus">HTTP 200 OK</span>
-            <span class="text-slate-400 font-semibold" id="resLatency">Time: 24ms</span>
-            <span class="text-sky-400 font-bold" id="resSource">Source: bodian</span>
-          </div>
-          <button onclick="copyResponseJson()" class="text-slate-300 hover:text-white transition flex items-center space-x-1.5 interactive-btn font-sans text-xs">
-            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
-            <span>复制 JSON</span>
-          </button>
-        </div>
-
-        <!-- 音频试听流 (解灰接口专属，配备 5 柱动态跳跃波形条) -->
-        <div id="playerSection" class="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl bg-slate-900 border border-slate-800 gap-4">
-          <div class="flex items-center space-x-4">
-            <div class="relative w-14 h-14 rounded-xl overflow-hidden bg-slate-800 flex-shrink-0 shadow-md">
-              <img id="trackCover" src="./favicon.png" class="w-full h-full object-cover" alt="Cover" />
-              <div id="waveEqualizer" class="absolute inset-0 bg-black/50 flex items-center justify-center space-x-1 hidden">
-                <span class="w-1 bg-sky-400 rounded-full animate-wave-1"></span>
-                <span class="w-1 bg-indigo-400 rounded-full animate-wave-2"></span>
-                <span class="w-1 bg-purple-400 rounded-full animate-wave-3"></span>
-                <span class="w-1 bg-emerald-400 rounded-full animate-wave-4"></span>
-                <span class="w-1 bg-amber-400 rounded-full animate-wave-5"></span>
-              </div>
-            </div>
-            <div>
-              <div class="font-sans font-bold text-white text-base" id="trackName">晴天</div>
-              <div class="font-sans text-xs text-slate-400 font-medium mt-0.5" id="trackMeta">周杰伦 · 叶惠美</div>
-            </div>
-          </div>
-          <audio id="mainAudio" controls class="w-full sm:w-80 h-10 rounded-lg outline-none"></audio>
-        </div>
-
-        <!-- JSON 预览文本 -->
-        <pre id="jsonOutput" class="leading-relaxed overflow-x-auto code-scroll max-h-64 text-slate-300 p-2 text-xs"></pre>
-      </div>
-    </section>
-
-    <!-- 4. 13 大上游音源支持与健康度矩阵 (Providers Matrix) -->
-    <section id="providers" class="space-y-8">
-      <div class="text-center max-w-2xl mx-auto space-y-2">
-        <div class="inline-flex items-center space-x-1.5 text-xs font-bold text-sky-500 uppercase tracking-wider">
-          <i data-lucide="radio" class="w-4 h-4"></i>
-          <span>Multi-Source Cluster</span>
-        </div>
-        <h2 class="text-3xl font-extrabold text-slate-900 dark:text-white">13 大音源集群调度能力</h2>
-        <p class="text-sm text-slate-600 dark:text-slate-300">
-          全平台支持免 Cookie 自动化解析，具备多级回退重试与并发竞速抢占能力
+        <p class="text-xs sm:text-base md:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
+          基于现代 Hono + TypeScript 构建的高性能多源音频调度网关，提供毫秒级智能解灰、FLAC 24bit/192kHz 母带直连、跨源搜索与 LRC 逐字歌词引擎。
         </p>
       </div>
 
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-2 shadow-sm">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-900 dark:text-white font-mono text-sm">GD Studio</span>
-            <span class="px-2 py-0.5 rounded text-xs font-bold bg-sky-500/10 text-sky-500">主核心</span>
-          </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">官方 API 端点，支持无损 320k/FLAC 免 Cookie 解析。</p>
-        </div>
+      <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm font-mono font-semibold">
+        <div class="px-3.5 py-1.5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center space-x-1.5 shadow-sm"><i data-lucide="disc-3" class="w-4 h-4"></i><span>FLAC 192kHz / 24-bit</span></div>
+        <div class="px-3.5 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center space-x-1.5 shadow-sm"><i data-lucide="zap" class="w-4 h-4"></i><span>Zero-Buffer 直链推流</span></div>
+        <div class="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center space-x-1.5 shadow-sm"><i data-lucide="cpu" class="w-4 h-4"></i><span>13 上游容灾并发竞速</span></div>
+        <div class="px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center space-x-1.5 shadow-sm"><i data-lucide="layers" class="w-4 h-4"></i><span>&lt;15ms 内存多级缓存</span></div>
+      </div>
 
-        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-2 shadow-sm">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-900 dark:text-white font-mono text-sm">Bodian (波点)</span>
-            <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/10 text-emerald-500">高保真</span>
-          </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">酷我旗下高保真流媒体音源，解析成功率超 99%。</p>
-        </div>
-
-        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-2 shadow-sm">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-900 dark:text-white font-mono text-sm">JOOX</span>
-            <span class="px-2 py-0.5 rounded text-xs font-bold bg-indigo-500/10 text-indigo-500">海外音源</span>
-          </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">港台与海外曲库覆盖，直链免 Cookie 稳定下发。</p>
-        </div>
-
-        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-2 shadow-sm">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-900 dark:text-white font-mono text-sm">KuGou (酷狗)</span>
-            <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-500/10 text-slate-500">国内大库</span>
-          </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">庞大华语曲库支持，多品质直链毫秒级匹配。</p>
-        </div>
-
-        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-2 shadow-sm">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-900 dark:text-white font-mono text-sm">Kuwo (酷我)</span>
-            <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-500/10 text-slate-500">无损 FLAC</span>
-          </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">经典高码率音源库，支持无损音频直接试听。</p>
-        </div>
-
-        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-2 shadow-sm">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-900 dark:text-white font-mono text-sm">BiliVideo / Bili</span>
-            <span class="px-2 py-0.5 rounded text-xs font-bold bg-pink-500/10 text-pink-500">ACG / Live</span>
-          </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">高质量 Live 现场、翻唱与二次元曲目音轨提取。</p>
-        </div>
-
-        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-2 shadow-sm">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-900 dark:text-white font-mono text-sm">PyNcmD</span>
-            <span class="px-2 py-0.5 rounded text-xs font-bold bg-amber-500/10 text-amber-500">网易云官方</span>
-          </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">官方 API 双通道直取，解决上游 syntax bug。</p>
-        </div>
-
-        <div class="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-2 shadow-sm">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-slate-900 dark:text-white font-mono text-sm">QQ / Migu / YT</span>
-            <span class="px-2 py-0.5 rounded text-xs font-bold bg-purple-500/10 text-purple-500">全球热备</span>
-          </div>
-          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">QQ音乐、咪咕音乐、YouTube-DL 全球容灾热备。</p>
-        </div>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-2">
+        <button onclick="executeQuickTest()" class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-600 hover:opacity-95 text-white font-bold text-sm sm:text-base transition shadow-xl shadow-sky-500/25 flex items-center justify-center space-x-2 interactive-btn">
+          <i data-lucide="play" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+          <span>即刻一键测试解析 (周杰伦《晴天》)</span>
+        </button>
+        <a href="#workbench" class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 hover:border-sky-500 text-slate-800 dark:text-slate-200 font-bold text-sm sm:text-base transition shadow-sm flex items-center justify-center space-x-2 interactive-btn">
+          <i data-lucide="terminal" class="w-4 h-4 sm:w-5 sm:h-5 text-sky-500"></i>
+          <span>进入 API 交互调试台</span>
+        </a>
       </div>
     </section>
 
-    <!-- 5. REST 规范标准交互契约表 (API Specification - 支持折叠) -->
-    <section id="specs" class="space-y-6">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <!-- 歌单视听工坊 (含经典老歌与完整分页) -->
+    <section id="playlist-station" class="glass-panel bg-white/70 dark:bg-slate-900/60 p-4 sm:p-8 lg:p-10 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl space-y-6 sm:space-y-8 w-full min-w-0 overflow-hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-200/60 dark:border-white/10 pb-4">
         <div>
-          <h2 class="text-2xl font-extrabold text-slate-900 dark:text-white flex items-center space-x-2.5">
-            <i data-lucide="book-open" class="w-6 h-6 text-sky-500"></i>
-            <span>REST API 接口契约规范</span>
+          <div class="inline-flex items-center space-x-1.5 text-xs font-bold text-sky-500 uppercase tracking-wider mb-1"><i data-lucide="radio" class="w-4 h-4"></i><span>Interactive Music Hub</span></div>
+          <h2 class="text-xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-center space-x-2">
+            <i data-lucide="list-music" class="w-5 h-5 sm:w-6 sm:h-6 text-sky-500"></i>
+            <span>歌单视听与跨源搜索工坊</span>
           </h2>
-          <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">
-            响应格式统一遵循 <code>{ code: 200, message: "...", data: ... }</code> 标准契约
-          </p>
+          <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1">支持网易云、QQ音乐、酷狗、酷我、Bilibili与咪咕全网搜索、歌单完整解析与全功能分页</p>
         </div>
-        <button onclick="toggleSpecsTable()" class="flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-sky-500 transition interactive-btn px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10">
-          <span id="labelSpecsToggle">折叠表格</span>
-          <i data-lucide="chevron-up" class="w-4 h-4 transition-transform duration-300" id="iconSpecsToggle"></i>
+        <button onclick="togglePlaylistStation()" id="btnPlaylistToggle" title="折叠表格" class="group flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-sky-500 transition interactive-btn px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 w-fit flex-shrink-0 shadow-sm">
+          <svg class="w-4 h-4 text-slate-500 group-hover:text-sky-500 dark:text-slate-400 dark:group-hover:text-sky-400 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path><path d="M9 3v18"></path></svg>
+          <i data-lucide="chevron-up" class="w-3.5 h-3.5 transition-transform duration-300" id="iconPlaylistToggle"></i>
         </button>
       </div>
 
-      <div id="specsTableContent" class="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white/60 dark:bg-slate-900/40 text-sm transition-all duration-300">
-        <table class="w-full text-left">
-          <thead class="bg-slate-100/60 dark:bg-slate-950/60 border-b border-slate-200 dark:border-white/10 text-slate-400 font-bold uppercase tracking-wider text-xs">
-            <tr>
-              <th class="py-3.5 px-5">端点 Endpoint</th>
-              <th class="py-3.5 px-5">方法 Method</th>
-              <th class="py-3.5 px-5">核心参数 Parameters</th>
-              <th class="py-3.5 px-5">用途 Description</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-xs sm:text-sm">
-            <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition">
-              <td class="py-3.5 px-5 font-bold text-sky-500">/match</td>
-              <td class="py-3.5 px-5"><span class="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-500 font-bold text-xs">GET</span></td>
-              <td class="py-3.5 px-5 text-slate-700 dark:text-slate-300 font-medium">id (必填), br (选填), server (选填)</td>
-              <td class="py-3.5 px-5 font-sans text-slate-600 dark:text-slate-300">多音源智能解灰，返回可播放直链及元数据</td>
-            </tr>
-            <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition">
-              <td class="py-3.5 px-5 font-bold text-sky-500">/ncmget</td>
-              <td class="py-3.5 px-5"><span class="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-500 font-bold text-xs">GET</span></td>
-              <td class="py-3.5 px-5 text-slate-700 dark:text-slate-300 font-medium">id (必填), br (选填)</td>
-              <td class="py-3.5 px-5 font-sans text-slate-600 dark:text-slate-300">获取网易云官方原始高码率音频直链</td>
-            </tr>
-            <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition">
-              <td class="py-3.5 px-5 font-bold text-sky-500">/search</td>
-              <td class="py-3.5 px-5"><span class="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-500 font-bold text-xs">GET</span></td>
-              <td class="py-3.5 px-5 text-slate-700 dark:text-slate-300 font-medium">name (必填), source (选填), count, page</td>
-              <td class="py-3.5 px-5 font-sans text-slate-600 dark:text-slate-300">跨平台多音源歌曲与歌手列表检索</td>
-            </tr>
-            <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition">
-              <td class="py-3.5 px-5 font-bold text-sky-500">/playlist/:id</td>
-              <td class="py-3.5 px-5"><span class="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-500 font-bold text-xs">GET</span></td>
-              <td class="py-3.5 px-5 text-slate-700 dark:text-slate-300 font-medium">:id 路径参数 (歌单或专辑 ID)</td>
-              <td class="py-3.5 px-5 font-sans text-slate-600 dark:text-slate-300">批量提取歌单中包含的全部歌曲 ID 列表</td>
-            </tr>
-            <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition">
-              <td class="py-3.5 px-5 font-bold text-sky-500">/lyric</td>
-              <td class="py-3.5 px-5"><span class="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-500 font-bold text-xs">GET</span></td>
-              <td class="py-3.5 px-5 text-slate-700 dark:text-slate-300 font-medium">id (必填), source (选填)</td>
-              <td class="py-3.5 px-5 font-sans text-slate-600 dark:text-slate-300">获取原版 LRC 歌词与逐行对照翻译歌词</td>
-            </tr>
-            <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition">
-              <td class="py-3.5 px-5 font-bold text-sky-500">/pic 或 /picture</td>
-              <td class="py-3.5 px-5"><span class="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-500 font-bold text-xs">GET</span></td>
-              <td class="py-3.5 px-5 text-slate-700 dark:text-slate-300 font-medium">id (必填), size (选填: 300/500)</td>
-              <td class="py-3.5 px-5 font-sans text-slate-600 dark:text-slate-300">获取高清专辑封面图 URL</td>
-            </tr>
-            <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition">
-              <td class="py-3.5 px-5 font-bold text-sky-500">/health</td>
-              <td class="py-3.5 px-5"><span class="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-500 font-bold text-xs">GET</span></td>
-              <td class="py-3.5 px-5 text-slate-700 dark:text-slate-300 font-medium">verbose (选填: true)</td>
-              <td class="py-3.5 px-5 font-sans text-slate-600 dark:text-slate-300">服务健康检查、内存指标与 LRU 缓存统计</td>
-            </tr>
-          </tbody>
-        </table>
+      <div id="playlistStationBody" class="space-y-6 sm:space-y-8 transition-all duration-300 w-full min-w-0">
+        <!-- 搜索工具栏 -->
+        <div class="p-4 sm:p-5 rounded-2xl bg-white/60 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 w-full">
+          <div class="flex items-center space-x-2 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 flex-shrink-0">
+            <i data-lucide="search" class="w-4 h-4 text-sky-500"></i>
+            <span>跨平台全网检索:</span>
+          </div>
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 lg:justify-end">
+            <select id="searchSourceSelect" class="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer">
+              <option value="netease">网易云音乐 (NCM)</option>
+              <option value="qq">QQ 音乐 (Tencent)</option>
+              <option value="kugou">酷狗音乐 (KuGou)</option>
+              <option value="kuwo">酷我音乐 (Kuwo)</option>
+              <option value="bilibili">哔哩哔哩 (Bilibili)</option>
+              <option value="migu">咪咕音乐 (Migu)</option>
+            </select>
+            <div class="relative flex-1 sm:w-72 lg:w-80">
+              <input id="searchKeywordInput" type="text" placeholder="搜索歌曲 / 歌手 (例如: 天赐的声音)" onkeydown="if(event.key==='Enter') executeSearch(1)" class="w-full pl-9 pr-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            </div>
+            <button onclick="executeSearch(1)" class="px-5 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center space-x-1.5 shadow-md shadow-sky-500/20 interactive-btn flex-shrink-0"><i data-lucide="search" class="w-4 h-4"></i><span>搜索</span></button>
+          </div>
+        </div>
+
+        <!-- 快速精选歌单 Bento Grid (含经典老歌) -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400">
+            <span class="flex items-center space-x-1.5"><i data-lucide="flame" class="w-4 h-4 text-amber-500"></i><span>精选热门与经典老歌推荐 (1-Click 一键试听)</span></span>
+            <span class="text-xs font-mono text-slate-400">点击卡片解析全部曲目</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0">
+            <!-- 天赐的声音 -->
+            <div onclick="loadPresetPlaylist('8401628431', '天赐的声音 | 1-7 季歌曲全收录')" class="group p-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 hover:border-rose-500/50 hover:shadow-lg hover:shadow-rose-500/10 transition-all cursor-pointer min-w-0 relative overflow-hidden ring-1 ring-rose-500/20">
+              <div class="absolute -right-6 -top-6 w-16 h-16 rounded-full bg-rose-500/10 blur-md pointer-events-none"></div>
+              <div class="flex items-center space-x-3 min-w-0">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 via-pink-600 to-amber-500 text-white flex items-center justify-center font-black text-xl flex-shrink-0 shadow-md group-hover:scale-105 transition-transform"><i data-lucide="mic-2" class="w-6 h-6"></i></div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center space-x-1.5">
+                    <h4 class="font-extrabold text-sm text-slate-900 dark:text-white truncate group-hover:text-rose-400 transition-colors">天赐的声音</h4>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-500/10 text-rose-500 flex-shrink-0">爆款Live</span>
+                  </div>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">薛之谦 / 张靓颖 / 黄霄雲 / 王赫野</p>
+                </div>
+              </div>
+              <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <span class="flex items-center space-x-1 text-rose-400 font-bold"><i data-lucide="play" class="w-3 h-3"></i><span>载入天赐精选单</span></span>
+                <span>500+ 首</span>
+              </div>
+            </div>
+            <!-- 经典老歌·岁月留声 -->
+            <div onclick="loadPresetPlaylist('988690134', '经典老歌 · 久听不厌 (岁月留声)')" class="group p-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all cursor-pointer min-w-0 relative overflow-hidden ring-1 ring-amber-500/20">
+              <div class="absolute -right-6 -top-6 w-16 h-16 rounded-full bg-amber-500/10 blur-md pointer-events-none"></div>
+              <div class="flex items-center space-x-3 min-w-0">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 via-orange-600 to-rose-600 text-white flex items-center justify-center font-black text-xl flex-shrink-0 shadow-md group-hover:scale-105 transition-transform"><i data-lucide="radio" class="w-6 h-6"></i></div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center space-x-1.5">
+                    <h4 class="font-extrabold text-sm text-slate-900 dark:text-white truncate group-hover:text-amber-400 transition-colors">经典老歌·岁月留声</h4>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/10 text-amber-500 flex-shrink-0">3.4亿播</span>
+                  </div>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">陈百强 / Beyond / 张国荣 / 陈慧娴</p>
+                </div>
+              </div>
+              <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <span class="flex items-center space-x-1 text-amber-400 font-bold"><i data-lucide="play" class="w-3 h-3"></i><span>载入经典老歌单</span></span>
+                <span>115 首</span>
+              </div>
+            </div>
+            <!-- 8090回忆金曲 -->
+            <div onclick="loadPresetPlaylist('5347332390', '8090后回忆经典老歌1000首')" class="group p-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all cursor-pointer min-w-0 relative overflow-hidden">
+              <div class="flex items-center space-x-3 min-w-0">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 via-indigo-600 to-blue-600 text-white flex items-center justify-center font-black text-xl flex-shrink-0 shadow-md group-hover:scale-105 transition-transform"><i data-lucide="disc-3" class="w-6 h-6"></i></div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center space-x-1.5">
+                    <h4 class="font-extrabold text-sm text-slate-900 dark:text-white truncate group-hover:text-purple-400 transition-colors">8090回忆金曲</h4>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-500/10 text-purple-400 flex-shrink-0">怀旧</span>
+                  </div>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">李圣杰 / 张震岳 / 迪克牛仔 / 黄品源</p>
+                </div>
+              </div>
+              <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <span class="flex items-center space-x-1 text-purple-400"><i data-lucide="play" class="w-3 h-3"></i><span>点击载入歌单</span></span>
+                <span>800+ 首</span>
+              </div>
+            </div>
+            <!-- 华语热歌风云榜 -->
+            <div onclick="loadPresetPlaylist('3778678', '华语热歌风云榜 (Top 100)')" class="group p-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/10 transition-all cursor-pointer min-w-0 relative overflow-hidden">
+              <div class="flex items-center space-x-3 min-w-0">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center font-black text-xl flex-shrink-0 shadow-md group-hover:scale-105 transition-transform"><i data-lucide="flame" class="w-6 h-6"></i></div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center space-x-1.5">
+                    <h4 class="font-extrabold text-sm text-slate-900 dark:text-white truncate group-hover:text-cyan-400 transition-colors">华语热歌风云榜</h4>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-500/10 text-cyan-400 flex-shrink-0">TOP榜</span>
+                  </div>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">周杰伦 / 张杰 / 薛之谦 / 邓紫棋</p>
+                </div>
+              </div>
+              <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <span class="flex items-center space-x-1 text-cyan-400"><i data-lucide="play" class="w-3 h-3"></i><span>点击载入歌单</span></span>
+                <span>200 首</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 结果列表头：过滤 + 分页大小 + 批量操作 -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white/50 dark:bg-slate-950/40 p-3 sm:p-4 rounded-2xl border border-slate-200/60 dark:border-white/5">
+          <div class="flex flex-wrap items-center gap-2 min-w-0">
+            <h3 id="searchResultTitle" class="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white truncate">搜索结果 / 歌单曲目</h3>
+            <span id="searchResultCountBadge" class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-bold">共 0 首</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="relative w-full sm:w-44 lg:w-48">
+              <input id="playlistFilterInput" type="text" placeholder="歌单内快速过滤..." oninput="onPlaylistFilterInput(this.value)" class="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
+              <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+            </div>
+            <select id="pageSizeSelect" onchange="changePageSize(this.value)" class="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer">
+              <option value="20" selected>20 首/页</option>
+              <option value="50">50 首/页</option>
+              <option value="100">100 首/页</option>
+              <option value="9999">全部展示</option>
+            </select>
+            <button onclick="playAllSearchResults()" class="px-3 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white transition text-xs font-bold flex items-center space-x-1 interactive-btn shadow-sm shadow-sky-500/20"><i data-lucide="play-circle" class="w-3.5 h-3.5"></i><span>播放全部</span></button>
+            <button onclick="addAllToQueue()" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition text-xs font-semibold flex items-center space-x-1 interactive-btn"><i data-lucide="plus" class="w-3.5 h-3.5"></i><span>加入队列</span></button>
+          </div>
+        </div>
+
+        <!-- 歌曲表格 -->
+        <div class="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white/60 dark:bg-slate-950/60 shadow-sm min-w-0">
+          <div class="overflow-x-auto custom-scroll w-full">
+            <table class="w-full text-left min-w-[550px] table-auto">
+              <thead class="bg-slate-100/70 dark:bg-slate-900/80 border-b border-slate-200 dark:border-white/10 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
+                <tr>
+                  <th class="py-3 px-4 w-12 text-center">#</th>
+                  <th class="py-3 px-4">曲名 / 歌手</th>
+                  <th class="py-3 px-4">专辑</th>
+                  <th class="py-3 px-4 w-28">音源平台</th>
+                  <th class="py-3 px-4 w-36 text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody id="trackListBody" class="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs sm:text-sm">
+                <tr><td colspan="5" class="py-12 text-center text-slate-400"><i data-lucide="music" class="w-8 h-8 mx-auto mb-2 opacity-40"></i><span>输入关键词点击搜索，或点击上方歌单开始视听</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 完整分页控制器 -->
+        <div id="searchPagination" class="hidden flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 px-1 text-xs text-slate-500 border-t border-slate-200/60 dark:border-white/5">
+          <div class="flex items-center space-x-2">
+            <span>第 <strong id="currentPageNum" class="text-sky-500 font-mono font-bold">1</strong> / <span id="totalPageNum" class="font-mono">1</span> 页 · 共 <span id="totalTracksNum" class="font-mono font-semibold">0</span> 首</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button onclick="goToPage(1)" id="btnPageFirst" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:text-sky-500 transition interactive-btn disabled:opacity-30 disabled:pointer-events-none flex items-center space-x-1"><i data-lucide="chevrons-left" class="w-3.5 h-3.5"></i><span class="hidden md:inline">首页</span></button>
+            <button onclick="goToPage(currentPage - 1)" id="btnPagePrev" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:text-sky-500 transition interactive-btn disabled:opacity-30 disabled:pointer-events-none flex items-center space-x-1"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i><span>上一页</span></button>
+            <div id="pageNumberButtons" class="flex items-center space-x-1"></div>
+            <button onclick="goToPage(currentPage + 1)" id="btnPageNext" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:text-sky-500 transition interactive-btn disabled:opacity-30 disabled:pointer-events-none flex items-center space-x-1"><span>下一页</span><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+            <button onclick="goToPage(totalPages)" id="btnPageLast" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:text-sky-500 transition interactive-btn disabled:opacity-30 disabled:pointer-events-none flex items-center space-x-1"><span class="hidden md:inline">末页</span><i data-lucide="chevrons-right" class="w-3.5 h-3.5"></i></button>
+            <div class="hidden lg:flex items-center space-x-1 pl-2 border-l border-slate-200 dark:border-white/10">
+              <span class="text-slate-400 text-[11px]">跳至</span>
+              <input id="pageJumpInput" type="number" min="1" onkeydown="if(event.key==='Enter') jumpToPageInput()" class="w-12 px-1.5 py-1 text-center rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-sky-500" />
+              <span class="text-slate-400 text-[11px]">页</span>
+              <button onclick="jumpToPageInput()" class="px-2 py-1 rounded-lg bg-sky-500/10 text-sky-500 hover:bg-sky-500 hover:text-white transition font-bold text-[11px]">Go</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- API 在线交互调试台 -->
+    <section id="workbench" class="glass-panel bg-white/80 dark:bg-slate-900/60 p-4 sm:p-8 lg:p-10 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl space-y-5 sm:space-y-6 w-full min-w-0 overflow-hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 dark:border-white/10 pb-4">
+        <div>
+          <div class="inline-flex items-center space-x-1.5 text-xs font-bold text-cyan-500 uppercase tracking-wider mb-1"><i data-lucide="terminal" class="w-4 h-4"></i><span>Interactive API Sandbox</span></div>
+          <h2 class="text-lg sm:text-2xl font-extrabold text-slate-900 dark:text-white flex items-center space-x-2">
+            <span>在线 API 交互调试台</span>
+            <span class="text-[10px] sm:text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-500 border border-cyan-500/20">PRO DEV</span>
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5">支持 8 大核心端点交互调用、实时 cURL 命令生成、URL 直达预览与语法高亮</p>
+        </div>
+        <button onclick="toggleWorkbenchStation()" id="btnWorkbenchToggle" title="折叠表格" class="group flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-sky-500 transition interactive-btn px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 w-fit flex-shrink-0 shadow-sm">
+          <svg class="w-4 h-4 text-slate-500 group-hover:text-sky-500 dark:text-slate-400 dark:group-hover:text-sky-400 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path><path d="M9 3v18"></path></svg>
+          <i data-lucide="chevron-up" class="w-3.5 h-3.5 transition-transform duration-300" id="iconWorkbenchToggle"></i>
+        </button>
+      </div>
+
+      <div id="workbenchStationBody" class="space-y-5 sm:space-y-6 transition-all duration-300 w-full min-w-0">
+        <div class="flex flex-wrap items-center gap-1.5 p-1 rounded-2xl bg-slate-100/90 dark:bg-slate-950/90 border border-slate-200 dark:border-white/5 text-xs font-semibold max-w-full overflow-x-auto custom-scroll" id="apiTabs">
+          <button onclick="switchApiTab('match')" class="px-3 py-1.5 rounded-xl tab-active transition interactive-btn whitespace-nowrap" data-tab="match">/match 智能解灰</button>
+          <button onclick="switchApiTab('ncmget')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="ncmget">/ncmget 官方直链</button>
+          <button onclick="switchApiTab('search')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="search">/search 全网搜索</button>
+          <button onclick="switchApiTab('lyric')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="lyric">/lyric 逐字歌词</button>
+          <button onclick="switchApiTab('pic')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="pic">/pic 高清封面</button>
+          <button onclick="switchApiTab('playlist')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="playlist">/playlist 歌单解析</button>
+          <button onclick="switchApiTab('health')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-emerald-500 transition interactive-btn whitespace-nowrap" data-tab="health">/health 健康诊断</button>
+          <button onclick="switchApiTab('info')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-purple-500 transition interactive-btn whitespace-nowrap" data-tab="info">/info 系统环境</button>
+        </div>
+
+        <div class="p-4 sm:p-5 rounded-2xl bg-white/70 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-end w-full min-w-0">
+            <div class="md:col-span-6 min-w-0" id="mainInputWrapper">
+              <label id="inputLabel" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">网易云歌曲 ID (例如: 191060 - 张杰《这，就是爱》)</label>
+              <input id="testInput" type="text" value="191060" oninput="updateWorkbenchUrlPreview()" onkeydown="if(event.key==='Enter') executeApiTest()" class="w-full px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-mono text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
+            </div>
+            <div class="md:col-span-3 min-w-0" id="serverSelectWrapper">
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">音源平台 / 调度策略 (server)</label>
+              <select id="serverSelect" onchange="updateWorkbenchUrlPreview()" class="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-mono text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer text-slate-900 dark:text-white">
+                <option value="">自动竞速调度 (默认最佳)</option>
+                <option value="gdstudio">GD Studio (主核心)</option>
+                <option value="bodian">Bodian (波点高保真)</option>
+                <option value="netease">NetEase (网易云)</option>
+                <option value="qq">QQ 音乐 (Tencent)</option>
+                <option value="kugou">KuGou (酷狗)</option>
+                <option value="kuwo">Kuwo (酷我无损)</option>
+                <option value="bilibili">Bilibili (视频音轨)</option>
+                <option value="migu">Migu (咪咕)</option>
+                <option value="joox">JOOX (海外音源)</option>
+              </select>
+            </div>
+            <div class="md:col-span-3 min-w-0" id="bitrateContainer">
+              <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">音质码率 / 格式 (br)</label>
+              <select id="bitrateSelect" onchange="updateWorkbenchUrlPreview()" class="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-mono text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer text-slate-900 dark:text-white">
+                <option value="999">999kbps (FLAC 无损最高品质)</option>
+                <option value="320" selected>320kbps (标准高保真)</option>
+                <option value="192">192kbps (中等音质)</option>
+                <option value="128">128kbps (标准流畅)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-white/5">
+            <div class="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+              <span class="font-bold text-slate-400 flex-shrink-0 text-[11px]">快速预设:</span>
+              <button onclick="fillPreset('8401628431', 'playlist', '天赐的声音全收录')" class="px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white transition interactive-btn text-[11px] font-semibold">天赐的声音</button>
+              <button onclick="fillPreset('988690134', 'playlist', '经典老歌久听不厌')" class="px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500 hover:text-white transition interactive-btn text-[11px] font-semibold">经典老歌·岁月留声</button>
+              <button onclick="fillPreset('191060', 'match', '张杰《这，就是爱》')" class="px-2.5 py-1 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500 hover:text-white transition interactive-btn text-[11px] font-semibold">张杰《这，就是爱》</button>
+              <button onclick="fillPreset('186016', 'match', '周杰伦《晴天》')" class="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-sky-500 transition interactive-btn text-[11px]">周杰伦《晴天》</button>
+              <button onclick="fillPreset('1901371647', 'match', '陈奕迅《孤勇者》')" class="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-sky-500 transition interactive-btn text-[11px]">陈奕迅《孤勇者》</button>
+            </div>
+            <button onclick="executeApiTest()" id="executeBtn" class="px-6 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center space-x-1.5 shadow-md shadow-sky-500/20 interactive-btn flex-shrink-0"><i data-lucide="send" class="w-3.5 h-3.5"></i><span>发送实时请求</span></button>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-slate-300 space-y-2.5 font-mono text-xs">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2 min-w-0">
+              <span class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 font-bold text-[10px] uppercase">GET Request</span>
+              <span id="previewRequestUrl" class="text-slate-300 truncate font-mono text-[11px] select-all">/match?id=191060&br=320</span>
+            </div>
+            <div class="flex items-center space-x-1.5 flex-shrink-0">
+              <button onclick="openWorkbenchUrlInNewTab()" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition interactive-btn" title="在新标签页中打开 URL"><i data-lucide="external-link" class="w-3.5 h-3.5"></i></button>
+              <button onclick="copyWorkbenchCurl()" class="px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 transition interactive-btn flex items-center space-x-1 text-[11px] font-sans font-bold" title="复制完整 cURL 命令"><i data-lucide="terminal" class="w-3 h-3"></i><span>复制 cURL</span></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-200 space-y-3 font-mono text-xs sm:text-sm w-full min-w-0 overflow-hidden shadow-inner">
+          <div class="flex flex-wrap items-center justify-between pb-3 border-b border-slate-800 text-xs gap-2">
+            <div class="flex items-center space-x-2 sm:space-x-3">
+              <span class="px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-400 text-[11px]" id="resStatus">HTTP --</span>
+              <span class="text-slate-400 font-semibold text-[11px]" id="resLatency">耗时: --ms</span>
+              <span class="text-sky-400 font-bold text-[11px]" id="resSource">命中音源: --</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button onclick="copyResponseJson()" class="text-slate-300 hover:text-white transition flex items-center space-x-1 interactive-btn font-sans text-xs"><i data-lucide="copy" class="w-3.5 h-3.5"></i><span>复制 JSON</span></button>
+            </div>
+          </div>
+          <pre id="jsonOutput" class="leading-relaxed overflow-x-auto custom-scroll max-h-72 text-slate-300 p-2 text-[11px] sm:text-xs w-full bg-slate-900/50 rounded-xl">点击发送请求或选择上方预设即可查看实时返回数据...</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- 13 大音源支持矩阵 -->
+    <section id="providers" class="space-y-5 sm:space-y-8 w-full min-w-0">
+      <div class="text-center max-w-2xl mx-auto space-y-1.5">
+        <div class="inline-flex items-center space-x-1 text-xs font-bold text-sky-500 uppercase tracking-wider"><i data-lucide="radio" class="w-3.5 h-3.5"></i><span>Multi-Source Cluster</span></div>
+        <h2 class="text-xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">13 大音源集群调度能力</h2>
+        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300">全平台支持免 Cookie 自动化解析，具备多级回退重试与并发竞速抢占能力</p>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 w-full min-w-0">
+        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">GD Studio</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-sky-500/10 text-sky-500">主核心</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">官方 API 端点，支持无损 320k/FLAC。</p></div>
+        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">Bodian (波点)</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-emerald-500/10 text-emerald-500">高保真</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">高保真流媒体，解析成功率超 99%。</p></div>
+        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">JOOX</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-indigo-500/10 text-indigo-500">海外音源</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">港台与海外曲库覆盖，直链稳定。</p></div>
+        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">KuGou (酷狗)</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-slate-500/10 text-slate-500">国内大库</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">庞大华语曲库，多品质毫秒匹配。</p></div>
+        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">Kuwo (酷我)</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-slate-500/10 text-slate-500">无损 FLAC</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">高码率音源库，支持无损试听。</p></div>
+        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">BiliVideo / Bili</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-pink-500/10 text-pink-500">ACG / Live</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">高质量现场翻唱与二次元音轨。</p></div>
+        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">PyNcmD</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-amber-500/10 text-amber-500">网易云官方</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">官方 API 双通道，解决 syntax 兼容。</p></div>
+        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">QQ / Migu / YT</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-purple-500/10 text-purple-500">全球热备</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">QQ音乐、咪咕、YouTube 容灾热备。</p></div>
+      </div>
+    </section>
+
+    <!-- REST 契约规范表 -->
+    <section id="specs" class="space-y-4 w-full min-w-0 overflow-hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div>
+          <h2 class="text-lg sm:text-2xl font-extrabold text-slate-900 dark:text-white flex items-center space-x-2"><i data-lucide="book-open" class="w-4 h-4 sm:w-5 sm:h-5 text-sky-500"></i><span>REST API 接口契约规范</span></h2>
+          <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5">响应格式统一遵循 <code>{ code: 200, message: "...", data: ... }</code></p>
+        </div>
+        <button onclick="toggleSpecsTable()" id="btnSpecsToggle" title="折叠表格" class="group flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-sky-500 transition interactive-btn px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 w-fit flex-shrink-0 shadow-sm">
+          <svg class="w-4 h-4 text-slate-500 group-hover:text-sky-500 dark:text-slate-400 dark:group-hover:text-sky-400 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path><path d="M9 3v18"></path></svg>
+          <i data-lucide="chevron-up" class="w-3.5 h-3.5 transition-transform duration-300" id="iconSpecsToggle"></i>
+        </button>
+      </div>
+      <div id="specsTableContent" class="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white/60 dark:bg-slate-900/40 text-xs sm:text-sm transition-all duration-300 w-full min-w-0">
+        <div class="overflow-x-auto custom-scroll w-full">
+          <table class="w-full text-left min-w-[500px] table-auto">
+            <thead class="bg-slate-100/60 dark:bg-slate-950/60 border-b border-slate-200 dark:border-white/10 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
+              <tr><th class="py-2.5 px-3.5">端点</th><th class="py-2.5 px-3.5">方法</th><th class="py-2.5 px-3.5">参数</th><th class="py-2.5 px-3.5">用途</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-xs">
+              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/match</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">id, server, br</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">多音源智能解灰，返回直链</td></tr>
+              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/playlist/:id</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">:id, limit, idsOnly</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">批量解析网易云歌单曲目与元数据（支持分块并发完整获取）</td></tr>
+              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/ncmget</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">id, br</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">网易云官方高码率直链</td></tr>
+              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/search</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">name, source, count, page</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">跨平台多音源歌曲与歌手检索</td></tr>
+              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/lyric</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">id, source</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">LRC 逐行同步歌词与翻译</td></tr>
+              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/pic</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">id, source, size</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">高清专辑封面图获取</td></tr>
+              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/health</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">verbose</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">服务健康检查、内存占用与缓存统计</td></tr>
+              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/api/monitor/data</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">page, limit, path, status</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">实时遥测统计与调用明细日志</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>
 
-  <!-- 底部 Footer -->
-  <footer class="w-full max-w-7xl mx-auto px-6 py-12 text-center text-sm text-slate-500 dark:text-slate-400 border-t border-slate-200/60 dark:border-white/10 space-y-4 relative z-10 font-medium">
-    <div class="flex flex-wrap items-center justify-center gap-6">
-      <a href="https://github.com/UnblockNeteaseMusic/server" target="_blank" class="hover:text-slate-800 dark:hover:text-slate-200 transition flex items-center space-x-1.5 interactive-btn">
-        <svg class="w-4 h-4 fill-current inline-block" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-        <span>UNM Engine 0.28.0+</span>
-      </a>
-      <span>·</span>
-      <a href="https://music.gdstudio.xyz" target="_blank" class="hover:text-slate-800 dark:hover:text-slate-200 transition flex items-center space-x-1.5 interactive-btn">
-        <i data-lucide="music" class="w-4 h-4"></i>
-        <span>GD Studio API</span>
-      </a>
-      <span>·</span>
-      <a href="/dashboard" class="hover:text-slate-800 dark:hover:text-slate-200 transition flex items-center space-x-1.5 font-bold text-indigo-500 interactive-btn">
-        <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
-        <span>调用监控大盘</span>
-      </a>
-      <span>·</span>
-      <a href="/info" target="_blank" class="hover:text-slate-800 dark:hover:text-slate-200 transition flex items-center space-x-1.5 interactive-btn">
-        <i data-lucide="info" class="w-4 h-4"></i>
-        <span>系统信息 (/info)</span>
-      </a>
-    </div>
-
-    <div>
-      Copyright &copy; <span id="year"></span> <a href="https://imsyy.top/" target="_blank" class="hover:text-slate-700 dark:hover:text-slate-300 font-bold">imsyy</a> · UNM-Server All Rights Reserved
+  <!-- 统一高阶架构页脚 -->
+  <footer class="w-full border-t border-slate-200/80 dark:border-white/10 glass-panel bg-white/60 dark:bg-slate-950/70 relative z-10 transition-colors mt-12 sm:mt-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-10">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10 w-full min-w-0">
+        <div class="lg:col-span-5 space-y-4 min-w-0">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2"><img src="./favicon.png" alt="UNM-Server Logo" class="w-full h-full object-contain" /></div>
+            <div class="flex items-center space-x-2">
+              <span class="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
+              <span class="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">v3.1 PRO</span>
+            </div>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">企业级跨源音乐流媒体与无损音频解析中台网关。基于 Hono + TypeScript 构建，提供智能解灰、FLAC 24-bit/192kHz 母带直连、实时 LRC 歌词与全链路遥测。</p>
+          <div class="flex flex-wrap items-center gap-2 pt-1 font-mono text-xs">
+            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span><span>13 Nodes Online</span></span>
+            <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-semibold"><i data-lucide="zap" class="w-3 h-3"></i><span>Zero-Buffer Stream</span></span>
+          </div>
+        </div>
+        <div class="lg:col-span-2 space-y-3 min-w-0">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">核心特性</h4>
+          <ul class="space-y-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
+            <li><a href="#playlist-station" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>多音源解灰匹配</span></a></li>
+            <li><a href="#playlist-station" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>歌单完整获取与分页</span></a></li>
+            <li><a href="#workbench" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>API 在线调试台</span></a></li>
+            <li><a href="#providers" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>13 大音源矩阵</span></a></li>
+          </ul>
+        </div>
+        <div class="lg:col-span-2 space-y-3 min-w-0">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">开发者 & 中台</h4>
+          <ul class="space-y-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
+            <li><a href="#workbench" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>API 交互调试台</span></a></li>
+            <li><a href="/dashboard" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5 font-semibold text-sky-600 dark:text-sky-400"><span>全链路遥测大盘</span></a></li>
+            <li><a href="/info" target="_blank" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>系统环境配置 (/info)</span></a></li>
+            <li><a href="/health" target="_blank" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>节点健康检查 (/health)</span></a></li>
+          </ul>
+        </div>
+        <div class="lg:col-span-3 space-y-3 min-w-0">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">开源生态 & 社区</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">本项目完全遵循 MIT 开源协议，支持私有化部署、Docker 容器化与云原生集群集成。</p>
+          <div class="space-y-1.5 text-xs text-slate-500 dark:text-slate-400 font-mono">
+            <div><span class="text-slate-400">上游核心:</span> <a href="https://github.com/UnblockNeteaseMusic/server" target="_blank" class="text-sky-500 hover:underline">UNM Engine 0.28.0+</a></div>
+            <div><span class="text-slate-400">官方 API:</span> <a href="https://music.gdstudio.xyz" target="_blank" class="text-sky-500 hover:underline">GD Studio XYZ</a></div>
+            <div><span class="text-slate-400">项目作者:</span> <a href="https://imsyy.top/" target="_blank" class="text-slate-800 dark:text-slate-200 font-bold hover:underline">imsyy</a></div>
+          </div>
+        </div>
+      </div>
+      <div class="pt-6 border-t border-slate-200/60 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400 font-medium">
+        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2"><span>Copyright &copy; <span class="current-year-text">2026</span> <a href="https://imsyy.top/" target="_blank" class="font-bold text-slate-800 dark:text-slate-200 hover:text-sky-500 transition">imsyy</a> · UNM-Server All Rights Reserved.</span></div>
+        <div class="flex flex-wrap items-center justify-center gap-2 font-mono text-[11px]">
+          <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300">Hono 4.7+</span>
+          <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300">TypeScript 5.7+</span>
+          <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-emerald-500 font-semibold">SLA 99.99%</span>
+        </div>
+      </div>
     </div>
   </footer>
 
-  <!-- 交互逻辑脚本 -->
+  <!-- HTML5 原生 Audio 引擎 -->
+  <audio id="mainAudioPlayer" preload="none"></audio>
+
+  <!-- 前端应用逻辑 (ES6+ 零构建) -->
   <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
+    // --- 全局状态 ---
+    let currentTrack = null;
+    let playQueue = [];
+    let currentQueueIndex = -1;
+    let isPlaying = false;
+    let playMode = 'repeat';
+    let lyricsData = [];
+    let currentLyricIndex = -1;
+    let currentSearchTab = 'match';
+    let currentPage = 1;
+    let totalPages = 1;
+    let pageSize = 20;
+    let currentMode = 'playlist';
+    let allFullTracks = [];
+    let filteredTracks = [];
+    let currentSearchResults = [];
+    let playlistFilterKeyword = '';
+    let lastTestedAudioUrl = '';
+
+    const audio = document.getElementById('mainAudioPlayer');
+
+    document.querySelectorAll('.current-year-text').forEach(el => el.textContent = new Date().getFullYear());
     lucide.createIcons();
 
-    // 现代 Toast 通知系统
-    function showToast({ type = 'info', title = '', message = '', duration = 3000 }) {
+    // --- 主题切换 ---
+    const themeToggle = document.getElementById('themeToggle');
+    function setTheme(isDark) {
+      document.documentElement.classList.toggle('dark', isDark);
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      lucide.createIcons();
+    }
+    const savedTheme = localStorage.getItem('theme');
+    setTheme(savedTheme !== 'light');
+    themeToggle.addEventListener('click', () => setTheme(!document.documentElement.classList.contains('dark')));
+
+    // --- Toast 提示 ---
+    function showToast({ type = 'info', title = '提示', message = '' }) {
       const container = document.getElementById('toastContainer');
-      if (!container) return;
-
       const toast = document.createElement('div');
-      const id = 'toast_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
-      toast.id = id;
-
-      let iconHtml = '<i data-lucide="info" class="w-5 h-5 text-sky-500"></i>';
-      let borderClass = 'border-sky-500/20';
-
-      if (type === 'success') {
-        iconHtml = '<i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-500"></i>';
-        borderClass = 'border-emerald-500/20';
-      } else if (type === 'error') {
-        iconHtml = '<i data-lucide="alert-circle" class="w-5 h-5 text-rose-500"></i>';
-        borderClass = 'border-rose-500/20';
-      } else if (type === 'warning') {
-        iconHtml = '<i data-lucide="alert-triangle" class="w-5 h-5 text-amber-500"></i>';
-        borderClass = 'border-amber-500/20';
-      }
-
-      toast.className = `glass-panel bg-white/95 dark:bg-slate-900/95 border ${borderClass} shadow-2xl px-4 py-3.5 rounded-2xl flex items-start space-x-3.5 pointer-events-auto transform translate-x-12 opacity-0 transition-all duration-300 ease-out max-w-md`;
+      toast.className = 'p-3.5 sm:p-4 rounded-2xl bg-slate-900/95 border shadow-2xl text-white flex items-start space-x-3 pointer-events-auto backdrop-blur-xl transition-all duration-300 transform translate-y-2 opacity-0 ' +
+        (type === 'success' ? 'border-emerald-500/40 text-emerald-300' :
+         type === 'error' ? 'border-rose-500/40 text-rose-300' :
+         type === 'warning' ? 'border-amber-500/40 text-amber-300' :
+         'border-sky-500/40 text-sky-300');
+      const iconName = type === 'success' ? 'check-circle-2' : type === 'error' ? 'alert-circle' : type === 'warning' ? 'alert-triangle' : 'info';
       toast.innerHTML = `
-        <div class="flex-shrink-0 mt-0.5">${iconHtml}</div>
-        <div class="flex-1 text-sm">
-          ${title ? `<div class="font-bold text-slate-900 dark:text-white mb-0.5">${title}</div>` : ''}
-          <div class="text-slate-600 dark:text-slate-300 leading-relaxed">${message}</div>
-        </div>
-        <button onclick="dismissToast('${id}')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 interactive-btn">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-      `;
-
+        <div class="mt-0.5 flex-shrink-0"><i data-lucide="${iconName}" class="w-5 h-5"></i></div>
+        <div class="flex-1 min-w-0">
+          <div class="font-bold text-xs sm:text-sm text-white truncate">${title}</div>
+          <div class="text-[11px] sm:text-xs text-slate-300 mt-0.5 break-words">${message}</div>
+        </div>`;
       container.appendChild(toast);
       lucide.createIcons();
+      requestAnimationFrame(() => toast.classList.remove('translate-y-2', 'opacity-0'));
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
 
-      requestAnimationFrame(() => {
-        toast.classList.remove('translate-x-12', 'opacity-0');
-        toast.classList.add('translate-x-0', 'opacity-100');
-      });
-
-      if (duration > 0) {
-        setTimeout(() => dismissToast(id), duration);
+    // --- 服务 Ping 探活 ---
+    async function checkHealthPing() {
+      const startTime = performance.now();
+      try {
+        const res = await fetch('/ping');
+        const latency = Math.round(performance.now() - startTime);
+        if (res.ok) document.getElementById('pingText').textContent = `Ping: ${latency}ms`;
+      } catch (e) {
+        document.getElementById('pingText').textContent = 'Offline';
       }
     }
+    checkHealthPing();
+    setInterval(checkHealthPing, 10000);
 
-    function dismissToast(id) {
-      const toast = document.getElementById(id);
-      if (!toast) return;
-      toast.classList.remove('translate-x-0', 'opacity-100');
-      toast.classList.add('translate-x-12', 'opacity-0');
-      setTimeout(() => toast.remove(), 300);
+    // --- 移动端抽屉 ---
+    function toggleMobileDrawer() {
+      const drawer = document.getElementById('mobileDrawer');
+      drawer.classList.toggle('hidden');
+      drawer.classList.toggle('flex');
     }
 
-    // 1. 契约表格折叠与展开
-    let specsTableExpanded = true;
-    function toggleSpecsTable() {
-      specsTableExpanded = !specsTableExpanded;
-      const content = document.getElementById('specsTableContent');
-      const icon = document.getElementById('iconSpecsToggle');
-      const label = document.getElementById('labelSpecsToggle');
-
-      if (specsTableExpanded) {
-        content.classList.remove('hidden');
-        icon.classList.remove('rotate-180');
-        label.textContent = '折叠表格';
-        showToast({ type: 'info', title: '表格展开', message: '已展开 REST API 接口契约规范表' });
-      } else {
-        content.classList.add('hidden');
-        icon.classList.add('rotate-180');
-        label.textContent = '展开表格';
-        showToast({ type: 'info', title: '表格折叠', message: '已收起 REST API 接口契约规范表' });
-      }
+    // --- 折叠系统 (纯 SVG 表格图标) ---
+    function bindCollapse(btnId, iconId, bodyId, stateKey) {
+      window[stateKey] = false;
+      return function toggle() {
+        window[stateKey] = !window[stateKey];
+        const body = document.getElementById(bodyId);
+        const icon = document.getElementById(iconId);
+        const btn = document.getElementById(btnId);
+        if (window[stateKey]) {
+          body.classList.add('hidden');
+          icon.classList.add('rotate-180');
+          btn.title = '展开表格';
+        } else {
+          body.classList.remove('hidden');
+          icon.classList.remove('rotate-180');
+          btn.title = '折叠表格';
+        }
+        lucide.createIcons();
+      };
     }
+    const togglePlaylistStation = bindCollapse('btnPlaylistToggle', 'iconPlaylistToggle', 'playlistStationBody', '_playlistCollapsed');
+    const toggleWorkbenchStation = bindCollapse('btnWorkbenchToggle', 'iconWorkbenchToggle', 'workbenchStationBody', '_workbenchCollapsed');
+    const toggleSpecsTable = bindCollapse('btnSpecsToggle', 'iconSpecsToggle', 'specsTableContent', '_specsCollapsed');
 
-    // 2. 昼夜模式
-    const themeToggle = document.getElementById('themeToggle');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
-
-    function setTheme(isDark, silent = false) {
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-        if (!silent) showToast({ type: 'info', title: '主题模式', message: '已切换至深色暗夜模式 🌙' });
-      } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-        if (!silent) showToast({ type: 'info', title: '主题模式', message: '已切换至清爽浅色模式 ☀️' });
-      }
-      lucide.createIcons();
-    }
-
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark.matches)) {
-      setTheme(true, true);
-    } else {
-      setTheme(false, true);
-    }
-
-    themeToggle.addEventListener('click', () => {
-      const isDark = document.documentElement.classList.contains('dark');
-      setTheme(!isDark);
+    // --- 音频播放引擎 ---
+    audio.addEventListener('timeupdate', () => {
+      if (!audio.duration) return;
+      syncLyrics(audio.currentTime);
     });
 
-    // 3. 实时 Ping 与遥测数据
-    async function loadTelemetry() {
-      const startPing = Date.now();
+    audio.addEventListener('ended', () => {
+      if (playMode === 'single') {
+        audio.currentTime = 0;
+        audio.play();
+      } else if (currentQueueIndex < playQueue.length - 1) {
+        playTrackAt(currentQueueIndex + 1);
+      } else if (playQueue.length > 0 && playMode === 'repeat') {
+        playTrackAt(0);
+      }
+    });
+
+    audio.addEventListener('error', () => {
+      showToast({ type: 'error', title: '音频播放失败', message: '该音源直链已失效或跨域受限' });
+    });
+
+    function formatTime(seconds) {
+      if (isNaN(seconds) || seconds < 0) return '00:00';
+      const m = Math.floor(seconds / 60), s = Math.floor(seconds % 60);
+      return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    async function playSongItem(track) {
+      currentTrack = track;
+      showToast({ type: 'info', title: '正在匹配音频', message: `正在为《${track.name}》调度高保真直链...` });
       try {
-        const [infoRes, healthRes] = await Promise.all([
-          fetch('/info').then(r => r.json()),
-          fetch('/health?verbose=true').then(r => r.json())
-        ]);
-        const pingMs = Date.now() - startPing;
-        document.getElementById('pingText').textContent = `Ping: ${pingMs}ms`;
-
-        if (infoRes.code === 200 && infoRes.data) {
-          const uptimeSec = infoRes.data.uptime || 0;
-          const h = Math.floor(uptimeSec / 3600);
-          const m = Math.floor((uptimeSec % 3600) / 60);
-          const s = uptimeSec % 60;
-          document.getElementById('statUptime').textContent = `${h}h ${m}m ${s}s`;
-          if (Array.isArray(infoRes.data.providers)) {
-            document.getElementById('statProviderCount').textContent = `${infoRes.data.providers.length} 个音源`;
+        let audioUrl = track.url;
+        if (!audioUrl && track.id) {
+          const matchRes = await fetch(`/match?id=${track.id}&br=999`);
+          const matchData = await matchRes.json();
+          if (matchData.code === 200 && matchData.data?.url) {
+            audioUrl = matchData.data.url;
+          } else {
+            throw new Error(matchData.message || '无可用音源');
           }
         }
-
-        if (healthRes.code === 200 && healthRes.data) {
-          if (healthRes.data.memory) {
-            const mb = (healthRes.data.memory.rss / (1024 * 1024)).toFixed(1);
-            document.getElementById('statMemory').textContent = `${mb} MB`;
-          }
-          if (healthRes.data.cache) {
-            document.getElementById('statCacheHitRate').textContent = healthRes.data.cache.hitRate || '0%';
-            document.getElementById('statCacheCount').textContent = `${healthRes.data.cache.size} 条目热加载就绪`;
-          }
-        }
+        audio.src = audioUrl;
+        await audio.play();
+        showToast({ type: 'success', title: '开始播放', message: `《${track.name}》- ${track.artist}` });
+        loadLyrics(track.id, track.source || 'netease');
       } catch (err) {
-        console.warn('Telemetry error:', err);
+        showToast({ type: 'error', title: '匹配失败', message: err.message || '未能成功获取直链' });
       }
     }
 
-    loadTelemetry();
-    setInterval(loadTelemetry, 8000);
+    function playTrackAt(index) {
+      if (index < 0 || index >= playQueue.length) return;
+      currentQueueIndex = index;
+      playSongItem(playQueue[index]);
+    }
 
-    // 4. 多语言代码切换（动态使用当前站点地址，杜绝硬编码）
-    const API_BASE = window.location.origin;
-    const codeExamples = {
-      curl: `curl -X GET "${API_BASE}/match?id=186016&br=320" \\
-  -H "Accept: application/json"`,
-      js: `// ES Module / Browser Fetch
-const response = await fetch("${API_BASE}/match?id=186016&br=320");
-const { code, data } = await response.json();
-console.log("Audio URL:", data.url, "Source:", data.source);`,
-      python: `# Python 3 Requests
-import requests
+    // --- LRC 歌词解析与同步 ---
+    async function loadLyrics(id, source) {
+      lyricsData = [];
+      currentLyricIndex = -1;
+      try {
+        const res = await fetch(`/lyric?id=${id}&source=${source}`);
+        const json = await res.json();
+        if (json.code === 200 && json.data?.lyric) parseLRC(json.data.lyric);
+      } catch (e) {}
+    }
 
-res = requests.get("${API_BASE}/match", params={"id": "186016", "br": 320})
-data = res.json()
-print("Matched URL:", data["data"]["url"])`,
-      axios: `// Node.js Axios
-const axios = require("axios");
-
-const { data } = await axios.get("${API_BASE}/match", {
-  params: { id: "186016", br: 320 }
-});
-console.log("Track:", data.data.title, data.data.url);`
-    };
-
-    let currentCodeLang = 'curl';
-
-    function switchCodeLang(lang) {
-      currentCodeLang = lang;
-      document.getElementById('codeBlock').textContent = codeExamples[lang] || codeExamples.curl;
-      const tabBtns = document.querySelectorAll('#codeLangTabs button');
-      tabBtns.forEach(btn => {
-        if (btn.dataset.lang === lang) {
-          btn.className = "px-2.5 py-1 rounded-lg text-xs font-semibold text-sky-400 bg-sky-950 border border-sky-800 interactive-btn";
-        } else {
-          btn.className = "px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-white interactive-btn";
+    function parseLRC(lrcText) {
+      lyricsData = [];
+      const timeExp = /[(d{2}):(d{2}).(d{2,3})]/g;
+      for (const line of lrcText.split('\n')) {
+        const m = timeExp.exec(line);
+        if (m) {
+          const time = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + parseFloat('0.' + m[3]);
+          const text = line.replace(timeExp, '').trim();
+          if (text) lyricsData.push({ time, text });
         }
-      });
-      showToast({ type: 'info', title: '切换语言', message: `已载入 ${lang.toUpperCase()} 集成调用代码示例` });
+      }
+      lyricsData.sort((a, b) => a.time - b.time);
     }
 
-    function copyCode() {
-      const code = codeExamples[currentCodeLang] || '';
-      navigator.clipboard.writeText(code);
-      const icon = document.getElementById('copyIcon');
-      icon.setAttribute('data-lucide', 'check');
+    function syncLyrics(currentTime) {
+      if (lyricsData.length === 0 || !currentTrack) return;
+      let activeIndex = -1;
+      for (let i = 0; i < lyricsData.length; i++) {
+        if (currentTime >= lyricsData[i].time) activeIndex = i;
+        else break;
+      }
+      if (activeIndex !== currentLyricIndex && activeIndex !== -1) {
+        currentLyricIndex = activeIndex;
+        // 当前歌词行已就绪 (可扩展 UI 显示)
+      }
+    }
+
+    // --- 搜索与歌单完整获取 + 多端分页管理 ---
+    async function executeSearch(page = 1) {
+      const keyword = document.getElementById('searchKeywordInput').value.trim();
+      const source = document.getElementById('searchSourceSelect').value;
+      if (!keyword) {
+        showToast({ type: 'warning', title: '搜索提示', message: '请输入歌曲名或歌手' });
+        return;
+      }
+
+      currentMode = 'search';
+      const tbody = document.getElementById('trackListBody');
+      tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400"><i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-2 animate-spin text-sky-500"></i><span>正在全网跨源搜索《${keyword}》...</span></td></tr>`;
       lucide.createIcons();
-      showToast({ type: 'success', title: '代码已复制', message: `已将 ${currentCodeLang.toUpperCase()} 集成代码复制至剪贴板` });
-      setTimeout(() => {
-        icon.setAttribute('data-lucide', 'copy');
-        lucide.createIcons();
-      }, 1500);
+
+      try {
+        const res = await fetch(`/search?name=${encodeURIComponent(keyword)}&source=${source}&count=50&page=${page}`);
+        const json = await res.json();
+        if (json.code === 200 && Array.isArray(json.data) && json.data.length > 0) {
+          allFullTracks = json.data.map(item => ({
+            id: item.id || item.song_id || item.mid,
+            name: item.name || item.title || item.song_name,
+            artist: Array.isArray(item.artist) ? item.artist.join('/') : (item.artist || item.singer),
+            album: item.album || item.album_name || '-',
+            source: item.source || source,
+            picUrl: item.pic,
+          }));
+          document.getElementById('searchResultTitle').textContent = `搜索: 《${keyword}》`;
+          playlistFilterKeyword = '';
+          const filterInput = document.getElementById('playlistFilterInput');
+          if (filterInput) filterInput.value = '';
+          applyTrackListPagination(1);
+        } else {
+          tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400">未检索到匹配的曲目</td></tr>`;
+          lucide.createIcons();
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-rose-400">搜索请求异常: ${err.message}</td></tr>`;
+      }
     }
 
-    // 5. 工作台 API 选项卡与执行
-    let activeApi = 'match';
+    async function loadPresetPlaylist(playlistId, title) {
+      currentMode = 'playlist';
+      showToast({ type: 'info', title: '正在载入歌单', message: `正在完整获取《${title}》全部曲目...` });
+      const tbody = document.getElementById('trackListBody');
+      tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400"><i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-2 animate-spin text-sky-500"></i><span>正在完整解析歌单《${title}》(ID: ${playlistId}) 全部曲目...</span></td></tr>`;
+      lucide.createIcons();
+
+      try {
+        const res = await fetch(`/playlist/${playlistId}?limit=1000`);
+        const json = await res.json();
+        if (json.code === 200 && json.data) {
+          const detail = json.data;
+          let tracks = [];
+          if (Array.isArray(detail.tracks) && detail.tracks.length > 0) {
+            tracks = detail.tracks.map(t => ({
+              id: t.id, name: t.name,
+              artist: t.artist || '未知艺人',
+              album: t.album || '-', source: 'netease', picUrl: t.picUrl
+            }));
+          } else if (Array.isArray(detail.songIds)) {
+            tracks = detail.songIds.map((id, idx) => ({ id, name: `歌单曲目 #${idx + 1}`, artist: '网易云精选', album: title, source: 'netease' }));
+          }
+          allFullTracks = tracks;
+          playlistFilterKeyword = '';
+          const filterInput = document.getElementById('playlistFilterInput');
+          if (filterInput) filterInput.value = '';
+          document.getElementById('searchResultTitle').textContent = `歌单: ${detail.name || title}`;
+          applyTrackListPagination(1);
+          showToast({ type: 'success', title: '歌单全部曲目已就绪', message: `成功加载 ${tracks.length} 首歌曲，支持分页与筛选` });
+        } else {
+          throw new Error(json.message || '解析失败');
+        }
+      } catch (err) {
+        showToast({ type: 'error', title: '歌单解析失败', message: err.message });
+      }
+    }
+
+    function onPlaylistFilterInput(keyword) {
+      playlistFilterKeyword = keyword.trim().toLowerCase();
+      applyTrackListPagination(1);
+    }
+
+    function changePageSize(val) {
+      pageSize = parseInt(val, 10) || 20;
+      applyTrackListPagination(1);
+    }
+
+    function applyTrackListPagination(page = 1) {
+      filteredTracks = playlistFilterKeyword
+        ? allFullTracks.filter(t =>
+            (t.name || '').toLowerCase().includes(playlistFilterKeyword) ||
+            (t.artist || '').toLowerCase().includes(playlistFilterKeyword) ||
+            (t.album || '').toLowerCase().includes(playlistFilterKeyword))
+        : [...allFullTracks];
+
+      const totalCount = filteredTracks.length;
+      totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+      currentPage = Math.min(Math.max(1, page), totalPages);
+
+      const startIndex = (currentPage - 1) * pageSize;
+      currentSearchResults = filteredTracks.slice(startIndex, startIndex + pageSize);
+
+      renderTrackTable(currentSearchResults, startIndex);
+      document.getElementById('searchResultCountBadge').textContent = `共 ${totalCount} 首`;
+      document.getElementById('currentPageNum').textContent = currentPage;
+      document.getElementById('totalPageNum').textContent = totalPages;
+      document.getElementById('totalTracksNum').textContent = totalCount;
+
+      const paginationContainer = document.getElementById('searchPagination');
+      if (totalCount > 0) {
+        paginationContainer.classList.remove('hidden');
+        paginationContainer.classList.add('flex');
+      } else {
+        paginationContainer.classList.add('hidden');
+      }
+
+      document.getElementById('btnPageFirst').disabled = (currentPage === 1);
+      document.getElementById('btnPagePrev').disabled = (currentPage === 1);
+      document.getElementById('btnPageNext').disabled = (currentPage === totalPages);
+      document.getElementById('btnPageLast').disabled = (currentPage === totalPages);
+      renderPageNumbers();
+    }
+
+    function renderPageNumbers() {
+      const container = document.getElementById('pageNumberButtons');
+      if (!container) return;
+      const pages = [];
+      for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) pages.push(i);
+      container.innerHTML = pages.map(p => `
+        <button onclick="goToPage(${p})" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl font-mono text-xs font-bold transition interactive-btn flex items-center justify-center ${p === currentPage ? 'bg-sky-500 text-white shadow-md shadow-sky-500/25' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-sky-500'}">${p}</button>
+      `).join('');
+    }
+
+    function goToPage(page) {
+      if (page < 1 || page > totalPages) return;
+      applyTrackListPagination(page);
+    }
+
+    function jumpToPageInput() {
+      const val = parseInt(document.getElementById('pageJumpInput').value, 10);
+      if (val >= 1 && val <= totalPages) goToPage(val);
+      else showToast({ type: 'warning', title: '页码无效', message: `请输入 1 到 ${totalPages} 之间的有效页码` });
+    }
+
+    function renderTrackTable(tracks, globalOffset = 0) {
+      const tbody = document.getElementById('trackListBody');
+      if (!tracks || tracks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-12 text-center text-slate-400">未匹配到任何歌曲曲目</td></tr>';
+        return;
+      }
+      tbody.innerHTML = tracks.map((track, idx) => `
+        <tr class="hover:bg-slate-100/50 dark:hover:bg-slate-900/60 transition group">
+          <td class="py-3 px-4 font-mono text-center text-slate-400">${globalOffset + idx + 1}</td>
+          <td class="py-3 px-4 min-w-0">
+            <div class="font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-500 transition-colors">${track.name}</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">${track.artist || '未知艺人'}</div>
+          </td>
+          <td class="py-3 px-4 text-slate-600 dark:text-slate-300 truncate max-w-[160px]">${track.album || '-'}</td>
+          <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/10 text-sky-500 border border-sky-500/20 font-mono uppercase">${track.source || 'NCM'}</span></td>
+          <td class="py-3 px-4 text-right whitespace-nowrap">
+            <div class="flex items-center justify-end space-x-1.5">
+              <button onclick="playSingleTrack(${idx})" class="p-1.5 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 hover:bg-sky-500 hover:text-white transition interactive-btn" title="立即播放"><i data-lucide="play" class="w-3.5 h-3.5"></i></button>
+              <button onclick="addSingleTrackToQueue(${idx})" class="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn" title="加入播放队列"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
+              <button onclick="testInWorkbench('${track.id}', '${track.name}')" class="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-cyan-500 transition interactive-btn" title="填入调试台"><i data-lucide="terminal" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </td>
+        </tr>`).join('');
+      lucide.createIcons();
+    }
+
+    function playSingleTrack(idx) {
+      const track = currentSearchResults[idx];
+      if (!track) return;
+      playQueue.unshift(track);
+      currentQueueIndex = 0;
+      playSongItem(track);
+    }
+
+    function addSingleTrackToQueue(idx) {
+      const track = currentSearchResults[idx];
+      if (!track) return;
+      playQueue.push(track);
+      showToast({ type: 'success', title: '已加入队列', message: `《${track.name}》` });
+    }
+
+    function playAllSearchResults() {
+      const targetList = filteredTracks.length > 0 ? filteredTracks : allFullTracks;
+      if (targetList.length === 0) {
+        showToast({ type: 'warning', title: '列表为空', message: '请先载入歌单或搜索歌曲' });
+        return;
+      }
+      playQueue = [...targetList];
+      currentQueueIndex = 0;
+      playSongItem(playQueue[0]);
+      showToast({ type: 'success', title: '开始播放全部', message: `已载入 ${playQueue.length} 首曲目` });
+    }
+
+    function addAllToQueue() {
+      const targetList = filteredTracks.length > 0 ? filteredTracks : allFullTracks;
+      if (targetList.length === 0) return;
+      playQueue.push(...targetList);
+      showToast({ type: 'success', title: '已批量添加', message: `已将 ${targetList.length} 首曲目加入队列` });
+    }
+
+    // --- 方案 A: 在线 API 调试台 ---
+    function buildWorkbenchUrl() {
+      const val = (document.getElementById('testInput')?.value || '').trim();
+      const server = document.getElementById('serverSelect')?.value || '';
+      const br = document.getElementById('bitrateSelect')?.value || '320';
+
+      let url = '';
+      if (currentSearchTab === 'match') url = `/match?id=${encodeURIComponent(val || '191060')}&br=${br}${server ? '&server=' + server : ''}`;
+      else if (currentSearchTab === 'ncmget') url = `/ncmget?id=${encodeURIComponent(val || '186016')}&br=${br}`;
+      else if (currentSearchTab === 'search') url = `/search?name=${encodeURIComponent(val || '天赐的声音')}&count=10${server ? '&source=' + server : ''}`;
+      else if (currentSearchTab === 'lyric') url = `/lyric?id=${encodeURIComponent(val || '191060')}${server ? '&source=' + server : ''}`;
+      else if (currentSearchTab === 'pic') url = `/pic?id=${encodeURIComponent(val || '191060')}&size=500${server ? '&source=' + server : ''}`;
+      else if (currentSearchTab === 'playlist') url = `/playlist/${encodeURIComponent(val || '8401628431')}?limit=1000`;
+      else if (currentSearchTab === 'health') url = '/health?verbose=true';
+      else if (currentSearchTab === 'info') url = '/info';
+      return url;
+    }
+
+    function updateWorkbenchUrlPreview() {
+      const el = document.getElementById('previewRequestUrl');
+      if (el) el.textContent = buildWorkbenchUrl();
+    }
+
+    function openWorkbenchUrlInNewTab() {
+      window.open(buildWorkbenchUrl(), '_blank');
+    }
+
+    function copyWorkbenchCurl() {
+      const curlCmd = `curl -X GET "${window.location.origin}${buildWorkbenchUrl()}"`;
+      navigator.clipboard.writeText(curlCmd).then(() =>
+        showToast({ type: 'success', title: 'cURL 已复制', message: curlCmd })
+      );
+    }
+
+    function syntaxHighlightJson(json) {
+      if (typeof json !== 'string') json = JSON.stringify(json, null, 2);
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'json-number';
+        if (/^"/.test(match)) cls = /:$/.test(match) ? 'json-key' : 'json-string';
+        else if (/true|false/.test(match)) cls = 'json-boolean';
+        else if (/null/.test(match)) cls = 'json-null';
+        return '<span class="' + cls + '">' + match + '</span>';
+      });
+    }
 
     function switchApiTab(tab) {
-      activeApi = tab;
-      const buttons = document.querySelectorAll('#apiTabs button');
-      buttons.forEach(b => {
-        if (b.dataset.tab === tab) {
-          b.className = "px-4 py-2 rounded-xl tab-active transition interactive-btn";
-        } else {
-          b.className = "px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn";
-        }
+      currentSearchTab = tab;
+      document.querySelectorAll('#apiTabs button').forEach(btn => {
+        if (btn.getAttribute('data-tab') === tab) btn.className = 'px-3 py-1.5 rounded-xl tab-active transition interactive-btn whitespace-nowrap';
+        else btn.className = 'px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap';
       });
 
       const label = document.getElementById('inputLabel');
       const input = document.getElementById('testInput');
-      const brSelect = document.getElementById('bitrateSelect');
-      const playerSec = document.getElementById('playerSection');
+      const brContainer = document.getElementById('bitrateContainer');
+      const serverSelectWrapper = document.getElementById('serverSelectWrapper');
+
+      [brContainer, serverSelectWrapper].forEach(el => el.classList.remove('hidden'));
 
       if (tab === 'match') {
-        label.textContent = "网易云歌曲 ID (例如: 186016 - 周杰伦《晴天》)";
-        input.value = "186016";
-        brSelect.parentElement.classList.remove('hidden');
-        playerSec.classList.remove('hidden');
-        showToast({ type: 'info', title: '接口切换', message: '已就绪 /match 核心解灰接口调试' });
+        label.textContent = '网易云歌曲 ID (例如: 191060)';
+        input.value = '191060';
       } else if (tab === 'ncmget') {
-        label.textContent = "网易云歌曲 ID (获取官方源)";
-        input.value = "186016";
-        brSelect.parentElement.classList.remove('hidden');
-        playerSec.classList.add('hidden');
-        showToast({ type: 'info', title: '接口切换', message: '已就绪 /ncmget 官方直链获取接口调试' });
+        label.textContent = '网易云官方直链歌曲 ID (例如: 186016)';
+        input.value = '186016';
+        serverSelectWrapper.classList.add('hidden');
       } else if (tab === 'search') {
-        label.textContent = "搜索关键词 (歌曲 / 歌手 / 专辑)";
-        input.value = "七里香";
-        brSelect.parentElement.classList.add('hidden');
-        playerSec.classList.add('hidden');
-        showToast({ type: 'info', title: '接口切换', message: '已就绪 /search 跨平台歌曲搜索调试' });
+        label.textContent = '搜索关键词 (例如: 天赐的声音)';
+        input.value = '天赐的声音';
+        brContainer.classList.add('hidden');
       } else if (tab === 'lyric') {
-        label.textContent = "歌词歌曲 ID";
-        input.value = "186016";
-        brSelect.parentElement.classList.add('hidden');
-        playerSec.classList.add('hidden');
-        showToast({ type: 'info', title: '接口切换', message: '已就绪 /lyric 逐字歌词提取调试' });
+        label.textContent = '歌曲 ID (例如: 191060)';
+        input.value = '191060';
+        brContainer.classList.add('hidden');
+      } else if (tab === 'pic') {
+        label.textContent = '歌曲或专辑封面 ID';
+        input.value = '191060';
+        brContainer.classList.add('hidden');
       } else if (tab === 'playlist') {
-        label.textContent = "网易云歌单 ID (例如: 8401628431)";
-        input.value = "8401628431";
-        brSelect.parentElement.classList.add('hidden');
-        playerSec.classList.add('hidden');
-        showToast({ type: 'info', title: '接口切换', message: '已就绪 /playlist 歌单 ID 列表解析调试' });
+        label.textContent = '网易云歌单 ID (例如: 8401628431 - 天赐的声音)';
+        input.value = '8401628431';
+        brContainer.classList.add('hidden');
+        serverSelectWrapper.classList.add('hidden');
+      } else if (tab === 'health') {
+        label.textContent = '详细诊断参数 (true/false)';
+        input.value = 'true';
+        brContainer.classList.add('hidden');
+        serverSelectWrapper.classList.add('hidden');
+      } else if (tab === 'info') {
+        label.textContent = '无额外参数';
+        input.value = '-';
+        brContainer.classList.add('hidden');
+        serverSelectWrapper.classList.add('hidden');
       }
+      updateWorkbenchUrlPreview();
     }
 
-    function fillPreset(val, tab, name) {
+    function fillPreset(id, tab, name) {
       switchApiTab(tab);
-      document.getElementById('testInput').value = val;
-      showToast({ type: 'success', title: '预设已填充', message: `已载入《${name}》(ID: ${val})` });
+      document.getElementById('testInput').value = id;
+      updateWorkbenchUrlPreview();
+      executeApiTest();
+      showToast({ type: 'info', title: '已载入预设', message: name });
+    }
+
+    function testInWorkbench(id, name) {
+      document.getElementById('workbench').scrollIntoView({ behavior: 'smooth' });
+      switchApiTab('match');
+      document.getElementById('testInput').value = id;
+      updateWorkbenchUrlPreview();
       executeApiTest();
     }
 
-    function triggerQuickTest() {
-      showToast({ type: 'info', title: '快速测试', message: '正在启动一键匹配测试流程...' });
-      fillPreset('1962165898', 'match', '最伟大的作品');
-      const el = document.getElementById('workbench');
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    const audioEl = document.getElementById('mainAudio');
-    const waveEq = document.getElementById('waveEqualizer');
-
-    audioEl.addEventListener('play', () => {
-      if (waveEq) waveEq.classList.remove('hidden');
-      const title = document.getElementById('trackName').textContent;
-      showToast({ type: 'success', title: '正在播放', message: `正在试听: ${title}` });
-    });
-    audioEl.addEventListener('pause', () => {
-      if (waveEq) waveEq.classList.add('hidden');
-    });
-    audioEl.addEventListener('ended', () => {
-      if (waveEq) waveEq.classList.add('hidden');
-      showToast({ type: 'info', title: '播放完成', message: '试听已结束' });
-    });
-
-    let lastResponseJson = null;
-
     async function executeApiTest() {
-      const val = document.getElementById('testInput').value.trim();
-      const br = document.getElementById('bitrateSelect').value;
-      if (!val) {
-        showToast({ type: 'warning', title: '参数为空', message: '请输入测试参数' });
-        return;
-      }
-
+      const url = buildWorkbenchUrl();
       const btn = document.getElementById('executeBtn');
-      const origText = btn.innerHTML;
+      const out = document.getElementById('jsonOutput');
+
       btn.disabled = true;
-      btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>请求中...</span>';
+      btn.innerHTML = '<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>请求中...</span>';
       lucide.createIcons();
 
-      let url = '';
-      if (activeApi === 'match') url = `/match?id=${encodeURIComponent(val)}&br=${br}`;
-      else if (activeApi === 'ncmget') url = `/ncmget?id=${encodeURIComponent(val)}&br=${br}`;
-      else if (activeApi === 'search') url = `/search?name=${encodeURIComponent(val)}`;
-      else if (activeApi === 'lyric') url = `/lyric?id=${encodeURIComponent(val)}`;
-      else if (activeApi === 'playlist') url = `/playlist/${encodeURIComponent(val)}`;
-
-      const start = Date.now();
+      const startTime = performance.now();
       try {
         const res = await fetch(url);
+        const duration = Math.round(performance.now() - startTime);
         const json = await res.json();
-        const duration = Date.now() - start;
 
-        lastResponseJson = json;
-        document.getElementById('resStatus').textContent = `HTTP ${res.status} ${res.statusText || 'OK'}`;
-        document.getElementById('resLatency').textContent = `Time: ${duration}ms`;
-        document.getElementById('resSource').textContent = `Source: ${json.data?.source || activeApi}`;
-        document.getElementById('jsonOutput').textContent = JSON.stringify(json, null, 2);
+        document.getElementById('resStatus').textContent = `HTTP ${res.status}`;
+        document.getElementById('resLatency').textContent = `耗时: ${duration}ms`;
+        document.getElementById('resSource').textContent = `命中音源: ${json.data?.source || '-'}`;
+        out.innerHTML = syntaxHighlightJson(json);
 
-        if (json.code === 200) {
-          showToast({ type: 'success', title: '请求成功', message: `接口响应正常 · 耗时 ${duration}ms` });
-        } else {
-          showToast({ type: 'warning', title: '接口返回异常', message: json.message || '未知状态' });
-        }
-
-        if (activeApi === 'match' && json.code === 200 && json.data) {
-          document.getElementById('playerSection').classList.remove('hidden');
-          document.getElementById('trackName').textContent = json.data.title || val;
-          document.getElementById('trackMeta').textContent = `${json.data.artist || '周杰伦'} · ${json.data.album || '专辑'}`;
-          document.getElementById('trackCover').src = json.data.pic || './favicon.png';
-          audioEl.src = json.data.url || json.data.proxyUrl;
-          audioEl.play().catch(() => {});
-        } else {
-          document.getElementById('playerSection').classList.add('hidden');
-        }
+        if (json.data?.url) lastTestedAudioUrl = json.data.url;
+        showToast({ type: 'success', title: 'API 请求完成', message: `耗时 ${duration}ms` });
       } catch (err) {
-        document.getElementById('jsonOutput').textContent = `Error: ${err.message}`;
-        showToast({ type: 'error', title: '网络请求失败', message: err.message });
+        document.getElementById('resStatus').textContent = 'HTTP 500 ERROR';
+        out.innerHTML = `<span class="text-rose-400">请求异常: ${err.message}</span>`;
+        showToast({ type: 'error', title: '请求失败', message: err.message });
       } finally {
         btn.disabled = false;
-        btn.innerHTML = origText;
+        btn.innerHTML = '<i data-lucide="send" class="w-3.5 h-3.5"></i><span>发送实时请求</span>';
         lucide.createIcons();
       }
     }
 
-    function copyResponseJson() {
-      if (!lastResponseJson) {
-        showToast({ type: 'warning', title: '无数据', message: '当前没有可复制的响应数据' });
-        return;
+    async function executeQuickTest() {
+      showToast({ type: 'info', title: '一键极速测试', message: '正在请求 /test 端点...' });
+      try {
+        const res = await fetch('/test');
+        const json = await res.json();
+        if (json.code === 200 && json.data?.url) {
+          showToast({ type: 'success', title: '测试匹配成功', message: `命中音源: ${json.data.source}` });
+          playSongItem({ id: '186016', name: '晴天', artist: '周杰伦', source: json.data.source, url: json.data.url });
+        } else {
+          throw new Error(json.message || '未返回有效音频');
+        }
+      } catch (e) {
+        showToast({ type: 'error', title: '测试请求失败', message: e.message });
       }
-      navigator.clipboard.writeText(JSON.stringify(lastResponseJson, null, 2));
-      showToast({ type: 'success', title: '复制成功', message: '已将完整响应 JSON 结构复制到剪贴板' });
     }
 
-    // 初始化默认执行一次
-    executeApiTest();
+    updateWorkbenchUrlPreview();
   </script>
 </body>
 </html>

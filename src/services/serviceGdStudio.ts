@@ -8,6 +8,8 @@ import type {
   GDPicResponse,
   GDLyricResponse,
   LyricResult,
+  PlaylistDetail,
+  PlaylistTrack,
 } from "../types/typeMusic.js";
 
 class GDStudioService {
@@ -183,6 +185,166 @@ class GDStudioService {
       };
     }
     return { lyric: "", tlyric: "" };
+  }
+
+  /**
+   * 获取网易云歌单详情与完整歌曲元数据列表（支持分块并发全部解析）
+   */
+  async getPlaylistDetail(playlistId: string | number, limit: number = 1000): Promise<PlaylistDetail | null> {
+    const rawId = String(playlistId || "").trim();
+    const match = rawId.match(/id=(\d+)/) || rawId.match(/^(\d+)$/);
+    const cleanId = sanitizeParam(match ? match[1] : rawId, 50);
+    if (!cleanId) return null;
+
+    const cacheKey = `playlist:detail:${cleanId}:${limit}`;
+    const cached = globalCache.get(cacheKey) as PlaylistDetail | null;
+    if (cached) return cached;
+
+    // 1. 优先尝试网易云官方歌单接口
+    try {
+      const ncmUrl = `${UPSTREAM_APIS.NETEASE_PLAYLIST_DETAIL}?id=${encodeURIComponent(cleanId)}`;
+      const res = await this.client.get<{
+        playlist?: {
+          id?: number | string;
+          name?: string;
+          coverImgUrl?: string;
+          description?: string;
+          trackCount?: number;
+          creator?: {
+            nickname?: string;
+          };
+          trackIds?: Array<{ id: number | string }>;
+          tracks?: Array<any>;
+        };
+      }>(ncmUrl, {
+        headers: {
+          Referer: UPSTREAM_APIS.NETEASE_REFERER,
+          "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
+        },
+        timeout: 8000,
+      });
+
+      const playlist = res.data && res.data.playlist;
+      if (playlist) {
+        const rawSongIds = (playlist.trackIds || playlist.tracks || []).map((t) => String(t.id)).filter(Boolean);
+        let tracks: PlaylistTrack[] = [];
+
+        if (Array.isArray(playlist.tracks) && playlist.tracks.length > 0) {
+          tracks = playlist.tracks.slice(0, limit).map((t: any) => ({
+            id: String(t.id),
+            name: t.name || "未知曲目",
+            artist: (t.ar || t.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
+            album: t.al?.name || t.album?.name || "未知专辑",
+            picUrl: t.al?.picUrl || t.album?.picUrl || "",
+            duration: t.dt ? Math.round(t.dt / 1000) : 0,
+          }));
+        }
+
+        // 如果 tracks 数量少于 limit 且还有更多 trackIds，按 200 个一组批量拉取全部详情
+        if (tracks.length < limit && rawSongIds.length > tracks.length) {
+          const neededIds = rawSongIds.slice(tracks.length, limit);
+          const chunkSize = 200;
+          for (let i = 0; i < neededIds.length; i += chunkSize) {
+            const chunk = neededIds.slice(i, i + chunkSize);
+            try {
+              const batchUrl = `https://music.163.com/api/song/detail?ids=[${chunk.join(",")}]`;
+              const batchRes = await this.client.get<{ songs?: Array<any> }>(batchUrl, {
+                headers: {
+                  Referer: UPSTREAM_APIS.NETEASE_REFERER,
+                  "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
+                },
+                timeout: 8000,
+              });
+              if (Array.isArray(batchRes.data?.songs)) {
+                const moreTracks = batchRes.data.songs.map((s: any) => ({
+                  id: String(s.id),
+                  name: s.name || "未知曲目",
+                  artist: (s.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
+                  album: s.album?.name || "未知专辑",
+                  picUrl: s.album?.picUrl || "",
+                  duration: s.duration ? Math.round(s.duration / 1000) : 0,
+                }));
+                tracks.push(...moreTracks);
+              }
+            } catch (batchErr: any) {
+              console.warn(`[Playlist] 批量获取歌曲详情 chunk 异常: ${batchErr.message}`);
+            }
+          }
+
+          // 补充占位对象以保证总数与原歌单一致
+          if (tracks.length < neededIds.length) {
+            const existingIdSet = new Set(tracks.map(t => t.id));
+            for (const id of rawSongIds.slice(0, limit)) {
+              if (!existingIdSet.has(id)) {
+                tracks.push({
+                  id: String(id),
+                  name: `歌单曲目 #${id}`,
+                  artist: "网易云音乐",
+                  album: playlist.name || "精选歌单",
+                  picUrl: "",
+                  duration: 0,
+                });
+              }
+            }
+          }
+        }
+
+        const result: PlaylistDetail = {
+          id: cleanId,
+          name: playlist.name || `歌单 #${cleanId}`,
+          coverImgUrl: playlist.coverImgUrl || "",
+          description: playlist.description || "",
+          creator: playlist.creator?.nickname || "网易云音乐",
+          trackCount: playlist.trackCount || rawSongIds.length,
+          tracks,
+          songIds: rawSongIds,
+        };
+
+        globalCache.set(cacheKey, result, env.CACHE_TTL_PLAYLIST);
+        return result;
+      }
+    } catch (err: any) {
+      console.warn(`[Playlist] 网易云官方歌单拉取失败: ${err.message}，尝试专辑接口回退...`);
+    }
+
+    // 2. 回退尝试 GD Studio netease_album
+    try {
+      const albumData = await this.callApi<GDTrack[]>(
+        "search",
+        {
+          source: "netease_album",
+          name: cleanId,
+        },
+        env.CACHE_TTL_PLAYLIST
+      );
+      if (Array.isArray(albumData) && albumData.length > 0) {
+        const tracks: PlaylistTrack[] = albumData.slice(0, limit).map((s) => ({
+          id: String(s.id),
+          name: s.name || "未知曲目",
+          artist: Array.isArray(s.artist) ? s.artist.join(" / ") : (s.artist || "未知歌手"),
+          album: s.album || "专辑",
+          picUrl: "",
+          duration: 0,
+        }));
+        const songIds = albumData.map((song) => String(song.id)).filter(Boolean);
+        const result: PlaylistDetail = {
+          id: cleanId,
+          name: `专辑 #${cleanId}`,
+          coverImgUrl: "",
+          description: "由 GD Studio 引擎解析",
+          creator: "GDStudio",
+          trackCount: albumData.length,
+          tracks,
+          songIds,
+        };
+        globalCache.set(cacheKey, result, env.CACHE_TTL_PLAYLIST);
+        return result;
+      }
+    } catch (err: any) {
+      console.warn(`[Playlist] GD Studio netease_album 获取失败: ${err.message}`);
+    }
+
+    return null;
   }
 
   /**
