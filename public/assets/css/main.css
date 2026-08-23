@@ -1,93 +1,99 @@
-/* ============================================================
-   UNM-Server 主样式：全局基础 / 高级流光设计系统 / 品牌色 / JSON 高亮
-   播放器专属样式见 player.css，遥测大盘样式见 dashboard.css
-   ============================================================ */
+/* UNM-Server 现代化设计系统核心样式 (Next-Gen UI System) */
 
-/* 全局防横向溢出与零误差多端响应式 */
-html, body {
-  overflow-x: hidden !important;
-  width: 100%;
-  max-width: 100vw;
-  margin: 0;
-  padding: 0;
-}
-body {
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  -webkit-font-smoothing: antialiased;
-  font-size: 15px;
-  position: relative;
-}
-*, *::before, *::after { box-sizing: border-box; }
-
-/* 仅在用户手动切换主题时生效的丝滑过渡（防止刷新加载时白闪） */
-html.theme-transitioning,
-html.theme-transitioning *,
-html.theme-transitioning *::before,
-html.theme-transitioning *::after {
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, fill 0.3s ease, stroke 0.3s ease, box-shadow 0.3s ease !important;
+/* 字体与全局重置 */
+html {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  scroll-behavior: smooth;
 }
 
-/* 高级多层环境流光氛围光斑 (Ambient Aurora Glow) */
-.ambient-glow {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(120px);
-}
-@media (min-width: 640px) {
-  .ambient-glow {
-    filter: blur(150px);
-  }
+/* 主题平滑过渡类（仅在手动切换时由 JS 触发） */
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *:before,
+.theme-transitioning *:after {
+  transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-/* 玻璃拟态面板与高光边框 */
-.glass-panel {
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+/* 现代流光背景网格 (Mesh Aura Backgrounds) */
+.hero-mesh-dark {
+  background: radial-gradient(at 50% 0%, rgba(14, 165, 233, 0.18) 0px, transparent 60%),
+              radial-gradient(at 100% 20%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+              radial-gradient(at 0% 40%, rgba(168, 85, 247, 0.12) 0px, transparent 50%);
 }
-.glass-card {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+.hero-mesh-light {
+  background: radial-gradient(at 50% 0%, rgba(14, 165, 233, 0.12) 0px, transparent 60%),
+              radial-gradient(at 100% 20%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+              radial-gradient(at 0% 40%, rgba(244, 63, 94, 0.06) 0px, transparent 50%);
 }
 
-/* 交互按钮微动效与发光 */
+/* 精微高光描边 (Subtle Hairline Borders) */
+.subtle-border {
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+.dark .subtle-border {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 卡片悬浮升起与阴影动效 */
+.hover-lift {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-3px);
+}
+
+/* 按钮微触感动效 (Interactive Push) */
 .interactive-btn {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
 }
 .interactive-btn:active {
   transform: scale(0.97);
 }
 
-/* 细滚动条定制 */
-.custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
-.custom-scroll::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 9999px; }
-.custom-scroll::-webkit-scrollbar-track { background: transparent; }
-
-/* 调试台激活标签页 */
-.tab-active {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.25) 0%, rgba(99, 102, 241, 0.2) 100%) !important;
-  color: #38bdf8 !important;
-  border-color: rgba(56, 189, 248, 0.5) !important;
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2) !important;
+/* 音频律动波形条动效 */
+.wave-bar {
+  display: inline-block;
+  width: 3px;
+  border-radius: 9999px;
+  animation: wave 1.2s ease-in-out infinite alternate;
+}
+.wave-bar:nth-child(1) { height: 12px; animation-delay: 0.1s; }
+.wave-bar:nth-child(2) { height: 20px; animation-delay: 0.3s; }
+.wave-bar:nth-child(3) { height: 8px; animation-delay: 0.5s; }
+.wave-bar:nth-child(4) { height: 16px; animation-delay: 0.2s; }
+@keyframes wave {
+  0% { height: 4px; }
+  100% { height: 22px; }
 }
 
-/* 滑杆主题色 */
-input[type=range] { accent-color: #0ea5e9; }
+/* 黑胶唱片 360° 旋转 */
+.spin-vinyl {
+  animation: spinVinyl 18s linear infinite;
+}
+@keyframes spinVinyl {
+  100% { transform: rotate(360deg); }
+}
 
-/* 音源专属品牌徽章与卡片高光 */
-.source-card-netease:hover { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 8px 24px -4px rgba(239, 68, 68, 0.2); }
-.source-card-qq:hover { border-color: rgba(16, 185, 129, 0.5); box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.2); }
-.source-card-kugou:hover { border-color: rgba(14, 165, 233, 0.5); box-shadow: 0 8px 24px -4px rgba(14, 165, 233, 0.2); }
-.source-card-kuwo:hover { border-color: rgba(245, 158, 11, 0.5); box-shadow: 0 8px 24px -4px rgba(245, 158, 11, 0.2); }
-.source-card-bilibili:hover { border-color: rgba(236, 72, 153, 0.5); box-shadow: 0 8px 24px -4px rgba(236, 72, 153, 0.2); }
-.source-card-joox:hover { border-color: rgba(139, 92, 246, 0.5); box-shadow: 0 8px 24px -4px rgba(139, 92, 246, 0.2); }
-.source-card-bodian:hover { border-color: rgba(20, 184, 166, 0.5); box-shadow: 0 8px 24px -4px rgba(20, 184, 166, 0.2); }
-.source-card-gdstudio:hover { border-color: rgba(56, 189, 248, 0.5); box-shadow: 0 8px 24px -4px rgba(56, 189, 248, 0.2); }
-
-/* JSON 高亮着色器（调试台输出） */
-.json-key { color: #38bdf8; font-weight: 600; }
-.json-string { color: #34d399; }
-.json-number { color: #f59e0b; font-weight: 600; }
-.json-boolean { color: #a855f7; font-weight: 700; }
-.json-null { color: #f43f5e; font-weight: 700; }
+/* 自定义现代滚动条 */
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+.dark .custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(14, 165, 233, 0.6);
+}
