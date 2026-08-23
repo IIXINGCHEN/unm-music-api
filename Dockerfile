@@ -11,6 +11,7 @@ RUN pnpm install --frozen-lockfile || pnpm install
 
 COPY src ./src
 COPY public ./public
+COPY scripts ./scripts
 RUN pnpm build
 
 # ==============================================================================

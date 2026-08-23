@@ -18,16 +18,20 @@ if (!/^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(raw)) {
 }
 const version = raw;
 
-// 1) 同步 package.json
-const pkgPath = `${root}package.json`;
-const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-if (pkg.version !== version) {
-  pkg.version = version;
-  writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}
+// 1) 同步 package.json（只读环境自动跳过，不阻断构建）
+try {
+  const pkgPath = `${root}package.json`;
+  const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+  if (pkg.version !== version) {
+    pkg.version = version;
+    writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\
 `, "utf-8");
-  console.log(`[sync-version] package.json -> ${version}`);
-} else {
-  console.log(`[sync-version] package.json 已对齐: ${version}`);
+    console.log(`[sync-version] package.json -> ${version}`);
+  } else {
+    console.log(`[sync-version] package.json 已对齐: ${version}`);
+  }
+} catch (err) {
+  console.warn(`[sync-version] 跳过 package.json 同步: ${err.message}`);
 }
 
 // 2) 同步 configVersion.ts 兜底常量
