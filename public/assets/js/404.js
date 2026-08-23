@@ -8,25 +8,19 @@ document.getElementById('year').textContent = new Date().getFullYear();
     const themeToggle = document.getElementById('themeToggle');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
 
-    function setTheme(isDark) {
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-      }
+    function setTheme(isDark, animate = false) {
+      if (animate) document.documentElement.classList.add('theme-transitioning');
+      document.documentElement.classList.toggle('dark', isDark);
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
       lucide.createIcons();
+      if (animate) {
+        setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 320);
+      }
     }
 
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark.matches)) {
-      setTheme(true);
-    } else {
-      setTheme(false);
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.contains('dark');
+        setTheme(!isDark, true);
+      });
     }
-
-    themeToggle.addEventListener('click', () => {
-      const isDark = document.documentElement.classList.contains('dark');
-      setTheme(!isDark);
-    });

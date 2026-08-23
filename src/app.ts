@@ -126,24 +126,33 @@ app.use("*", async (c, next) => {
 app.route("/", routes);
 
 // 7. 首页与监控大盘页面服务
-// ---- 页面样式服务端内联：消除刷新时样式表往返造成的首帧闪烁（FOUC） ----
+// ---- 页面样式服务端直出内联：消除样式表网络往返造成的首帧闪烁 ----
 const cssCache = new Map<string, { mtime: number; css: string }>();
 const readCss = async (file: string): Promise<string> => {
   const path = resolvePublicFile(file);
   if (!path) return "";
-  const st = await fs.stat(path);
-  const cached = cssCache.get(file);
-  if (cached && cached.mtime === st.mtimeMs) return cached.css;
-  const css = await fs.readFile(path, "utf-8");
-  cssCache.set(file, { mtime: st.mtimeMs, css });
-  return css;
+  try {
+    const st = await fs.stat(path);
+    const cached = cssCache.get(file);
+    if (cached && cached.mtime === st.mtimeMs) return cached.css;
+    const css = await fs.readFile(path, "utf-8");
+    cssCache.set(file, { mtime: st.mtimeMs, css });
+    return css;
+  } catch {
+    return "";
+  }
 };
 const buildPageStyle = async (files: string[]): Promise<string> => {
   const parts = await Promise.all(files.map((f) => readCss(f)));
-  return `<style>/* inline page css */${parts.join("\n")}</style>`;
+  return `<style>/* inline page css */\n${parts.filter(Boolean).join("\n")}</style>`;
 };
-const injectPageCss = (html: string, style: string) =>
-  html.includes("<!--INLINE_PAGE_CSS-->") ? html.replace("<!--INLINE_PAGE_CSS-->", () => style) : html;
+const injectPageCss = (html: string, style: string) => {
+  if (html.includes("<!--INLINE_PAGE_CSS-->")) {
+    return html.replace("<!--INLINE_PAGE_CSS-->", () => style);
+  }
+  // 如果没有占位符，安全插入到 </head> 之前
+  return html.replace("</head>", `${style}\n</head>`);
+};
 app.get("/", async (c) => {
   const htmlPath = resolvePublicFile("index.html");
   if (htmlPath) {

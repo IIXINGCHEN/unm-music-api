@@ -7,16 +7,27 @@
     document.querySelectorAll('.current-year-text').forEach(el => el.textContent = new Date().getFullYear());
     lucide.createIcons();
 
-    // --- 主题切换 ---
+    // --- 主题切换系统 (防刷新闪烁设计) ---
     const themeToggle = document.getElementById('themeToggle');
-    function setTheme(isDark) {
+    function setTheme(isDark, animate = false) {
+      if (animate) {
+        document.documentElement.classList.add('theme-transitioning');
+      }
       document.documentElement.classList.toggle('dark', isDark);
       localStorage.setItem('theme', isDark ? 'dark' : 'light');
       lucide.createIcons();
+      if (animate) {
+        setTimeout(() => {
+          document.documentElement.classList.remove('theme-transitioning');
+        }, 320);
+      }
     }
-    const savedTheme = localStorage.getItem('theme');
-    setTheme(savedTheme !== 'light');
-    themeToggle.addEventListener('click', () => setTheme(!document.documentElement.classList.contains('dark')));
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const nextDark = !document.documentElement.classList.contains('dark');
+        setTheme(nextDark, true);
+      });
+    }
 
     // --- Toast 提示 ---
     function showToast({ type = 'info', title = '提示', message = '' }) {

@@ -6,6 +6,31 @@
   <title>404 · 页面或资源未找到 · UNM-Server</title>
   <link rel="shortcut icon" href="./favicon.png" type="image/png" />
 
+  <!-- 首帧防闪烁极速主题同步脚本 (0ms 阻塞执行) -->
+  <script>
+    (function() {
+      try {
+        var s = localStorage.getItem('theme');
+        var p = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = s ? s === 'dark' : (p || true);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch(e) {}
+    })();
+  </script>
+
+  <!-- 关键样式内联：首帧即正确底色，杜绝 FOUC -->
+  <style>
+    html { background-color: #fafcff; color-scheme: light; }
+    html.dark { background-color: #040711; color-scheme: dark; }
+    body { -webkit-font-smoothing: antialiased; font-size: 15px; }
+    *, *::before, *::after { box-sizing: border-box; }
+    [data-lucide] { display: inline-block; vertical-align: middle; }
+  </style>
+
   <!-- 字体样式异步加载：不阻塞首帧 -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,10 +38,14 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" /></noscript>
 
+  <!-- 核心样式表 (标准引入 + 服务端直出内联支持) -->
+  <link rel="stylesheet" href="./assets/css/tailwind.css" />
+  <link rel="stylesheet" href="./assets/css/404.css" />
   <!--INLINE_PAGE_CSS-->
+  <script src="/vendor/lucide.min.js"></script>
 </head>
 
-<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between transition-colors duration-500 mesh-gradient">
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between mesh-gradient">
 
   <!-- 顶部精简导航 -->
   <header class="w-full max-w-5xl mx-auto px-6 py-8 flex items-center justify-between">

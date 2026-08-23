@@ -1,5 +1,5 @@
 /* ============================================================
-   UNM-Server 主样式：全局基础 / 设计系统工具类 / JSON 高亮
+   UNM-Server 主样式：全局基础 / 高级流光设计系统 / 品牌色 / JSON 高亮
    播放器专属样式见 player.css，遥测大盘样式见 dashboard.css
    ============================================================ */
 
@@ -19,34 +19,71 @@ body {
 }
 *, *::before, *::after { box-sizing: border-box; }
 
-/* 环境流光氛围光斑 */
-.ambient-glow {
-  position: absolute;
-  width: 600px;
-  height: 600px;
-  border-radius: 50%;
-  filter: blur(140px);
-  pointer-events: none;
-  z-index: 0;
+/* 仅在用户手动切换主题时生效的丝滑过渡（防止刷新加载时白闪） */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, fill 0.3s ease, stroke 0.3s ease, box-shadow 0.3s ease !important;
 }
 
-/* 玻璃拟态面板与卡片 */
-.glass-panel { backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
-.glass-card { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+/* 高级多层环境流光氛围光斑 (Ambient Aurora Glow) */
+.ambient-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(120px);
+}
+@media (min-width: 640px) {
+  .ambient-glow {
+    filter: blur(150px);
+  }
+}
 
-/* 交互按钮微动效 */
-.interactive-btn { transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
-.interactive-btn:active { transform: scale(0.96); }
+/* 玻璃拟态面板与高光边框 */
+.glass-panel {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.glass-card {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
 
-/* 细滚动条 */
+/* 交互按钮微动效与发光 */
+.interactive-btn {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.interactive-btn:active {
+  transform: scale(0.97);
+}
+
+/* 细滚动条定制 */
 .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
-.custom-scroll::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 9999px; }
+.custom-scroll::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 9999px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
 
 /* 调试台激活标签页 */
-.tab-active { background: rgba(14, 165, 233, 0.15); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+.tab-active {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.25) 0%, rgba(99, 102, 241, 0.2) 100%) !important;
+  color: #38bdf8 !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2) !important;
+}
 
 /* 滑杆主题色 */
 input[type=range] { accent-color: #0ea5e9; }
+
+/* 音源专属品牌徽章与卡片高光 */
+.source-card-netease:hover { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 8px 24px -4px rgba(239, 68, 68, 0.2); }
+.source-card-qq:hover { border-color: rgba(16, 185, 129, 0.5); box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.2); }
+.source-card-kugou:hover { border-color: rgba(14, 165, 233, 0.5); box-shadow: 0 8px 24px -4px rgba(14, 165, 233, 0.2); }
+.source-card-kuwo:hover { border-color: rgba(245, 158, 11, 0.5); box-shadow: 0 8px 24px -4px rgba(245, 158, 11, 0.2); }
+.source-card-bilibili:hover { border-color: rgba(236, 72, 153, 0.5); box-shadow: 0 8px 24px -4px rgba(236, 72, 153, 0.2); }
+.source-card-joox:hover { border-color: rgba(139, 92, 246, 0.5); box-shadow: 0 8px 24px -4px rgba(139, 92, 246, 0.2); }
+.source-card-bodian:hover { border-color: rgba(20, 184, 166, 0.5); box-shadow: 0 8px 24px -4px rgba(20, 184, 166, 0.2); }
+.source-card-gdstudio:hover { border-color: rgba(56, 189, 248, 0.5); box-shadow: 0 8px 24px -4px rgba(56, 189, 248, 0.2); }
 
 /* JSON 高亮着色器（调试台输出） */
 .json-key { color: #38bdf8; font-weight: 600; }

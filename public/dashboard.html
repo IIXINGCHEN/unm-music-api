@@ -7,6 +7,31 @@
   <title>UNM-Server · 实时调用监控与全链路遥测大盘</title>
   <link rel="shortcut icon" href="./favicon.png" type="image/png" />
 
+  <!-- 首帧防闪烁极速主题同步脚本 (0ms 阻塞执行) -->
+  <script>
+    (function() {
+      try {
+        var s = localStorage.getItem('theme');
+        var p = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = s ? s === 'dark' : (p || true);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch(e) {}
+    })();
+  </script>
+
+  <!-- 关键样式内联：首帧即正确底色，杜绝 FOUC -->
+  <style>
+    html { background-color: #fafcff; color-scheme: light; }
+    html.dark { background-color: #060911; color-scheme: dark; }
+    body { -webkit-font-smoothing: antialiased; font-size: 15px; }
+    *, *::before, *::after { box-sizing: border-box; }
+    [data-lucide] { display: inline-block; vertical-align: middle; }
+  </style>
+
   <!-- 字体样式异步加载：不阻塞首帧，系统字体栈即时回退 -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,20 +39,15 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" /></noscript>
 
-  <!-- 页面样式由服务端注入内联（见 app.ts），首帧零额外请求 -->
+  <!-- 核心样式表 (标准引入 + 服务端直出内联支持) -->
+  <link rel="stylesheet" href="./assets/css/tailwind.css" />
+  <link rel="stylesheet" href="./assets/css/dashboard.css" />
   <!--INLINE_PAGE_CSS-->
   <script src="/vendor/lucide.min.js"></script>
   <script src="/vendor/chart.umd.min.js"></script>
-
-  <!-- 关键样式内联：首帧即正确底色 -->
-  <style>
-    html { background: #fafcff; color-scheme: light; }
-    html.dark { background: #060911; color-scheme: dark; }
-    body { -webkit-font-smoothing: antialiased; font-size: 15px; }
-  </style>
 </head>
 
-<body class="bg-[#fafcff] text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white transition-colors duration-300 relative overflow-x-hidden">
+<body class="bg-[#fafcff] text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white relative overflow-x-hidden">
 
   <!-- 现代 Toast 漂浮通知容器 -->
   <div id="toastContainer" class="fixed top-6 right-6 z-[100] flex flex-col space-y-3 pointer-events-none max-w-md w-full"></div>

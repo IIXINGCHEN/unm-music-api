@@ -40,3 +40,4 @@ coverage
 .agents/notes/
 .agents/validation/
 .agents/worktrees/
+.dsh-vision-toolkit/

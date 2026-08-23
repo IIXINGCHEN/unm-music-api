@@ -1,9 +1,39 @@
 /** @type {import('tailwindcss').Config} */
-// UNM-Server 构建期 Tailwind 配置：扫描 public 下全部 HTML/JS 字面量类名，
-// 由 prebuild 预编译为 public/assets/css/tailwind.css，浏览器不再依赖运行时 JIT。
+// UNM-Server 构建期 Tailwind 配置：全面扫描 public 下全部 HTML/JS 文件
 module.exports = {
   darkMode: 'class',
-  content: ["./public/**/*.html", "./public/**/*.js", "!./public/vendor/**"],
+  content: [
+    "./public/**/*.html",
+    "./public/**/*.js",
+    "!./public/vendor/**"
+  ],
+  safelist: [
+    // 动态 Toast 与状态类
+    'bg-sky-500/10', 'bg-sky-500/15', 'bg-sky-500/20', 'bg-sky-500/30',
+    'border-sky-500/20', 'border-sky-500/30', 'border-sky-500/40', 'border-sky-500/50',
+    'text-sky-300', 'text-sky-400', 'text-sky-500', 'text-sky-600',
+    'bg-emerald-500/10', 'bg-emerald-500/15', 'bg-emerald-500/20',
+    'border-emerald-500/20', 'border-emerald-500/30', 'border-emerald-500/40',
+    'text-emerald-300', 'text-emerald-400', 'text-emerald-500', 'text-emerald-600',
+    'bg-rose-500/10', 'bg-rose-500/15', 'bg-rose-500/20',
+    'border-rose-500/20', 'border-rose-500/30', 'border-rose-500/40',
+    'text-rose-300', 'text-rose-400', 'text-rose-500', 'text-rose-600',
+    'bg-amber-500/10', 'bg-amber-500/15', 'bg-amber-500/20',
+    'border-amber-500/20', 'border-amber-500/30', 'border-amber-500/40',
+    'text-amber-300', 'text-amber-400', 'text-amber-500', 'text-amber-600',
+    'bg-purple-500/10', 'bg-purple-500/15', 'bg-purple-500/20',
+    'border-purple-500/20', 'border-purple-500/30',
+    'text-purple-300', 'text-purple-400', 'text-purple-500', 'text-purple-600',
+    'bg-teal-500/10', 'bg-teal-500/15', 'bg-teal-500/20',
+    'border-teal-500/20', 'border-teal-500/30',
+    'text-teal-300', 'text-teal-400', 'text-teal-500',
+    'bg-indigo-500/10', 'bg-indigo-500/20', 'text-indigo-400',
+    'bg-pink-500/10', 'bg-pink-500/15', 'bg-pink-500/20',
+    'border-pink-500/20', 'border-pink-500/30',
+    'text-pink-300', 'text-pink-400', 'text-pink-500',
+    'translate-y-2', 'translate-x-12', 'translate-x-0', 'opacity-0', 'opacity-100',
+    'hidden', 'flex', 'block', 'rotate-180'
+  ],
   theme: {
     extend: {
       fontFamily: {
@@ -17,53 +47,14 @@ module.exports = {
           925: '#070b14',
           950: '#040711',
         },
-        brand: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
-        },
-        accent: {
-          gold: '#f59e0b',
-          amber: '#d97706',
-          rose: '#f43f5e',
-          purple: '#a855f7',
-          cyan: '#06b6d4',
-        },
       },
       animation: {
-        'wave-1': 'wave 1.1s ease-in-out infinite alternate',
-        'wave-2': 'wave 1.4s ease-in-out infinite alternate 0.2s',
-        'wave-3': 'wave 0.9s ease-in-out infinite alternate 0.4s',
-        'wave-4': 'wave 1.3s ease-in-out infinite alternate 0.1s',
-        'wave-5': 'wave 1.0s ease-in-out infinite alternate 0.3s',
         'pulse-glow': 'pulseGlow 4s ease-in-out infinite',
-        'spin-slow': 'spin 18s linear infinite',
-        'slide-in-right': 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-        'wave-bar': 'waveBar 1.2s ease-in-out infinite alternate',
       },
       keyframes: {
-        wave: {
-          '0%': { height: '4px' },
-          '100%': { height: '24px' },
-        },
         pulseGlow: {
           '0%, 100%': { opacity: '0.3' },
           '50%': { opacity: '0.7' },
-        },
-        slideInRight: {
-          '0%': { transform: 'translateX(100%)' },
-          '100%': { transform: 'translateX(0)' },
-        },
-        waveBar: {
-          '0%': { height: '6px' },
-          '100%': { height: '32px' },
         },
       },
     },

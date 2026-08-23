@@ -7,36 +7,57 @@
   <title>UNM-Server · 企业级多音源音频流媒体与无损音乐 API 网关</title>
   <link rel="shortcut icon" href="./favicon.png" type="image/png" />
 
-  <!-- 关键样式内联：首帧即暗色底（防 FOUC），必须位于所有样式表之前 -->
+  <!-- 首帧防闪烁极速主题同步脚本 (0ms 阻塞执行，杜绝任何黑白闪烁) -->
+  <script>
+    (function() {
+      try {
+        var s = localStorage.getItem('theme');
+        var p = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = s ? s === 'dark' : (p || true);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch(e) {}
+    })();
+  </script>
+
+  <!-- 关键样式内联：首帧即正确底色，杜绝 FOUC -->
   <style>
-    html { background: #040711; color-scheme: dark; }
+    html { background-color: #f8fafc; color-scheme: light; }
+    html.dark { background-color: #040711; color-scheme: dark; }
     html, body { overflow-x: hidden !important; max-width: 100vw; margin: 0; padding: 0; }
     body { -webkit-font-smoothing: antialiased; font-size: 15px; }
     *, *::before, *::after { box-sizing: border-box; }
+    [data-lucide] { display: inline-block; vertical-align: middle; }
   </style>
 
-  <!-- 字体样式异步加载：不阻塞首帧（该域在国内网络易长阻塞导致刷新白闪），系统字体栈即时回退 -->
+  <!-- 字体样式异步加载：系统字体栈即时回退 -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" /></noscript>
 
-  <!-- 页面样式由服务端注入内联（见 app.ts），首帧零额外请求 -->
+  <!-- 核心样式表 (标准引入 + 服务端直出内联支持) -->
+  <link rel="stylesheet" href="./assets/css/tailwind.css" />
+  <link rel="stylesheet" href="./assets/css/main.css" />
+  <link rel="stylesheet" href="./assets/css/player.css" />
   <!--INLINE_PAGE_CSS-->
   <script src="/vendor/lucide.min.js"></script>
 </head>
 
-<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white transition-colors duration-300 relative w-full overflow-x-hidden">
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white relative w-full overflow-x-hidden">
 
   <!-- 现代 Toast 漂浮通知容器 -->
   <div id="toastContainer" class="fixed top-5 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[140] flex flex-col space-y-3 pointer-events-none max-w-[calc(100vw-32px)]"></div>
 
   <!-- 高端环境流光呼吸背景 -->
   <div class="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
-    <div class="ambient-glow top-[-150px] left-1/2 -translate-x-1/2 bg-gradient-to-b from-sky-400/20 via-indigo-500/15 to-transparent dark:from-sky-600/15 dark:via-indigo-950/30 animate-pulse-glow"></div>
-    <div class="ambient-glow top-[35%] right-[-120px] bg-gradient-to-l from-amber-500/10 via-rose-500/5 to-transparent dark:from-amber-600/10 dark:via-purple-900/15"></div>
-    <div class="ambient-glow top-[70%] left-[-120px] bg-gradient-to-r from-purple-500/10 via-cyan-500/5 to-transparent dark:from-purple-950/20"></div>
+    <div class="ambient-glow w-[500px] h-[500px] sm:w-[750px] sm:h-[750px] top-[-180px] left-1/2 -translate-x-1/2 bg-gradient-to-b from-sky-400/35 via-indigo-600/25 to-transparent dark:from-sky-500/25 dark:via-indigo-950/45 dark:to-transparent animate-pulse-glow"></div>
+    <div class="ambient-glow w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] top-[30%] right-[-150px] bg-gradient-to-l from-amber-500/25 via-rose-500/15 to-transparent dark:from-amber-600/20 dark:via-purple-900/25"></div>
+    <div class="ambient-glow w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] top-[65%] left-[-150px] bg-gradient-to-r from-purple-500/25 via-cyan-500/15 to-transparent dark:from-purple-950/35 dark:via-cyan-950/20"></div>
   </div>
 
   <!-- ========================================================================= -->
