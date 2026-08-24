@@ -101,7 +101,7 @@ musicRoute.get("/ncmget", async (c) => {
   }
 });
 
-// 音源直链同源中转流 (/stream)：解决 https 页面无法内嵌 http 直链的混合内容问题。
+// 音源直链同源中转流 (/stream)：解决 https 页面无法内嵌 http 直链的混合内容问题与第三方防盗链。
 // 双通道兜底：优先服务端直连上游；直连失败且配置了 PROXY_URL 时，自动经外部代理前缀重试一次。
 // 仅允许转发「本服务签发过且在缓存有效期内」的直链（白名单校验），不构成开放代理。
 musicRoute.get("/stream", async (c) => {
@@ -126,16 +126,36 @@ musicRoute.get("/stream", async (c) => {
     channelUrls.push({ name: "proxy", url: formatProxyUrl(targetUrl, env.PROXY_URL) });
   }
 
+  const rangeHeader = c.req.header("range") || "";
+  const lowUrl = targetUrl.toLowerCase();
+
+  // 根据目标直链特征智能补齐防盗链请求头（B站/咪咕/腾讯/酷我/酷狗等）
+  const upstreamHeaders: Record<string, string> = {
+    "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
+    Accept: "*/*",
+  };
+  if (rangeHeader) upstreamHeaders["Range"] = rangeHeader;
+
+  if (lowUrl.includes("bilivideo") || lowUrl.includes("bilibili") || lowUrl.includes("akamaized.net")) {
+    upstreamHeaders["Referer"] = "https://www.bilibili.com/";
+    upstreamHeaders["Origin"] = "https://www.bilibili.com";
+  } else if (lowUrl.includes("migu.cn")) {
+    upstreamHeaders["Referer"] = "https://m.music.migu.cn/";
+  } else if (lowUrl.includes("qq.com")) {
+    upstreamHeaders["Referer"] = "https://y.qq.com/";
+  } else if (lowUrl.includes("kugou.com")) {
+    upstreamHeaders["Referer"] = "https://www.kugou.com/";
+  } else if (lowUrl.includes("kuwo.cn")) {
+    upstreamHeaders["Referer"] = "https://www.kuwo.cn/";
+  } else if (lowUrl.includes("joox.com")) {
+    upstreamHeaders["Referer"] = "https://www.joox.com/";
+  }
+
   let lastError = "";
   for (const channel of channelUrls) {
     try {
-      const rangeHeader = c.req.header("range") || "";
       const upstream = await fetch(channel.url, {
-        headers: {
-          ...(rangeHeader ? { Range: rangeHeader } : {}),
-          "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
-          Accept: "*/*",
-        },
+        headers: upstreamHeaders,
         redirect: "follow",
       });
 

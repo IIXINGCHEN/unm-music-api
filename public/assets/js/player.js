@@ -53,10 +53,27 @@ const audio = document.getElementById('mainAudioPlayer');
       }
     });
 
+    // 判定是否需要经 /stream 同源中转：
+    // 1. https 下的 http 明文流（解决浏览器 Mixed Content 拦截）
+    // 2. 具备严格 Referer 防盗链校验的音源 CDN（B站 bilivideo / akamaized / m4s / 咪咕等）
+    function shouldRouteViaStream(url) {
+      if (!url) return false;
+      if (location.protocol === 'https:' && url.startsWith('http://')) return true;
+      return /bilivideo\.com|akamaized\.net|bilibili\.com|\.m4s|migu\.cn/i.test(url);
+    }
+
     // 连续失败计数：整张队列全部失败后停止自动跳曲，避免无限循环
     let _consecutiveFailures = 0;
     audio.addEventListener('playing', () => { _consecutiveFailures = 0; });
     audio.addEventListener('error', () => {
+      // 错误自动降级：若直连播放失败且尚未走 /stream，自动切换至服务端双通道中转兜底
+      if (currentTrack && currentTrack._rawUrl && !audio.src.includes('/stream?url=')) {
+        console.warn('[Player] 直连播放失败，自动切换至 /stream 双通道代理中转重试...');
+        audio.src = `/stream?url=${encodeURIComponent(currentTrack._rawUrl)}`;
+        audio.play().catch(() => {});
+        return;
+      }
+
       _consecutiveFailures++;
       const inQueue = currentQueueIndex >= 0 && currentQueueIndex < playQueue.length;
       const hasNext = currentQueueIndex >= 0 && currentQueueIndex < playQueue.length - 1;
@@ -350,8 +367,9 @@ const audio = document.getElementById('mainAudioPlayer');
           audioUrl = await resolveTrackAudioUrl(track);
         }
         if (!audioUrl) throw new Error('未能获取到可用直链');
-        if (location.protocol === 'https:' && audioUrl.startsWith('http://')) {
-          // https 页面禁止内嵌 http 流：改走本服务同源中转，避免强升 https 后直链不可达
+        currentTrack._rawUrl = audioUrl;
+        if (shouldRouteViaStream(audioUrl)) {
+          // https 混合内容或防盗链音源：经服务端 /stream 中转转发
           audioUrl = `/stream?url=${encodeURIComponent(audioUrl)}`;
         }
         updatePlayerMeta(track);
