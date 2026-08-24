@@ -59,7 +59,7 @@ const audio = document.getElementById('mainAudioPlayer');
     function shouldRouteViaStream(url) {
       if (!url) return false;
       if (location.protocol === 'https:' && url.startsWith('http://')) return true;
-      return /joox\.com|bilivideo\.com|akamaized\.net|bilibili\.com|\.m4s|migu\.cn|kugou\.com|kuwo\.cn|qq\.com|163\.com/i.test(url);
+      return /joox|stream\.music|bilivideo|akamaized\.net|bilibili|\.m4s|migu\.cn|kugou\.com|kuwo\.cn|qq\.com|163\.com|126\.net/i.test(url);
     }
 
     // 连续失败计数：整张队列全部失败后停止自动跳曲，避免无限循环

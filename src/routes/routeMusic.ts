@@ -171,18 +171,14 @@ musicRoute.get("/stream", async (c) => {
       const contentRange = upstream.headers.get("content-range");
       if (contentRange) headers.set("Content-Range", contentRange);
 
-      const contentLength = upstream.headers.get("content-length");
-      const isChunked = upstream.headers.get("transfer-encoding") === "chunked";
-      const isCompressed = Boolean(upstream.headers.get("content-encoding"));
-      // 仅在明确非分块且非透明解压时转发 Content-Length，防止上游 CDN 乱序或解压导致客户端 net::ERR_CONTENT_LENGTH_MISMATCH
-      if (contentLength && !isChunked && !isCompressed) {
-        headers.set("Content-Length", contentLength);
-      }
       headers.set("Accept-Ranges", "bytes");
       headers.set("Cache-Control", "no-store");
       // 观测用：标识本次实际服务的通道（direct / proxy）
       headers.set("X-Stream-Channel", channel.name);
 
+      // 注意：流式转发 (upstream.body) 在 Node.js 下由底层自动走 Transfer-Encoding: chunked 分块传输。
+      // 绝不可强行设置上游静态 Content-Length，否则当客户端 Seek、暂停或网络抖动提前关闭连接时，
+      // 浏览器内核 (Chrome/Edge) 检测到实际接收字节数少于 Content-Length 会直接抛出 net::ERR_CONTENT_LENGTH_MISMATCH。
       return new Response(upstream.body, { status: upstream.status, headers });
     } catch (error: any) {
       lastError = `通道[${channel.name}] 请求失败: ${error.message}`;
