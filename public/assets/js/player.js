@@ -135,6 +135,9 @@ const audio = document.getElementById('mainAudioPlayer');
         g.classList.toggle('opacity-0', !playing);
       }
       renderPlayerQueue();
+      if (typeof window.syncIslandMusicState === 'function') {
+        window.syncIslandMusicState(currentTrack, playing);
+      }
     }
     function setCoverArt(imgEl, vinylEl, picUrl) {
       if (picUrl) {

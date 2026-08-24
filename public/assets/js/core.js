@@ -99,6 +99,80 @@
     const toggleWorkbenchStation = bindCollapse('btnWorkbenchToggle', 'iconWorkbenchToggle', 'workbenchStationBody', '_workbenchCollapsed');
     const toggleSpecsTable = bindCollapse('btnSpecsToggle', 'iconSpecsToggle', 'specsTableContent', '_specsCollapsed');
 
+    // --- 灵动岛交互中枢 (Dynamic Island Controller) ---
+    let isIslandExpanded = false;
+
+    function toggleDynamicIsland() {
+      if (isIslandExpanded) {
+        collapseDynamicIsland();
+      } else {
+        expandDynamicIsland();
+      }
+    }
+
+    function expandDynamicIsland() {
+      const island = document.getElementById('dynamicIsland');
+      const compactView = document.getElementById('islandCompactView');
+      const expandedView = document.getElementById('islandExpandedView');
+      if (!island || !compactView || !expandedView) return;
+
+      isIslandExpanded = true;
+      island.classList.remove('dynamic-island-compact');
+      island.classList.add('dynamic-island-expanded', 'p-4', 'sm:p-6', 'w-[calc(100vw-32px)]', 'sm:w-[680px]', 'md:w-[780px]');
+      compactView.classList.add('hidden');
+      expandedView.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function collapseDynamicIsland() {
+      const island = document.getElementById('dynamicIsland');
+      const compactView = document.getElementById('islandCompactView');
+      const expandedView = document.getElementById('islandExpandedView');
+      if (!island || !compactView || !expandedView) return;
+
+      isIslandExpanded = false;
+      island.classList.remove('dynamic-island-expanded', 'p-4', 'sm:p-6', 'w-[calc(100vw-32px)]', 'sm:w-[680px]', 'md:w-[780px]');
+      island.classList.add('dynamic-island-compact');
+      expandedView.classList.add('hidden');
+      compactView.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    // 点击灵动岛外部自动优雅收起
+    document.addEventListener('click', (e) => {
+      const island = document.getElementById('dynamicIsland');
+      if (isIslandExpanded && island && !island.contains(e.target)) {
+        collapseDynamicIsland();
+      }
+    });
+
+    // 播放器状态同步到灵动岛（歌曲名、歌手、声波律动）
+    window.syncIslandMusicState = function(track, isPlaying) {
+      const musicPill = document.getElementById('islandMusicPill');
+      const staticNav = document.getElementById('islandStaticNav');
+      const titleEl = document.getElementById('islandTrackTitle');
+      const wavesEl = document.getElementById('islandAudioWaves');
+
+      if (!musicPill || !staticNav) return;
+
+      if (track && (track.name || track.id)) {
+        staticNav.classList.add('hidden');
+        musicPill.classList.remove('hidden');
+        musicPill.classList.add('flex');
+        if (titleEl) {
+          titleEl.textContent = `${track.name || '正在播放'} - ${track.artist || 'UNM'}`;
+        }
+        if (wavesEl) {
+          wavesEl.style.opacity = isPlaying ? '1' : '0.35';
+        }
+      } else {
+        musicPill.classList.add('hidden');
+        musicPill.classList.remove('flex');
+        staticNav.classList.remove('hidden');
+      }
+      lucide.createIcons();
+    };
+
     // 从后端 /info 同步统一版本号徽章（版本由根目录 VERSION 文件单点管理）
     async function syncAppVersionBadge() {
       try {

@@ -243,67 +243,77 @@ class GDStudioService {
       const playlist = res.data && res.data.playlist;
       if (playlist) {
         const rawSongIds = (playlist.trackIds || playlist.tracks || []).map((t) => String(t.id)).filter(Boolean);
-        let tracks: PlaylistTrack[] = [];
+        const targetIds = rawSongIds.slice(0, limit);
+        const trackMap = new Map<string, PlaylistTrack>();
 
         if (Array.isArray(playlist.tracks) && playlist.tracks.length > 0) {
-          tracks = playlist.tracks.slice(0, limit).map((t: any) => ({
-            id: String(t.id),
-            name: t.name || "未知曲目",
-            artist: (t.ar || t.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
-            album: t.al?.name || t.album?.name || "未知专辑",
-            picUrl: t.al?.picUrl || t.album?.picUrl || "",
-            duration: t.dt ? Math.round(t.dt / 1000) : 0,
-          }));
+          for (const t of playlist.tracks) {
+            const idStr = String(t.id);
+            trackMap.set(idStr, {
+              id: idStr,
+              name: t.name || "未知曲目",
+              artist: (t.ar || t.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
+              album: t.al?.name || t.album?.name || "未知专辑",
+              picUrl: t.al?.picUrl || t.album?.picUrl || "",
+              duration: t.dt ? Math.round(t.dt / 1000) : 0,
+            });
+          }
         }
 
-        // 如果 tracks 数量少于 limit 且还有更多 trackIds，按 200 个一组批量拉取全部详情
-        if (tracks.length < limit && rawSongIds.length > tracks.length) {
-          const neededIds = rawSongIds.slice(tracks.length, limit);
+        // 找出尚未取得详情的曲目 ID，按 200 个一组并发批量拉取全部详情
+        const missingIds = targetIds.filter((id) => !trackMap.has(id));
+        if (missingIds.length > 0) {
           const chunkSize = 200;
-          for (let i = 0; i < neededIds.length; i += chunkSize) {
-            const chunk = neededIds.slice(i, i + chunkSize);
-            try {
-              const batchUrl = `https://music.163.com/api/song/detail?ids=[${chunk.join(",")}]`;
-              const batchRes = await this.client.get<{ songs?: Array<any> }>(batchUrl, {
-                headers: {
-                  Referer: UPSTREAM_APIS.NETEASE_REFERER,
-                  "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
-                },
-                timeout: 8000,
-              });
-              if (Array.isArray(batchRes.data?.songs)) {
-                const moreTracks = batchRes.data.songs.map((s: any) => ({
-                  id: String(s.id),
-                  name: s.name || "未知曲目",
-                  artist: (s.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
-                  album: s.album?.name || "未知专辑",
-                  picUrl: s.album?.picUrl || "",
-                  duration: s.duration ? Math.round(s.duration / 1000) : 0,
-                }));
-                tracks.push(...moreTracks);
-              }
-            } catch (batchErr: any) {
-              console.warn(`[Playlist] 批量获取歌曲详情 chunk 异常: ${batchErr.message}`);
-            }
+          const chunks: string[][] = [];
+          for (let i = 0; i < missingIds.length; i += chunkSize) {
+            chunks.push(missingIds.slice(i, i + chunkSize));
           }
 
-          // 补充占位对象以保证总数与原歌单一致
-          if (tracks.length < neededIds.length) {
-            const existingIdSet = new Set(tracks.map(t => t.id));
-            for (const id of rawSongIds.slice(0, limit)) {
-              if (!existingIdSet.has(id)) {
-                tracks.push({
-                  id: String(id),
-                  name: `歌单曲目 #${id}`,
-                  artist: "网易云音乐",
-                  album: playlist.name || "精选歌单",
-                  picUrl: "",
-                  duration: 0,
+          await Promise.all(
+            chunks.map(async (chunk) => {
+              try {
+                // 网易云标准批量获取详情接口
+                const batchUrl = `https://music.163.com/api/v3/song/detail?c=[${chunk.map((id) => `{"id":${id}}`).join(",")}]`;
+                const batchRes = await this.client.get<{ songs?: Array<any> }>(batchUrl, {
+                  headers: {
+                    Referer: UPSTREAM_APIS.NETEASE_REFERER,
+                    "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
+                  },
+                  timeout: 8000,
                 });
+                if (Array.isArray(batchRes.data?.songs)) {
+                  for (const s of batchRes.data.songs) {
+                    const idStr = String(s.id);
+                    trackMap.set(idStr, {
+                      id: idStr,
+                      name: s.name || "未知曲目",
+                      artist: (s.ar || s.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
+                      album: s.al?.name || s.album?.name || "未知专辑",
+                      picUrl: s.al?.picUrl || s.album?.picUrl || "",
+                      duration: s.dt ? Math.round(s.dt / 1000) : (s.duration ? Math.round(s.duration / 1000) : 0),
+                    });
+                  }
+                }
+              } catch (batchErr: any) {
+                console.warn(`[Playlist] 批量获取歌曲详情 chunk 异常: ${batchErr.message}`);
               }
-            }
-          }
+            })
+          );
         }
+
+        // 严格按照歌单官方原始顺序组装完整列表，杜绝漏歌、乱序
+        const tracks: PlaylistTrack[] = targetIds.map((id) => {
+          const existing = trackMap.get(id);
+          if (existing) return existing;
+          return {
+            id: String(id),
+            name: `歌单曲目 #${id}`,
+            artist: "网易云音乐",
+            album: playlist.name || "精选歌单",
+            picUrl: playlist.coverImgUrl || "",
+            duration: 0,
+          };
+        });
 
         const result: PlaylistDetail = {
           id: cleanId,

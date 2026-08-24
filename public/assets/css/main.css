@@ -85,6 +85,45 @@ input[type=range] { accent-color: #0ea5e9; }
 .source-card-bodian:hover { border-color: rgba(20, 184, 166, 0.5); box-shadow: 0 8px 24px -4px rgba(20, 184, 166, 0.2); }
 .source-card-gdstudio:hover { border-color: rgba(56, 189, 248, 0.5); box-shadow: 0 8px 24px -4px rgba(56, 189, 248, 0.2); }
 
+/* ============================================================
+   灵动岛导航中枢 (Dynamic Island Navigation Hub)
+   ============================================================ */
+.dynamic-island-wrapper {
+  perspective: 1000px;
+}
+.dynamic-island {
+  transform-origin: top center;
+  transition: all 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: width, max-height, border-radius, transform, padding;
+}
+.dynamic-island-compact {
+  max-width: 900px;
+  height: 52px;
+  border-radius: 9999px;
+}
+.dynamic-island-expanded {
+  max-width: 960px;
+  border-radius: 28px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+/* 灵动岛律动声波 */
+.audio-bar {
+  width: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(to top, #38bdf8, #818cf8);
+  animation: audioWave 1.2s ease-in-out infinite alternate;
+}
+.audio-bar:nth-child(1) { height: 14px; animation-delay: 0.1s; }
+.audio-bar:nth-child(2) { height: 8px; animation-delay: 0.35s; }
+.audio-bar:nth-child(3) { height: 18px; animation-delay: 0.2s; }
+.audio-bar:nth-child(4) { height: 11px; animation-delay: 0.45s; }
+
+@keyframes audioWave {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1.1); }
+}
+
 /* JSON 高亮着色器（调试台输出） */
 .json-key { color: #38bdf8; font-weight: 600; }
 .json-string { color: #34d399; }

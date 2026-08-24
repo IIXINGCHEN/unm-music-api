@@ -43,20 +43,101 @@ export function isRegisteredStreamUrl(url: string, maxAgeMs: number): boolean {
 }
 
 /**
+ * 清洗字符串：去除版本括号、Live/现场/Remix/伴奏前后缀及标点符号，提取纯净名称核心
+ */
+function cleanSongTitle(str?: string): string {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .replace(/[\(（\[【][^\)）\]】]*(?:live|现场|remix|伴奏|instrumental|version|版|第[0-9一二三四五六七八九十]+期)[^\)）\]】]*[\)）\]】]/gi, "")
+    .replace(/[^\p{L}\p{N}]+/gu, "")
+    .trim();
+}
+
+/**
+ * 智能多源曲目相似度打分器：确保匹配到的第三方音源与目标歌曲及歌手高度一致
+ */
+function findBestMatchingTrack(
+  list: any[],
+  expectedName?: string,
+  expectedArtist?: string
+): any | null {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  if (!expectedName && !expectedArtist) return list[0];
+
+  const targetCleanTitle = cleanSongTitle(expectedName);
+  const targetArtists = (expectedArtist || "")
+    .toLowerCase()
+    .split(/[\/,&\s+、]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  let bestItem: any = null;
+  let bestScore = -1;
+
+  for (const item of list) {
+    let score = 0;
+    const itemName = item.name || item.title || "";
+    const itemCleanTitle = cleanSongTitle(itemName);
+    const itemArtist = Array.isArray(item.artist)
+      ? item.artist.join(" ")
+      : (item.artist || item.singer || "");
+    const lowItemArtist = itemArtist.toLowerCase();
+
+    // 1. 歌曲名比对 (最高 60 分)
+    if (expectedName && itemName.toLowerCase() === expectedName.toLowerCase()) {
+      score += 60;
+    } else if (targetCleanTitle && itemCleanTitle === targetCleanTitle) {
+      score += 50;
+    } else if (
+      targetCleanTitle &&
+      (itemCleanTitle.includes(targetCleanTitle) || targetCleanTitle.includes(itemCleanTitle))
+    ) {
+      score += 30;
+    }
+
+    // 2. 歌手名比对 (最高 40 分)
+    if (targetArtists.length > 0) {
+      let matchedArtists = 0;
+      for (const a of targetArtists) {
+        if (lowItemArtist.includes(a)) {
+          matchedArtists++;
+        }
+      }
+      if (matchedArtists === targetArtists.length) {
+        score += 40;
+      } else if (matchedArtists > 0) {
+        score += Math.round((40 * matchedArtists) / targetArtists.length);
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestItem = item;
+    }
+  }
+
+  // 若最佳评分有效（≥30 分）或无明确预期则采纳最佳，否则返回候选列表第 1 项兜底
+  return bestScore >= 30 ? bestItem : list[0];
+}
+
+/**
  * 关键词检索取链：按音源优先级依次尝试 GD Studio「搜索 + 取直链」（遵循 url_id 语义），全部失败返回 null
  */
 async function fetchAudioByKeyword(
   keyword: string,
   br: number,
   expectedName?: string,
-  sources: string[] = [env.DEFAULT_AUDIO_SOURCE, "kuwo", "kugou"]
+  expectedArtist?: string,
+  sources: string[] = [env.DEFAULT_AUDIO_SOURCE, "kuwo", "kugou", "joox", "bilibili"]
 ): Promise<{ url: string; br: number; size: number; source: string } | null> {
   const orderedSources = [...new Set(sources.map((s) => String(s).toLowerCase()).filter(Boolean))];
   for (const source of orderedSources) {
     try {
-      const list = await gdStudio.search(keyword, source, 5, 1);
+      const list = await gdStudio.search(keyword, source, 6, 1);
       if (!Array.isArray(list) || list.length === 0) continue;
-      const target = (expectedName ? list.find((t) => t.name === expectedName) : null) || list[0];
+      const target = findBestMatchingTrack(list, expectedName, expectedArtist);
+      if (!target) continue;
       const audio = await gdStudio.getUrl((target as any).url_id || target.id, source, br);
       if (audio && audio.url) {
         return {
@@ -92,9 +173,15 @@ export function setupUnmProviders(): void {
   unmConsts.PROVIDERS.gdstudio = {
     async check(info: any) {
       try {
-        const keyword = `${info.name || ""} ${info.artists?.[0]?.name || ""}`.trim();
+        const artistName = (info.artists || []).map((a: any) => a.name).join(" / ");
+        const keyword = `${info.name || ""} ${artistName}`.trim();
         if (!keyword) return null;
-        const audio = await fetchAudioByKeyword(keyword, Number(info.br) || env.DEFAULT_BITRATE, info.name || undefined);
+        const audio = await fetchAudioByKeyword(
+          keyword,
+          Number(info.br) || env.DEFAULT_BITRATE,
+          info.name || undefined,
+          artistName || undefined
+        );
         return audio?.url || null;
       } catch {
         return null;
@@ -242,11 +329,11 @@ export async function matchSong(
     console.warn(`[UNM Match] UNM 引擎直接匹配未命中 (${cleanId})，启动备选智能降级...`);
   }
 
-  // 3. 若 UNM 未能返回 URL，使用 GD Studio 关键词多源智能检索降级（joox -> kuwo -> kugou）
+  // 3. 若 UNM 未能返回 URL，使用 GD Studio 关键词多源智能检索降级（joox -> kuwo -> kugou -> bilibili）
   if (!matchResult || !matchResult.url) {
     if (detail && detail.name) {
       const keyword = `${detail.name} ${detail.artist}`.trim();
-      const kwAudio = await fetchAudioByKeyword(keyword, cleanBr, detail.name);
+      const kwAudio = await fetchAudioByKeyword(keyword, cleanBr, detail.name, detail.artist);
       if (kwAudio) {
         matchResult = {
           url: kwAudio.url,
