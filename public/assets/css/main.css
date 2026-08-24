@@ -94,30 +94,24 @@ input[type=range] { accent-color: #0ea5e9; }
    ============================================================ */
 .dynamic-island-wrapper {
   perspective: 1000px;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
 }
 .dynamic-island {
   transform-origin: top center;
-  transition: all 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: width, max-height, border-radius, transform, padding;
   position: relative;
   z-index: 60;
 }
 .dynamic-island-compact {
-  max-width: 540px;
-  height: 44px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  height: 46px;
   border-radius: 9999px;
 }
 .dynamic-island-expanded {
-  position: absolute;
-  top: 0;
-  max-width: 780px;
-  width: min(calc(100vw - 32px), 780px) !important;
-  border-radius: 28px;
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.2);
+  width: min(calc(100vw - 24px), 760px) !important;
+  border-radius: 26px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.18);
   z-index: 100;
 }
 

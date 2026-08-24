@@ -106,163 +106,148 @@
   <div class="ambient-glow bottom-[-100px] left-[-100px] bg-gradient-to-tr from-purple-500/15 via-pink-500/10 to-transparent dark:from-purple-950/20 dark:via-indigo-950/15"></div>
 
   <!-- ========================================================================= -->
-  <!-- 1. 顶部吸顶导航栏与居中灵动岛可交互中枢 (Sticky Dynamic Island Header) -->
+  <!-- 顶部居中悬浮 · 灵动岛交互中枢 (Floating Dynamic Island Navigation) -->
   <!-- ========================================================================= -->
-  <header class="sticky top-0 z-40 w-full glass-panel bg-white/85 dark:bg-slate-950/85 border-b border-slate-200/80 dark:border-white/10 transition-colors shadow-sm backdrop-blur-2xl">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between gap-3 sm:gap-6 relative w-full">
+  <header class="fixed top-3 sm:top-4 inset-x-0 z-50 flex justify-center px-3 sm:px-4 pointer-events-none dynamic-island-wrapper">
+    <div id="dynamicIsland" class="pointer-events-auto dynamic-island dynamic-island-compact bg-slate-900/90 dark:bg-black/90 text-white backdrop-blur-2xl border border-white/15 shadow-2xl shadow-black/40 overflow-hidden flex flex-col justify-center">
       
-      <!-- 左侧：品牌 Logo + 名称 + 版本徽章 -->
-      <div class="flex items-center space-x-2.5 sm:space-x-3 flex-shrink-0">
-        <a href="/" class="flex items-center space-x-2.5 sm:space-x-3 group interactive-btn">
-          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2 transition-transform group-hover:scale-105">
+      <!-- 1. 紧凑胶囊形态 (Compact Island Bar) -->
+      <div id="islandCompactView" class="flex items-center justify-between px-3 sm:px-3.5 h-full w-full gap-2 sm:gap-3 select-none">
+        <!-- 胶囊左侧：品牌 Logo + 遥测标签 + 状态点 -->
+        <a href="/" class="flex items-center space-x-2 cursor-pointer group flex-shrink-0">
+          <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-sky-500 p-0.5 flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105">
             <img src="./favicon.png" alt="UNM Logo" class="w-full h-full object-contain" />
           </div>
-          <div class="flex items-center space-x-1.5 sm:space-x-2">
-            <span class="font-extrabold text-sm sm:text-lg tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
-            <span class="app-version-badge text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">v3.1.0 PRO</span>
-          </div>
+          <span class="font-extrabold text-xs sm:text-sm tracking-tight text-white">UNM-Server</span>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/25 text-indigo-300 border border-indigo-500/35">遥测</span>
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
         </a>
-      </div>
 
-      <!-- 中间：居中交互灵动岛 (Dynamic Island Capsule & Hub) -->
-      <div class="flex-1 flex justify-center max-w-xl min-w-0 dynamic-island-wrapper">
-        <div id="dynamicIsland" class="dynamic-island dynamic-island-compact bg-slate-900/95 dark:bg-black/90 text-white backdrop-blur-2xl border border-white/15 shadow-xl shadow-black/30 overflow-hidden flex flex-col justify-center w-full">
-          
-          <!-- 1. 紧凑胶囊形态 (Compact Island Bar) -->
-          <div id="islandCompactView" class="flex items-center justify-between px-3 sm:px-4 h-full w-full gap-2 select-none">
-            <!-- 胶囊左侧：状态指示 -->
-            <div onclick="toggleDynamicIsland()" class="flex items-center space-x-2 cursor-pointer group flex-shrink-0">
-              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span class="text-xs font-bold text-slate-200 hidden sm:inline">遥测守护</span>
-            </div>
+        <!-- 胶囊中段：快捷导航 -->
+        <div id="islandMiddleSlot" onclick="toggleDynamicIsland()" class="flex items-center justify-center cursor-pointer min-w-0 px-1">
+          <div id="islandStaticNav" class="flex items-center space-x-1 text-xs font-semibold text-slate-300">
+            <a href="/#playlist-station" onclick="event.stopPropagation()" class="px-2 sm:px-2.5 py-1 rounded-full hover:text-white hover:bg-white/10 transition hidden md:inline">歌单视听</a>
+            <a href="/#workbench" onclick="event.stopPropagation()" class="px-2 sm:px-2.5 py-1 rounded-full hover:text-white hover:bg-white/10 transition">API 调试</a>
+            <a href="/#providers" onclick="event.stopPropagation()" class="px-2 sm:px-2.5 py-1 rounded-full hover:text-white hover:bg-white/10 transition hidden lg:inline">音源矩阵</a>
+            <a href="/dashboard" onclick="event.stopPropagation()" class="px-2 sm:px-2.5 py-1 rounded-full text-sky-300 bg-sky-500/25 border border-sky-500/30 transition">遥测大盘</a>
+          </div>
+        </div>
 
-            <!-- 胶囊中段：快捷导航 -->
-            <div id="islandMiddleSlot" onclick="toggleDynamicIsland()" class="flex-1 flex items-center justify-center cursor-pointer min-w-0 px-1">
-              <div id="islandStaticNav" class="flex items-center space-x-1 text-xs font-semibold text-slate-300">
-                <a href="/#playlist-station" onclick="event.stopPropagation()" class="px-2.5 py-1 rounded-full hover:text-white hover:bg-white/10 transition hidden md:inline">歌单视听</a>
-                <a href="/#workbench" onclick="event.stopPropagation()" class="px-2.5 py-1 rounded-full hover:text-white hover:bg-white/10 transition">API 调试</a>
-                <a href="/#providers" onclick="event.stopPropagation()" class="px-2.5 py-1 rounded-full hover:text-white hover:bg-white/10 transition hidden lg:inline">音源矩阵</a>
-                <a href="/dashboard" onclick="event.stopPropagation()" class="px-2.5 py-1 rounded-full text-sky-300 bg-sky-500/25 border border-sky-500/30 transition">遥测大盘</a>
-              </div>
-            </div>
-
-            <!-- 胶囊右侧：展开触发按钮 -->
-            <div class="flex items-center flex-shrink-0">
-              <button onclick="toggleDynamicIsland()" class="p-1 rounded-full hover:bg-white/15 text-slate-300 hover:text-white transition" title="展开遥测全功能中枢">
-                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-cyan-400"></i>
-              </button>
-            </div>
+        <!-- 胶囊右侧：Ping 状态 + API Key + 清空 + 主题 + 展开中枢 -->
+        <div class="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
+          <div id="pingBadge" class="hidden sm:inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-mono font-bold">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="pingText">Ping: --ms</span>
           </div>
 
-          <!-- 2. 展开交互巨岛形态 (Expanded Island Hub) -->
-          <div id="islandExpandedView" class="hidden space-y-4 w-full">
-            <div class="flex items-center justify-between border-b border-white/10 pb-3">
-              <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-indigo-500 to-sky-500 p-1 shadow-lg flex items-center justify-center flex-shrink-0">
-                  <img src="./favicon.png" alt="UNM-Server" class="w-full h-full object-contain" />
-                </div>
-                <div>
-                  <div class="flex items-center space-x-2">
-                    <h3 class="font-extrabold text-sm sm:text-base text-white">UNM-Server 灵动中枢</h3>
-                    <span class="app-version-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">v3.1.0 PRO</span>
-                  </div>
-                  <p class="text-[11px] sm:text-xs text-slate-400 mt-0.5">跨源音乐流媒体与无损音频解析调度中台</p>
-                </div>
-              </div>
-              <button onclick="collapseDynamicIsland()" class="p-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition">
-                <i data-lucide="x" class="w-4 h-4"></i>
-              </button>
+          <button onclick="openApiKeyModal()" class="p-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-amber-400 transition" title="设置监控密钥 (API Key)">
+            <i data-lucide="key" class="w-3.5 h-3.5"></i>
+          </button>
+
+          <button onclick="clearLogsData()" class="p-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-rose-400 transition" title="清空内存日志">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+
+          <button id="themeToggle" class="p-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition" title="切换深浅主题">
+            <i data-lucide="moon" class="w-3.5 h-3.5 hidden dark:block"></i>
+            <i data-lucide="sun" class="w-3.5 h-3.5 block dark:hidden"></i>
+          </button>
+
+          <button onclick="toggleDynamicIsland()" class="p-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition" title="展开遥测全功能中枢">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-cyan-400"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. 展开交互巨岛形态 (Expanded Island Hub) -->
+      <div id="islandExpandedView" class="hidden space-y-4 w-full">
+        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-indigo-500 to-sky-500 p-1 shadow-lg flex items-center justify-center flex-shrink-0">
+              <img src="./favicon.png" alt="UNM-Server" class="w-full h-full object-contain" />
             </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-              <a href="/#playlist-station" onclick="collapseDynamicIsland()" class="p-3 rounded-2xl bg-white/5 hover:bg-sky-500/20 border border-white/10 hover:border-sky-500/30 transition group">
-                <div class="flex items-center space-x-2 text-sky-400 font-bold mb-1">
-                  <i data-lucide="list-music" class="w-4 h-4"></i>
-                  <span>歌单视听工坊</span>
-                </div>
-                <p class="text-[11px] text-slate-400 group-hover:text-slate-300">500+ 精选曲目与跨源解析</p>
-              </a>
-
-              <a href="/#workbench" onclick="collapseDynamicIsland()" class="p-3 rounded-2xl bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-500/30 transition group">
-                <div class="flex items-center space-x-2 text-cyan-400 font-bold mb-1">
-                  <i data-lucide="terminal" class="w-4 h-4"></i>
-                  <span>API 交互调试台</span>
-                </div>
-                <p class="text-[11px] text-slate-400 group-hover:text-slate-300">8 大核心端点实时测试与播放</p>
-              </a>
-
-              <a href="/#providers" onclick="collapseDynamicIsland()" class="p-3 rounded-2xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/30 transition group">
-                <div class="flex items-center space-x-2 text-emerald-400 font-bold mb-1">
-                  <i data-lucide="radio" class="w-4 h-4"></i>
-                  <span>13 大音源矩阵</span>
-                </div>
-                <p class="text-[11px] text-slate-400 group-hover:text-slate-300">官方 + 竞速抢占集群节点</p>
-              </a>
-
-              <a href="/dashboard" class="p-3 rounded-2xl bg-white/5 hover:bg-indigo-500/20 border border-white/10 hover:border-indigo-500/30 transition group">
-                <div class="flex items-center space-x-2 text-indigo-400 font-bold mb-1">
-                  <i data-lucide="activity" class="w-4 h-4"></i>
-                  <span>全链路遥测大盘</span>
-                </div>
-                <p class="text-[11px] text-slate-400 group-hover:text-slate-300">实时延迟波形图与调用明细</p>
-              </a>
-
-              <a href="/info" target="_blank" class="p-3 rounded-2xl bg-white/5 hover:bg-purple-500/20 border border-white/10 hover:border-purple-500/30 transition group">
-                <div class="flex items-center space-x-2 text-purple-400 font-bold mb-1">
-                  <i data-lucide="info" class="w-4 h-4"></i>
-                  <span>系统环境配置 (/info)</span>
-                </div>
-                <p class="text-[11px] text-slate-400 group-hover:text-slate-300">活跃音源与反代配置</p>
-              </a>
-
-              <a href="/health" target="_blank" class="p-3 rounded-2xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/30 transition group">
-                <div class="flex items-center space-x-2 text-emerald-400 font-bold mb-1">
-                  <i data-lucide="heart-pulse" class="w-4 h-4"></i>
-                  <span>节点健康检查 (/health)</span>
-                </div>
-                <p class="text-[11px] text-slate-400 group-hover:text-slate-300">集群容器存活探针</p>
-              </a>
-            </div>
-
-            <div class="pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div class="flex items-center space-x-2 text-slate-400">
-                <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>流式直分发 · 零阻塞调度</span>
-              </div>
+            <div>
               <div class="flex items-center space-x-2">
-                <button onclick="clearLogsData(); collapseDynamicIsland();" class="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-semibold transition flex items-center space-x-1.5">
-                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                  <span>清空内存遥测记录</span>
-                </button>
+                <h3 class="font-extrabold text-sm sm:text-base text-white">UNM-Server 灵动中枢</h3>
+                <span class="app-version-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">v3.1.0 PRO</span>
               </div>
+              <p class="text-[11px] sm:text-xs text-slate-400 mt-0.5">跨源音乐流媒体与无损音频解析调度中台</p>
             </div>
           </div>
-
-        </div>
-      </div>
-
-      <!-- 右侧：Ping 探针 + 快捷凭证 + 主题切换 -->
-      <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-        <div id="pingBadge" class="hidden md:inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-bold">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="pingText">Ping: --ms</span>
+          <button onclick="collapseDynamicIsland()" class="p-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
         </div>
 
-        <button onclick="openApiKeyModal()" class="p-2 sm:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-amber-500 transition shadow-sm interactive-btn" title="设置监控密钥 (API Key)">
-          <i data-lucide="key" class="w-4 h-4"></i>
-        </button>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+          <a href="/#playlist-station" onclick="collapseDynamicIsland()" class="p-3 rounded-2xl bg-white/5 hover:bg-sky-500/20 border border-white/10 hover:border-sky-500/30 transition group">
+            <div class="flex items-center space-x-2 text-sky-400 font-bold mb-1">
+              <i data-lucide="list-music" class="w-4 h-4"></i>
+              <span>歌单视听工坊</span>
+            </div>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">500+ 精选曲目与跨源解析</p>
+          </a>
 
-        <button id="themeToggle" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition shadow-sm flex items-center justify-center interactive-btn" title="切换深浅主题">
-          <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
-          <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
-        </button>
+          <a href="/#workbench" onclick="collapseDynamicIsland()" class="p-3 rounded-2xl bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-500/30 transition group">
+            <div class="flex items-center space-x-2 text-cyan-400 font-bold mb-1">
+              <i data-lucide="terminal" class="w-4 h-4"></i>
+              <span>API 交互调试台</span>
+            </div>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">8 大核心端点实时测试与播放</p>
+          </a>
+
+          <a href="/#providers" onclick="collapseDynamicIsland()" class="p-3 rounded-2xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/30 transition group">
+            <div class="flex items-center space-x-2 text-emerald-400 font-bold mb-1">
+              <i data-lucide="radio" class="w-4 h-4"></i>
+              <span>13 大音源矩阵</span>
+            </div>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">官方 + 竞速抢占集群节点</p>
+          </a>
+
+          <a href="/dashboard" class="p-3 rounded-2xl bg-white/5 hover:bg-indigo-500/20 border border-white/10 hover:border-indigo-500/30 transition group">
+            <div class="flex items-center space-x-2 text-indigo-400 font-bold mb-1">
+              <i data-lucide="activity" class="w-4 h-4"></i>
+              <span>全链路遥测大盘</span>
+            </div>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">实时延迟波形图与调用明细</p>
+          </a>
+
+          <a href="/info" target="_blank" class="p-3 rounded-2xl bg-white/5 hover:bg-purple-500/20 border border-white/10 hover:border-purple-500/30 transition group">
+            <div class="flex items-center space-x-2 text-purple-400 font-bold mb-1">
+              <i data-lucide="info" class="w-4 h-4"></i>
+              <span>系统环境配置 (/info)</span>
+            </div>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">活跃音源与反代配置</p>
+          </a>
+
+          <a href="/health" target="_blank" class="p-3 rounded-2xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/30 transition group">
+            <div class="flex items-center space-x-2 text-emerald-400 font-bold mb-1">
+              <i data-lucide="heart-pulse" class="w-4 h-4"></i>
+              <span>节点健康检查 (/health)</span>
+            </div>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">集群容器存活探针</p>
+          </a>
+        </div>
+
+        <div class="pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center space-x-2 text-slate-400">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>流式直分发 · 零阻塞调度</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="clearLogsData(); collapseDynamicIsland();" class="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-semibold transition flex items-center space-x-1.5">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              <span>清空内存遥测记录</span>
+            </button>
+          </div>
+        </div>
       </div>
 
     </div>
   </header>
 
   <!-- 大盘主体内容 (专业级可折叠模块体系) -->
-  <main class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex-1 space-y-8 relative z-10 min-w-0">
+  <main class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-12 flex-1 space-y-8 relative z-10 min-w-0">
 
     <!-- 0. 大盘控制栏 (布局切换 / 轮询频率 / 日志清空与导出) -->
     <div class="p-3.5 sm:p-4 rounded-2xl glass-panel bg-white/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 shadow-sm flex flex-wrap items-center justify-between gap-3">
