@@ -382,6 +382,7 @@
         <div class="flex flex-wrap items-center gap-1.5 p-1 rounded-2xl bg-slate-100/90 dark:bg-slate-950/90 border border-slate-200 dark:border-white/5 text-xs font-semibold max-w-full overflow-x-auto custom-scroll" id="apiTabs">
           <button onclick="switchApiTab('match')" class="px-3 py-1.5 rounded-xl tab-active transition interactive-btn whitespace-nowrap" data-tab="match">/match 智能解灰</button>
           <button onclick="switchApiTab('ncmget')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="ncmget">/ncmget 官方直链</button>
+          <button onclick="switchApiTab('otherget')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="otherget">/otherget 跨源匹配</button>
           <button onclick="switchApiTab('search')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="search">/search 全网搜索</button>
           <button onclick="switchApiTab('lyric')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="lyric">/lyric 逐字歌词</button>
           <button onclick="switchApiTab('pic')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="pic">/pic 高清封面</button>
@@ -431,7 +432,16 @@
               <button onclick="fillPreset('186016', 'match', '周杰伦《晴天》')" class="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-sky-500 transition interactive-btn text-[11px]">周杰伦《晴天》</button>
               <button onclick="fillPreset('1901371647', 'match', '陈奕迅《孤勇者》')" class="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-sky-500 transition interactive-btn text-[11px]">陈奕迅《孤勇者》</button>
             </div>
-            <button onclick="executeApiTest()" id="executeBtn" class="px-6 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center space-x-1.5 shadow-md shadow-sky-500/20 interactive-btn flex-shrink-0"><i data-lucide="send" class="w-3.5 h-3.5"></i><span>发送实时请求</span></button>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button onclick="playCurrentWorkbenchTrack()" id="playWorkbenchBtn" class="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 dark:text-emerald-400 hover:text-white border border-emerald-500/20 font-bold text-xs sm:text-sm transition flex items-center justify-center space-x-1.5 interactive-btn shadow-sm" title="立即解析并播放输入框中的歌曲">
+                <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                <span>试听播放</span>
+              </button>
+              <button onclick="executeApiTest()" id="executeBtn" class="px-6 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center space-x-1.5 shadow-md shadow-sky-500/20 interactive-btn flex-shrink-0">
+                <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                <span>发送实时请求</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -456,6 +466,10 @@
               <span class="text-sky-400 font-bold text-[11px]" id="resSource">命中音源: --</span>
             </div>
             <div class="flex items-center space-x-2">
+              <button id="resPlayBtn" onclick="playLastTestedAudio()" class="hidden text-emerald-400 hover:text-emerald-300 transition flex items-center space-x-1 interactive-btn font-sans text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/20 shadow-sm" title="立即播放本次请求解析出的音频直链">
+                <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+                <span>播放解析音频</span>
+              </button>
               <button onclick="copyResponseJson()" class="text-slate-300 hover:text-white transition flex items-center space-x-1 interactive-btn font-sans text-xs"><i data-lucide="copy" class="w-3.5 h-3.5"></i><span>复制 JSON</span></button>
             </div>
           </div>
