@@ -35,6 +35,31 @@ export function registerStreamUrl(url: string | null | undefined): void {
   streamUrlRegistry.set(clean, Date.now());
 }
 
+// 受信任音源 CDN 根域白名单（严格子域匹配，杜绝 "xqq.com".endsWith("qq.com") 式裸后缀绕过）
+const TRUSTED_STREAM_HOST_SUFFIXES = [
+  "joox.com",
+  "qq.com",
+  "kugou.com",
+  "kuwo.cn",
+  "migu.cn",
+  "bilibili.com",
+  "bilivideo.com",
+  "bilivideo.cn",
+  "akamaized.net",
+  "163.com",
+  "126.net",
+  "music.126.net",
+  "bodian.cn",
+  "gdstudio.xyz",
+] as const;
+
+function isTrustedStreamHost(host: string): boolean {
+  const clean = host.toLowerCase();
+  return TRUSTED_STREAM_HOST_SUFFIXES.some(
+    (suffix) => clean === suffix || clean.endsWith(`.${suffix}`)
+  );
+}
+
 /** 校验目标直链是否为本服务在有效期内签发过的，或属于受信任的音源 CDN 域名 */
 export function isRegisteredStreamUrl(url: string, maxAgeMs: number): boolean {
   if (!url || typeof url !== "string") return false;
@@ -46,23 +71,7 @@ export function isRegisteredStreamUrl(url: string, maxAgeMs: number): boolean {
   // 2. 受信任音源 CDN 白名单校验（适配 Serverless/多实例集群/无状态部署，杜绝内存跨实例丢失导致的 403，同时严密阻断 SSRF 风险）
   try {
     const parsed = new URL(url);
-    const host = parsed.hostname.toLowerCase();
-    return (
-      host.endsWith("joox.com") ||
-      host.endsWith("qq.com") ||
-      host.endsWith("kugou.com") ||
-      host.endsWith("kuwo.cn") ||
-      host.endsWith("migu.cn") ||
-      host.endsWith("bilibili.com") ||
-      host.endsWith("bilivideo.com") ||
-      host.endsWith("bilivideo.cn") ||
-      host.endsWith("akamaized.net") ||
-      host.endsWith("163.com") ||
-      host.endsWith("126.net") ||
-      host.endsWith("bodian.cn") ||
-      host.endsWith("gdstudio.xyz") ||
-      host.endsWith("music.126.net")
-    );
+    return isTrustedStreamHost(parsed.hostname);
   } catch {
     return false;
   }

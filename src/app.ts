@@ -49,13 +49,27 @@ app.use("*", async (c, next) => {
   });
 });
 
-// 2. 基础安全响应头增强
+// 2. 基础安全响应头增强（含 CSP：因页面存在内联主题引导脚本与内联事件处理器，
+//    script-src 需 'unsafe-inline'；媒体与封面来自各音源 CDN，故 img/media 放开）
 app.use(
   "*",
   secureHeaders({
     xFrameOptions: "DENY",
     xContentTypeOptions: "nosniff",
     referrerPolicy: "strict-origin-when-cross-origin",
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+      imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
+      mediaSrc: ["'self'", "blob:", "https:", "http:"],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+    },
   })
 );
 

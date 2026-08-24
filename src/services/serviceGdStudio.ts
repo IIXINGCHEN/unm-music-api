@@ -273,7 +273,7 @@ class GDStudioService {
             chunks.map(async (chunk) => {
               try {
                 // 网易云标准批量获取详情接口
-                const batchUrl = `https://music.163.com/api/v3/song/detail?c=[${chunk.map((id) => `{"id":${id}}`).join(",")}]`;
+                const batchUrl = `${UPSTREAM_APIS.NETEASE_SONG_DETAIL_V3}?c=[${chunk.map((id) => `{"id":${id}}`).join(",")}]`;
                 const batchRes = await this.client.get<{ songs?: Array<any> }>(batchUrl, {
                   headers: {
                     Referer: UPSTREAM_APIS.NETEASE_REFERER,

@@ -47,6 +47,8 @@ export interface MonitorStats {
 
 class MonitorService {
   private maxLogs: number = MONITOR_CONFIG.DEFAULT_MAX_LOGS;
+  // 聚合统计键空间上限：防止攻击者伪造海量 XFF/IP / Referer 键导致统计 Map 慢性内存膨胀
+  private maxStatKeys: number = MONITOR_CONFIG.DEFAULT_MAX_STAT_KEYS;
   private logs: RequestLog[] = [];
   private totalRequests: number = 0;
   private successRequests: number = 0;
@@ -57,6 +59,18 @@ class MonitorService {
   private sourceMap: Map<string, number> = new Map();
   private statusMap: Map<string, number> = new Map();
   private startTime: number = Date.now();
+
+  /** 带容量上限的计数器：超出上限时丢弃新键（已有键照常累加），保障 TopN 统计仍有效 */
+  private bumpCount(map: Map<string, number>, key: string): void {
+    const current = map.get(key);
+    if (current !== undefined) {
+      map.set(key, current + 1);
+      return;
+    }
+    if (map.size < this.maxStatKeys) {
+      map.set(key, 1);
+    }
+  }
 
   /**
    * 解析客户端类型
@@ -91,8 +105,13 @@ class MonitorService {
    * 记录一次请求日志 (自动执行敏感数据脱敏)
    */
   record(logData: RecordLogParams): void {
-    // 忽略监控自身与静态文件的高频打点
-    if (logData.path.startsWith("/api/monitor") || logData.path.endsWith(".png") || logData.path.endsWith(".ico")) {
+    // 忽略监控自身与静态文件的高频打点（/monitor 为 Serverless 双平台兼容别名路径，同样跳过）
+    if (
+      logData.path.startsWith("/api/monitor") ||
+      logData.path.startsWith("/monitor") ||
+      logData.path.endsWith(".png") ||
+      logData.path.endsWith(".ico")
+    ) {
       return;
     }
 
@@ -153,23 +172,18 @@ class MonitorService {
     }
 
     // 统计端点分布
-    const epCount = this.endpointMap.get(logData.path) || 0;
-    this.endpointMap.set(logData.path, epCount + 1);
+    this.bumpCount(this.endpointMap, logData.path);
 
     // 统计调用方分布
-    const cCount = this.callerMap.get(callerName) || 0;
-    this.callerMap.set(callerName, cCount + 1);
+    this.bumpCount(this.callerMap, callerName);
 
     // 统计音源命中分布
     if (audioSource && audioSource !== "-") {
-      const sCount = this.sourceMap.get(audioSource) || 0;
-      this.sourceMap.set(audioSource, sCount + 1);
+      this.bumpCount(this.sourceMap, audioSource);
     }
 
     // 统计状态码
-    const stKey = String(logData.status || 200);
-    const stCount = this.statusMap.get(stKey) || 0;
-    this.statusMap.set(stKey, stCount + 1);
+    this.bumpCount(this.statusMap, String(logData.status || 200));
   }
 
   /**

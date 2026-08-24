@@ -40,6 +40,7 @@ export const CACHE_POLICY = {
 export const UPSTREAM_APIS = {
   DEFAULT_GDSTUDIO_URL: "https://music-api.gdstudio.xyz/api.php",
   NETEASE_SONG_DETAIL: "https://music.163.com/api/song/detail",
+  NETEASE_SONG_DETAIL_V3: "https://music.163.com/api/v3/song/detail",
   NETEASE_PLAYLIST_DETAIL: "https://music.163.com/api/v6/playlist/detail",
   NETEASE_REFERER: "https://music.163.com/",
 } as const;
@@ -77,6 +78,7 @@ export const MONITOR_CONFIG = {
   DEFAULT_MAX_LOGS: 1000,
   DEFAULT_PAGE: 1,
   DEFAULT_LIMIT: 50,
+  DEFAULT_MAX_STAT_KEYS: 500,
 } as const;
 
 export const RATE_LIMIT_CONFIG = {

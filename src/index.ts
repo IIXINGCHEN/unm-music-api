@@ -51,13 +51,28 @@ async function startServer(): Promise<void> {
     }
   );
 
-  // 优雅停机
+  // 优雅停机：先停止接收新连接并等待存量请求收尾；
+  // 若存在长音频流等挂起连接，宽限期到后强制断开退出，避免 SIGTERM 被无限拖延（容器编排超时强杀）
   const handleShutdown = () => {
     console.log("\n正在关闭 UNM-Server 服务...");
+    // ServerType 联合类型含 Http2 变体（无 close*Connections 方法），运行时守卫收窄
+    const httpServer = server as unknown as {
+      closeAllConnections?: () => void;
+      closeIdleConnections?: () => void;
+    };
+    const forceExitTimer = setTimeout(() => {
+      console.warn("优雅关闭超时，强制断开全部连接并退出");
+      httpServer.closeAllConnections?.();
+      process.exit(0);
+    }, 8000);
+    forceExitTimer.unref?.();
     server.close(() => {
+      clearTimeout(forceExitTimer);
       console.log("UNM-Server 服务已安全退出");
       process.exit(0);
     });
+    // 立即回收空闲的 keep-alive 连接加速排空；在途请求继续等待自然完成
+    httpServer.closeIdleConnections?.();
   };
 
   process.on("SIGINT", handleShutdown);
