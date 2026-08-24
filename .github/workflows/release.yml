@@ -47,13 +47,25 @@ jobs:
           tar -czf "./artifacts/unm-server-dist-${GITHUB_REF_NAME}.tar.gz" \
             -C . dist package.json pnpm-lock.yaml README.md VERSION
 
-      - name: Verify signature of the release tag
+      - name: Verify tag matches VERSION file
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
         run: |
-          # 宽松校验：仅要求标签存在签名（验证状态以 GitHub 页面展示为准）
-          git cat-file -e "${GITHUB_REF_NAME}^{}" 2>/dev/null || true
+          file_version="$(tr -d ' \r\n' < VERSION)"
+          tag_version="${TAG_NAME#v}"
+          if [ -z "$tag_version" ] || [ "$file_version" != "$tag_version" ]; then
+            echo "::error::标签 ${TAG_NAME} 与 VERSION 文件内容 (${file_version}) 不一致，拒绝发布"
+            exit 1
+          fi
 
+      - name: Verify tag object exists and points to a commit
+        run: |
+          # 说明：此处仅做标签对象存在性与指向校验。
+          # 密码学签名验证依赖仓库设置中的 required signatures（网页端手动勾选），
+          # 本地 git verify-tag 需要在 CI 注入签名公钥与 allowed_signers，暂未纳入自动化。
+          git cat-file -e "${GITHUB_REF_NAME}^{}"
+
+      # gh --verify-tag 语义仅为“远端标签必须已存在”，不做签名验证（见 cli.github.com/manual/gh_release_create）
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

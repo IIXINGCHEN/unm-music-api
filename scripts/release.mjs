@@ -94,8 +94,15 @@ sh("git add VERSION package.json src/config/configVersion.ts");
 sh(`git commit -m "chore(release): ${tag} 版本发布"`);
 log(`已创建签名提交: ${tag}`);
 
-sh(`git tag -a ${tag} -m "${tag}"`);
-log(`已创建签名标签: ${tag}`);
+// 显式 -s：不依赖 tag.gpgsign 配置，未配置签名密钥时立即失败而非产出未签名标签
+try {
+  sh(`git tag -s -a ${tag} -m "${tag}"`);
+  log(`已创建签名标签: ${tag}`);
+} catch {
+  try { sh(`git tag -d ${tag}`); } catch {}
+  die(`标签签名失败（-s）：请确认 user.signingkey / gpg.format=ssh 已指向发布密钥 (~/.ssh/unm_release_ed25519)；` +
+      `本地中间态清理: git reset --hard HEAD~1 && git tag -d ${tag}`);
+}
 
 // ---------- 5) 推送或回滚 ----------
 if (dryRun) {
@@ -107,9 +114,24 @@ if (dryRun) {
   process.exit(0);
 }
 
-sh("git push origin main");
-sh(`git push origin ${tag}`);
-log(`已推送 main 与标签 ${tag}`);
+// 先推标签再推 main：若标签因分支保护（如 required signatures）被拒绝，
+// main 不会被先行推进，避免出现“版本号已上主干但无标签/Release”的中间态
+try {
+  sh(`git push origin ${tag}`);
+  log(`已推送标签 ${tag}`);
+} catch {
+  console.error(`[release] ❌ 标签推送失败。若为签名校验拒绝，请到 GitHub 网页端勾选 required signatures 后重试；`);
+  console.error(`[release]    清理本地中间态: git reset --hard HEAD~1 && git tag -d ${tag} && node scripts/sync-version.mjs`);
+  process.exit(1);
+}
+try {
+  log("正在推送 main ...");
+  sh("git push origin main");
+  log(`已推送 main 与标签 ${tag}`);
+} catch {
+  console.error(`[release] ❌ main 推送失败（标签 ${tag} 已在远端）。请解决分支保护问题后手动执行: git push origin main`);
+  process.exit(1);
+}
 console.log("");
 log("✅ GitHub Actions 将自动执行：Docker 多架构镜像构建 + GitHub Release 发布");
 log("   https://github.com/IIXINGCHEN/unm-music-api/actions");

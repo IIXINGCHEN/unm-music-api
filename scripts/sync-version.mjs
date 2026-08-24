@@ -37,7 +37,12 @@ try {
 // 2) 同步 configVersion.ts 兜底常量
 const cfgPath = `${root}src/config/configVersion.ts`;
 let cfg = readFileSync(cfgPath, "utf-8");
-cfg = cfg.replace(/const FALLBACK_VERSION = "[^"]+";/, `const FALLBACK_VERSION = "${version}";`);
+const FALLBACK_PATTERN = /const FALLBACK_VERSION = "[^"]+";/;
+if (!FALLBACK_PATTERN.test(cfg)) {
+  console.error("[sync-version] configVersion.ts 中未找到 FALLBACK_VERSION 声明，请检查文件是否被改动");
+  process.exit(1);
+}
+cfg = cfg.replace(FALLBACK_PATTERN, `const FALLBACK_VERSION = "${version}";`);
 writeFileSync(cfgPath, cfg, "utf-8");
 console.log(`[sync-version] configVersion.ts FALLBACK_VERSION -> ${version}`);
 
