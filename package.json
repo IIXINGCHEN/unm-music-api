@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsup",
-    "prebuild": "node scripts/sync-version.mjs && tailwindcss -i public/assets/css/tailwind.input.css -o public/assets/css/tailwind.css --minify",
+    "prebuild": "node scripts/sync-version.mjs && tailwindcss -c tailwind.config.cjs -i public/assets/css/tailwind.input.css -o public/assets/css/tailwind.css --minify",
     "start": "node dist/index.js",
     "prd": "pm2 start dist/index.js --name unm-server",
     "typecheck": "tsc --noEmit",

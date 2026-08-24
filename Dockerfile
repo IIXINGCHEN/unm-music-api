@@ -6,7 +6,7 @@ WORKDIR /app
 
 RUN npm install -g pnpm@10
 
-COPY package.json pnpm-lock.yaml* tsconfig.json tsup.config.ts VERSION ./
+COPY package.json pnpm-lock.yaml* tsconfig.json tsup.config.ts VERSION tailwind.config.* ./
 RUN pnpm install --frozen-lockfile || pnpm install
 
 COPY src ./src
