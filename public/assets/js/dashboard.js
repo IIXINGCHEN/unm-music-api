@@ -3,8 +3,7 @@
  * 轮询控制、遥测表格渲染与明细抽屉。依赖 vendor/lucide 与 vendor/chart.umd。
  */
 
-    const _yearEl = document.getElementById('year');
-    if (_yearEl) _yearEl.textContent = String(new Date().getFullYear());
+    var confirmCallback = null;
     document.querySelectorAll('.current-year-text').forEach(el => el.textContent = String(new Date().getFullYear()));
     lucide.createIcons();
 
@@ -684,25 +683,24 @@
     }
 
     // 9. 现代确认对话框
-    let confirmCallback = null;
-    function showConfirmDialog({ title = '确认操作', message = '', onConfirm = null }) {
+    window.showConfirmDialog = function({ title = '确认操作', message = '', onConfirm = null }) {
       document.getElementById('confirmTitle').textContent = title;
       document.getElementById('confirmMessage').textContent = message;
       confirmCallback = onConfirm;
       document.getElementById('confirmModal').classList.remove('hidden');
       lucide.createIcons();
-    }
+    };
 
-    function closeConfirm(accepted) {
+    window.closeConfirm = function(accepted) {
       document.getElementById('confirmModal').classList.add('hidden');
       if (accepted && typeof confirmCallback === 'function') {
         confirmCallback();
       }
       confirmCallback = null;
-    }
+    };
 
     // 10. 清空与导出
-    async function clearLogsData() {
+    window.clearLogsData = async function() {
       showConfirmDialog({
         title: '清空遥测日志',
         message: '确定要重置并清空所有内存遥测日志记录吗？清空后当前聚合统计与明细将全部重置。',
@@ -757,6 +755,20 @@
     }
     checkPing();
     setInterval(checkPing, 10000);
+
+    // 全局导出，供 HTML onclick 直接调用
+    window.openApiKeyModal = openApiKeyModal;
+    window.closeApiKeyModal = closeApiKeyModal;
+    window.saveApiKey = saveApiKey;
+    window.clearSavedApiKey = clearSavedApiKey;
+    window.toggleSection = toggleSection;
+    window.switchLayoutPreset = switchLayoutPreset;
+    window.changePollInterval = changePollInterval;
+    window.exportJsonLogs = exportJsonLogs;
+    window.paginate = paginate;
+    window.openDrawer = openDrawer;
+    window.closeDrawer = closeDrawer;
+    window.dismissToast = dismissToast;
 
     // 初始启动
     document.querySelectorAll('.current-year-text').forEach(el => el.textContent = String(new Date().getFullYear()));
