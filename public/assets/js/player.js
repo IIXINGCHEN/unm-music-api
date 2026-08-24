@@ -53,8 +53,22 @@ const audio = document.getElementById('mainAudioPlayer');
       }
     });
 
+    // 连续失败计数：整张队列全部失败后停止自动跳曲，避免无限循环
+    let _consecutiveFailures = 0;
+    audio.addEventListener('playing', () => { _consecutiveFailures = 0; });
     audio.addEventListener('error', () => {
-      showToast({ type: 'error', title: '音频播放失败', message: '直链已失效、HTTPS 升级后音源不可达，或跨域受限（可在服务端配置 PROXY_URL 中转）' });
+      _consecutiveFailures++;
+      const inQueue = currentQueueIndex >= 0 && currentQueueIndex < playQueue.length;
+      const hasNext = currentQueueIndex >= 0 && currentQueueIndex < playQueue.length - 1;
+      if (inQueue && hasNext && _consecutiveFailures <= playQueue.length) {
+        const failedName = (playQueue[currentQueueIndex] || {}).name || '当前曲目';
+        showToast({ type: 'warning', title: '已跳过失效曲目', message: `《${failedName}》音源不可用，自动切换下一首` });
+        // 锁定目标索引：延迟窗口内若用户已手动切歌则放弃自动跳曲，避免双重跳转
+        const targetIndex = currentQueueIndex + 1;
+        setTimeout(() => { if (currentQueueIndex === targetIndex - 1) playTrackAt(targetIndex); }, 300);
+      } else {
+        showToast({ type: 'error', title: '音频播放失败', message: '直链已失效或跨域受限；可重新点击播放（将绕过缓存重新匹配音源）' });
+      }
     });
 
     function formatTime(seconds) {
@@ -312,29 +326,40 @@ const audio = document.getElementById('mainAudioPlayer');
     window.addEventListener('scroll', syncBackToTopVisibility, { passive: true });
     syncBackToTopVisibility();
 
+    // 解析可播放直链：跨源曲目携带 source 直取对应平台；首次失败自动绕过缓存重试一次（清理死链窗口）。
+    // 码率不写死，由服务端按 DEFAULT_BITRATE 配置决定。
+    async function resolveTrackAudioUrl(track) {
+      const crossSource = track.source && track.source !== 'netease' ? encodeURIComponent(track.source) : '';
+      const songId = encodeURIComponent(String(crossSource ? (track.urlId || track.id) : track.id));
+      const buildMatchUrl = (refresh) =>
+        `/match?id=${songId}${crossSource ? `&source=${crossSource}` : ''}${refresh ? '&refresh=true' : ''}`;
+      let json = await (await fetch(buildMatchUrl(false))).json();
+      if (!(json.code === 200 && json.data?.url)) {
+        json = await (await fetch(buildMatchUrl(true))).json();
+        if (!(json.code === 200 && json.data?.url)) throw new Error(json.message || '无可用音源');
+      }
+      return json.data.url;
+    }
+
     async function playSongItem(track) {
       currentTrack = track;
       showToast({ type: 'info', title: '正在匹配音频', message: `正在为《${track.name}》调度高保真直链...` });
       try {
         let audioUrl = track.url;
         if (!audioUrl && track.id) {
-          const matchRes = await fetch(`/match?id=${track.id}&br=999`);
-          const matchData = await matchRes.json();
-          if (matchData.code === 200 && matchData.data?.url) {
-            audioUrl = matchData.data.url;
-          } else {
-            throw new Error(matchData.message || '无可用音源');
-          }
+          audioUrl = await resolveTrackAudioUrl(track);
         }
+        if (!audioUrl) throw new Error('未能获取到可用直链');
         if (location.protocol === 'https:' && audioUrl.startsWith('http://')) {
-          audioUrl = audioUrl.replace(/^http:\/\//, 'https://');
+          // https 页面禁止内嵌 http 流：改走本服务同源中转，避免强升 https 后直链不可达
+          audioUrl = `/stream?url=${encodeURIComponent(audioUrl)}`;
         }
         updatePlayerMeta(track);
         audio.src = audioUrl;
         await audio.play();
         showPlayerBar();
         showToast({ type: 'success', title: '开始播放', message: `《${track.name}》- ${track.artist}` });
-        loadLyrics(track.id, track.source || 'netease');
+        loadLyrics(track.lyricId || track.id, track.source || 'netease');
       } catch (err) {
         showToast({ type: 'error', title: '匹配失败', message: err.message || '未能成功获取直链' });
       }

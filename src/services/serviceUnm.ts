@@ -19,6 +19,60 @@ import * as unmMatchNS from "@unblockneteasemusic/server";
 
 const unmConsts = unmConstsNS as any;
 
+// ---- 流媒体直链白名单注册表 ----
+// /stream 同源中转端点仅允许转发「本服务签发过的」音源直链，防止被滥用为开放代理 (SSRF)
+const streamUrlRegistry = new Map<string, number>();
+const STREAM_REGISTRY_MAX_ITEMS = 500;
+
+/** 登记一条允许经 /stream 中转的音源直链（FIFO 淘汰最旧条目） */
+export function registerStreamUrl(url: string | null | undefined): void {
+  const clean = typeof url === "string" ? url.trim() : "";
+  if (!clean || !/^https?:\/\//i.test(clean)) return;
+  if (streamUrlRegistry.size >= STREAM_REGISTRY_MAX_ITEMS) {
+    const oldestKey = streamUrlRegistry.keys().next().value;
+    if (oldestKey !== undefined) streamUrlRegistry.delete(oldestKey);
+  }
+  streamUrlRegistry.set(clean, Date.now());
+}
+
+/** 校验目标直链是否为本服务在有效期内签发过的 */
+export function isRegisteredStreamUrl(url: string, maxAgeMs: number): boolean {
+  const issuedAt = streamUrlRegistry.get(url);
+  if (issuedAt === undefined) return false;
+  return Date.now() - issuedAt <= maxAgeMs;
+}
+
+/**
+ * 关键词检索取链：按音源优先级依次尝试 GD Studio「搜索 + 取直链」（遵循 url_id 语义），全部失败返回 null
+ */
+async function fetchAudioByKeyword(
+  keyword: string,
+  br: number,
+  expectedName?: string,
+  sources: string[] = [env.DEFAULT_AUDIO_SOURCE, "kuwo", "kugou"]
+): Promise<{ url: string; br: number; size: number; source: string } | null> {
+  const orderedSources = [...new Set(sources.map((s) => String(s).toLowerCase()).filter(Boolean))];
+  for (const source of orderedSources) {
+    try {
+      const list = await gdStudio.search(keyword, source, 5, 1);
+      if (!Array.isArray(list) || list.length === 0) continue;
+      const target = (expectedName ? list.find((t) => t.name === expectedName) : null) || list[0];
+      const audio = await gdStudio.getUrl((target as any).url_id || target.id, source, br);
+      if (audio && audio.url) {
+        return {
+          url: audio.url,
+          br: audio.br || br * 1000,
+          size: audio.size || 0,
+          source,
+        };
+      }
+    } catch {
+      continue; // 单个音源失败不阻塞后续音源尝试
+    }
+  }
+  return null;
+}
+
 /**
  * 获取所有支持的音源列表（与 @unblockneteasemusic/server 最新版 0.28.0 完全对齐）
  */
@@ -40,11 +94,7 @@ export function setupUnmProviders(): void {
       try {
         const keyword = `${info.name || ""} ${info.artists?.[0]?.name || ""}`.trim();
         if (!keyword) return null;
-        const list = await gdStudio.search(keyword, env.DEFAULT_AUDIO_SOURCE, 5, 1);
-        if (!Array.isArray(list) || list.length === 0) return null;
-
-        const target = list.find((item) => item.name === info.name) || list[0];
-        const audio = await gdStudio.getUrl(target.id, env.DEFAULT_AUDIO_SOURCE, info.br || env.DEFAULT_BITRATE);
+        const audio = await fetchAudioByKeyword(keyword, Number(info.br) || env.DEFAULT_BITRATE, info.name || undefined);
         return audio?.url || null;
       } catch {
         return null;
@@ -60,7 +110,7 @@ export function setupUnmProviders(): void {
         if (audio && audio.url) {
           return audio.url;
         }
-        return await unmConsts.PROVIDERS.gdStudio.check(info);
+        return await unmConsts.PROVIDERS.gdstudio?.check(info);
       } catch {
         return null;
       }
@@ -77,7 +127,7 @@ export function setupUnmProviders(): void {
         if (!Array.isArray(list) || list.length === 0) return null;
 
         const target = list.find((item) => item.name === info.name) || list[0];
-        const audio = await gdStudio.getUrl(target.id, "joox", info.br || env.DEFAULT_BITRATE);
+        const audio = await gdStudio.getUrl((target as any).url_id || target.id, "joox", info.br || env.DEFAULT_BITRATE);
         return audio?.url || null;
       } catch {
         return null;
@@ -144,7 +194,8 @@ export async function getNeteaseSongDetail(id: string | number): Promise<SongDet
 export async function matchSong(
   id: string | number,
   servers?: string[] | null,
-  br: number | string = env.DEFAULT_BITRATE
+  br: number | string = env.DEFAULT_BITRATE,
+  opts: { refresh?: boolean } = {}
 ): Promise<MatchedAudio> {
   const cleanId = sanitizeParam(id, 50);
   if (!cleanId) {
@@ -160,9 +211,13 @@ export async function matchSong(
     : env.DEFAULT_MATCH_SERVERS.split(",").map((s) => s.trim()).filter(Boolean);
 
   const cacheKey = `match:${cleanId}:${serverList.join(",")}:${cleanBr}`;
-  const cached = globalCache.get(cacheKey) as MatchedAudio | null;
-  if (cached) {
-    return cached;
+  if (!opts.refresh) {
+    const cached = globalCache.get(cacheKey) as MatchedAudio | null;
+    if (cached) {
+      // 缓存命中同样登记直链，保证 /stream 同源中转在缓存有效期内可用
+      registerStreamUrl(cached.url);
+      return cached;
+    }
   }
 
   // 1. 获取网易云元数据
@@ -187,23 +242,19 @@ export async function matchSong(
     console.warn(`[UNM Match] UNM 引擎直接匹配未命中 (${cleanId})，启动备选智能降级...`);
   }
 
-  // 3. 若 UNM 未能返回 URL，使用 GD Studio 智能检索降级
+  // 3. 若 UNM 未能返回 URL，使用 GD Studio 关键词多源智能检索降级（joox -> kuwo -> kugou）
   if (!matchResult || !matchResult.url) {
     if (detail && detail.name) {
       const keyword = `${detail.name} ${detail.artist}`.trim();
-      const gdList = await gdStudio.search(keyword, env.DEFAULT_AUDIO_SOURCE, 5, 1);
-      if (Array.isArray(gdList) && gdList.length > 0) {
-        const topTrack = gdList.find((t) => t.name === detail.name) || gdList[0];
-        const audio = await gdStudio.getUrl(topTrack.id, env.DEFAULT_AUDIO_SOURCE, cleanBr);
-        if (audio && audio.url) {
-          matchResult = {
-            url: audio.url,
-            br: audio.br || cleanBr * 1000,
-            size: audio.size || 0,
-            source: env.DEFAULT_AUDIO_SOURCE,
-            md5: null,
-          };
-        }
+      const kwAudio = await fetchAudioByKeyword(keyword, cleanBr, detail.name);
+      if (kwAudio) {
+        matchResult = {
+          url: kwAudio.url,
+          br: kwAudio.br,
+          size: kwAudio.size,
+          source: kwAudio.source,
+          md5: null,
+        };
       }
     }
   }
@@ -226,9 +277,10 @@ export async function matchSong(
     throw new Error("所有可用音源均无法匹配到该歌曲播放链接");
   }
 
-  // 5. 反代 URL 处理
+  // 5. 反代 URL 处理与 /stream 中转白名单登记
   const finalUrl = matchResult.url;
   const proxyUrl = formatProxyUrl(finalUrl, env.PROXY_URL);
+  registerStreamUrl(finalUrl);
 
   const responseData: MatchedAudio = {
     id: cleanId,
@@ -263,6 +315,7 @@ export async function getNeteaseSong(
   const direct = await gdStudio.getUrl(cleanId, env.DEFAULT_SEARCH_SOURCE, cleanBr);
   if (direct && direct.url) {
     const proxyUrl = formatProxyUrl(direct.url, env.PROXY_URL);
+    registerStreamUrl(direct.url);
     return {
       id: cleanId,
       br: direct.br || cleanBr,
@@ -310,14 +363,75 @@ export async function getOtherSourceSong(name: string): Promise<{ url: string; s
     throw new Error(`未能在其他音源中找到歌曲: ${cleanName}`);
   }
 
-  const songId = searchRes[0].id || searchRes[0].url_id;
+  // GD Studio 搜索结果中取播放链接应使用 url_id（与歌曲 id 不同时），缺失时回退 id
+  const songId = (searchRes[0] as any).url_id || searchRes[0].id;
   const audio = await gdStudio.getUrl(songId, targetSource, env.DEFAULT_BITRATE);
 
   if (!audio || !audio.url) {
     throw new Error("未能获取到音频播放链接");
   }
 
+  registerStreamUrl(audio.url);
   const result = { url: audio.url, source: targetSource };
   globalCache.set(cacheKey, result, env.CACHE_TTL_AUDIO);
   return result;
+}
+
+/**
+ * 跨源直链获取：按「搜索结果返回的平台 + 该平台曲目 ID（url_id）」直接取播放链接，
+ * 不再误走网易 ID 解灰管线。供 /match?source=xxx 分支调用。
+ */
+export async function getCrossSourceSong(
+  id: string | number,
+  source: string,
+  br: number | string = env.DEFAULT_BITRATE,
+  opts: { refresh?: boolean } = {}
+): Promise<MatchedAudio> {
+  const cleanId = sanitizeParam(id, 80);
+  const cleanSource = sanitizeParam(source, 30).toLowerCase();
+  if (!cleanId) {
+    throw new Error("缺少音源曲目 ID 参数");
+  }
+  if (!cleanSource) {
+    throw new Error("缺少音源平台参数 source");
+  }
+
+  const cleanBr = (AUDIO_CONFIG.SUPPORTED_BITRATES as readonly number[]).includes(Number(br))
+    ? Number(br)
+    : env.DEFAULT_BITRATE;
+
+  const cacheKey = `cross:${cleanSource}:${cleanId}:${cleanBr}`;
+  if (!opts.refresh) {
+    const cached = globalCache.get(cacheKey) as MatchedAudio | null;
+    if (cached) {
+      registerStreamUrl(cached.url);
+      return cached;
+    }
+  }
+
+  const audio = await gdStudio.getUrl(cleanId, cleanSource, cleanBr);
+  if (!audio || !audio.url) {
+    throw new Error(`音源 ${cleanSource} 未能返回该曲目的播放链接`);
+  }
+
+  const finalUrl = audio.url;
+  const proxyUrl = formatProxyUrl(finalUrl, env.PROXY_URL);
+  registerStreamUrl(finalUrl);
+
+  const responseData: MatchedAudio = {
+    id: cleanId,
+    url: finalUrl,
+    br: audio.br || cleanBr * 1000,
+    size: audio.size || 0,
+    source: cleanSource,
+    md5: null,
+    proxyUrl,
+    title: "",
+    artist: "",
+    album: "",
+    pic: "",
+  };
+
+  globalCache.set(cacheKey, responseData, env.CACHE_TTL_AUDIO);
+  return responseData;
 }

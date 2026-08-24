@@ -33,6 +33,8 @@ let pageSize = 20;
         if (json.code === 200 && Array.isArray(json.data) && json.data.length > 0) {
           allFullTracks = json.data.map(item => ({
             id: item.id || item.song_id || item.mid,
+            urlId: item.url_id || '',
+            lyricId: item.lyric_id || '',
             name: item.name || item.title || item.song_name,
             artist: Array.isArray(item.artist) ? item.artist.join('/') : (item.artist || item.singer),
             album: item.album || item.album_name || '-',
