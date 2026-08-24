@@ -7,11 +7,28 @@
 let currentSearchTab = 'match';
 let lastTestedAudioUrl = '';
 let lastTestedAudio = null;
+let lastTestedPlaylistTracks = null;
 let lastRawResponseJson = '';
+
+    // 智能提取输入框中的 ID 或参数（支持纯数字、完整 URL、分享链接）
+    function extractIdFromInput(input) {
+      if (!input) return '';
+      const str = input.trim();
+      const mQuery = str.match(/[?&]id=(\d+)/i);
+      if (mQuery) return mQuery[1];
+      const mPath = str.match(/\/(?:playlist|song|album)\/(\d+)/i);
+      if (mPath) return mPath[1];
+      const mDigits = str.match(/^(\d+)$/);
+      if (mDigits) return mDigits[1];
+      return str;
+    }
 
     // --- 在线 API 调试台 URL 构造 ---
     function buildWorkbenchUrl() {
-      const val = (document.getElementById('testInput')?.value || '').trim();
+      const rawVal = (document.getElementById('testInput')?.value || '').trim();
+      const val = (currentSearchTab === 'match' || currentSearchTab === 'ncmget' || currentSearchTab === 'playlist' || currentSearchTab === 'lyric' || currentSearchTab === 'pic')
+        ? extractIdFromInput(rawVal)
+        : rawVal;
       const server = document.getElementById('serverSelect')?.value || '';
       const br = document.getElementById('bitrateSelect')?.value || '320';
 
@@ -142,19 +159,20 @@ let lastRawResponseJson = '';
       executeApiTest();
     }
 
-    // --- 核心播放动作：解析并播放输入框当前对应的歌曲 ---
+    // --- 核心播放动作：解析并播放输入框当前对应的歌曲或歌单 ---
     async function playCurrentWorkbenchTrack() {
-      const val = (document.getElementById('testInput')?.value || '').trim();
+      const rawVal = (document.getElementById('testInput')?.value || '').trim();
+      const val = extractIdFromInput(rawVal);
       const server = document.getElementById('serverSelect')?.value || '';
       const playBtn = document.getElementById('playWorkbenchBtn');
 
       if (!val || val === '-') {
-        showToast({ type: 'warning', title: '请输入有效参数', message: '请在输入框填入歌曲 ID、歌名或歌单 ID' });
+        showToast({ type: 'warning', title: '请输入有效参数', message: '请在输入框填入歌曲 ID、歌名、歌单 ID 或完整链接' });
         return;
       }
 
       // 若上次请求返回的正是当前 ID 的解析结果且含有直链，直接快速播放
-      if (lastTestedAudio && lastTestedAudio.id === val && lastTestedAudio.url) {
+      if (lastTestedAudio && (lastTestedAudio.id === val || lastTestedAudio.id === rawVal) && lastTestedAudio.url) {
         playSongItem(lastTestedAudio);
         return;
       }
@@ -167,13 +185,13 @@ let lastRawResponseJson = '';
 
       try {
         if (currentSearchTab === 'otherget') {
-          showToast({ type: 'info', title: '正在检索跨源音源', message: `正在为《${val}》调度直链...` });
-          const res = await fetch(`/otherget?name=${encodeURIComponent(val)}`);
+          showToast({ type: 'info', title: '正在检索跨源音源', message: `正在为《${rawVal}》调度直链...` });
+          const res = await fetch(`/otherget?name=${encodeURIComponent(rawVal)}`);
           const json = await res.json();
           if (json.code === 200 && json.data?.url) {
             const track = {
               id: 'other-' + Date.now(),
-              name: val,
+              name: rawVal,
               artist: `跨源音源 (${json.data.source || 'other'})`,
               album: 'UNM 调试台',
               url: json.data.url,
@@ -186,8 +204,8 @@ let lastRawResponseJson = '';
             throw new Error(json.message || '未找到可播放音频');
           }
         } else if (currentSearchTab === 'search') {
-          showToast({ type: 'info', title: '正在搜索曲目', message: `关键词: ${val}` });
-          const res = await fetch(`/search?name=${encodeURIComponent(val)}&count=5${server ? '&source=' + server : ''}`);
+          showToast({ type: 'info', title: '正在搜索曲目', message: `关键词: ${rawVal}` });
+          const res = await fetch(`/search?name=${encodeURIComponent(rawVal)}&count=5${server ? '&source=' + server : ''}`);
           const json = await res.json();
           if (json.code === 200 && Array.isArray(json.data) && json.data.length > 0) {
             const first = json.data[0];
@@ -195,7 +213,7 @@ let lastRawResponseJson = '';
               id: first.id || first.song_id || first.mid,
               urlId: first.url_id || '',
               lyricId: first.lyric_id || '',
-              name: first.name || first.title || val,
+              name: first.name || first.title || rawVal,
               artist: Array.isArray(first.artist) ? first.artist.join('/') : (first.artist || first.singer || '未知歌手'),
               album: first.album || first.album_name || '搜索结果',
               pic: first.pic || first.cover || first.picUrl || '',
@@ -220,9 +238,10 @@ let lastRawResponseJson = '';
             }));
             playQueue = tracks;
             currentQueueIndex = 0;
+            lastTestedPlaylistTracks = tracks;
             renderPlayerQueue();
             playSongItem(tracks[0]);
-            showToast({ type: 'success', title: '歌单载入成功', message: `已载入 ${tracks.length} 首歌曲并开始播放第一首` });
+            showToast({ type: 'success', title: '歌单载入成功', message: `已载入《${json.data.name || '歌单'}》共 ${tracks.length} 首歌曲并开始播放第一首` });
           } else {
             throw new Error(json.message || '歌单为空或解析失败');
           }
@@ -248,12 +267,20 @@ let lastRawResponseJson = '';
       }
     }
 
-    // --- 播放上次测试响应出的音频 ---
+    // --- 播放上次测试响应出的音频或歌单 ---
     function playLastTestedAudio() {
+      if (lastTestedPlaylistTracks && lastTestedPlaylistTracks.length > 0) {
+        playQueue = lastTestedPlaylistTracks;
+        currentQueueIndex = 0;
+        renderPlayerQueue();
+        playSongItem(lastTestedPlaylistTracks[0]);
+        showToast({ type: 'success', title: '开始播放歌单', message: `已载入 ${lastTestedPlaylistTracks.length} 首歌曲` });
+        return;
+      }
       if (lastTestedAudio) {
         playSongItem(lastTestedAudio);
       } else if (lastTestedAudioUrl) {
-        const val = (document.getElementById('testInput')?.value || '').trim();
+        const val = extractIdFromInput(document.getElementById('testInput')?.value || '');
         playSongItem({
           id: val || 'tested',
           name: `测试曲目 (${val || '直链'})`,
@@ -287,9 +314,30 @@ let lastRawResponseJson = '';
         document.getElementById('resSource').textContent = `命中音源: ${json.data?.source || '-'}`;
         out.innerHTML = syntaxHighlightJson(json);
 
-        if (json.data?.url) {
+        // 重置暂存状态
+        lastTestedAudio = null;
+        lastTestedPlaylistTracks = null;
+
+        if (json.data?.tracks && Array.isArray(json.data.tracks) && json.data.tracks.length > 0) {
+          // 歌单响应：提取曲目列表并支持一键播放
+          lastTestedPlaylistTracks = json.data.tracks.map((t) => ({
+            id: t.id,
+            name: t.name || t.title,
+            artist: t.artist || t.ar?.[0]?.name || '未知歌手',
+            album: t.album || t.al?.name || (json.data.name || '歌单收录'),
+            pic: t.pic || t.al?.picUrl || json.data.coverImgUrl || '',
+            source: 'netease',
+          }));
+          if (resPlayBtn) {
+            resPlayBtn.innerHTML = `<i data-lucide="list-music" class="w-3.5 h-3.5"></i><span>播放歌单 (${lastTestedPlaylistTracks.length}首)</span>`;
+            resPlayBtn.classList.remove('hidden');
+            lucide.createIcons();
+          }
+        } else if (json.data?.url) {
+          // 单曲响应：提取音频直链
           lastTestedAudioUrl = json.data.url;
-          const val = (document.getElementById('testInput')?.value || '').trim();
+          const rawVal = (document.getElementById('testInput')?.value || '').trim();
+          const val = extractIdFromInput(rawVal);
           lastTestedAudio = {
             id: json.data.id || val,
             name: json.data.title || `歌曲 ${val}`,
@@ -301,6 +349,7 @@ let lastRawResponseJson = '';
             br: json.data.br,
           };
           if (resPlayBtn) {
+            resPlayBtn.innerHTML = `<i data-lucide="play-circle" class="w-3.5 h-3.5"></i><span>播放解析音频</span>`;
             resPlayBtn.classList.remove('hidden');
             lucide.createIcons();
           }

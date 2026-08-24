@@ -738,6 +738,13 @@ document.getElementById('year').textContent = new Date().getFullYear();
     }
 
     // 初始启动
+    document.querySelectorAll('.current-year-text').forEach(el => el.textContent = String(new Date().getFullYear()));
+    fetch('/info').then(r => r.json()).then(j => {
+      if (j?.data?.version) {
+        document.querySelectorAll('.app-version-badge').forEach(el => el.textContent = `v${j.data.version} PRO`);
+      }
+    }).catch(() => {});
     initCharts();
     loadDashboardData(1);
     changePollInterval(3000);
+    lucide.createIcons();
