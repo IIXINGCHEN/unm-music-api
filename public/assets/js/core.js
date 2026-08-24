@@ -146,21 +146,19 @@
       }
     });
 
-    // 播放器状态同步到灵动岛（歌曲名、歌手、声波律动）
+    // 播放器状态同步到导航栏（歌曲名、歌手、声波律动）
     window.syncIslandMusicState = function(track, isPlaying) {
       const musicPill = document.getElementById('islandMusicPill');
-      const staticNav = document.getElementById('islandStaticNav');
       const titleEl = document.getElementById('islandTrackTitle');
       const wavesEl = document.getElementById('islandAudioWaves');
 
-      if (!musicPill || !staticNav) return;
+      if (!musicPill) return;
 
       if (track && (track.name || track.id)) {
-        staticNav.classList.add('hidden');
         musicPill.classList.remove('hidden');
         musicPill.classList.add('flex');
         if (titleEl) {
-          titleEl.textContent = `${track.name || '正在播放'} - ${track.artist || 'UNM'}`;
+          titleEl.textContent = `${track.name || '正在播放'}`;
         }
         if (wavesEl) {
           wavesEl.style.opacity = isPlaying ? '1' : '0.35';
@@ -168,7 +166,6 @@
       } else {
         musicPill.classList.add('hidden');
         musicPill.classList.remove('flex');
-        staticNav.classList.remove('hidden');
       }
       lucide.createIcons();
     };

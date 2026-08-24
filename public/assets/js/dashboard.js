@@ -3,7 +3,9 @@
  * 轮询控制、遥测表格渲染与明细抽屉。依赖 vendor/lucide 与 vendor/chart.umd。
  */
 
-document.getElementById('year').textContent = new Date().getFullYear();
+    const _yearEl = document.getElementById('year');
+    if (_yearEl) _yearEl.textContent = String(new Date().getFullYear());
+    document.querySelectorAll('.current-year-text').forEach(el => el.textContent = String(new Date().getFullYear()));
     lucide.createIcons();
 
     // 现代 Toast 通知系统
@@ -445,49 +447,6 @@ document.getElementById('year').textContent = new Date().getFullYear();
     // --- 灵动岛交互中枢 (Dynamic Island Controller) ---
     let isIslandExpanded = false;
 
-    window.toggleDynamicIsland = function() {
-      if (isIslandExpanded) {
-        window.collapseDynamicIsland();
-      } else {
-        window.expandDynamicIsland();
-      }
-    };
-
-    window.expandDynamicIsland = function() {
-      const island = document.getElementById('dynamicIsland');
-      const compactView = document.getElementById('islandCompactView');
-      const expandedView = document.getElementById('islandExpandedView');
-      if (!island || !compactView || !expandedView) return;
-
-      isIslandExpanded = true;
-      island.classList.remove('dynamic-island-compact');
-      island.classList.add('dynamic-island-expanded', 'p-4', 'sm:p-6');
-      compactView.classList.add('hidden');
-      expandedView.classList.remove('hidden');
-      lucide.createIcons();
-    };
-
-    window.collapseDynamicIsland = function() {
-      const island = document.getElementById('dynamicIsland');
-      const compactView = document.getElementById('islandCompactView');
-      const expandedView = document.getElementById('islandExpandedView');
-      if (!island || !compactView || !expandedView) return;
-
-      isIslandExpanded = false;
-      island.classList.remove('dynamic-island-expanded', 'p-4', 'sm:p-6');
-      island.classList.add('dynamic-island-compact');
-      expandedView.classList.add('hidden');
-      compactView.classList.remove('hidden');
-      lucide.createIcons();
-    };
-
-    // 点击灵动岛外部自动优雅收起
-    document.addEventListener('click', (e) => {
-      const island = document.getElementById('dynamicIsland');
-      if (isIslandExpanded && island && !island.contains(e.target)) {
-        window.collapseDynamicIsland();
-      }
-    });
     let pollTimer = null;
     let pollInterval = 3000;
     let currentPage = 1;
@@ -781,6 +740,23 @@ document.getElementById('year').textContent = new Date().getFullYear();
       anchor.remove();
       showToast({ type: 'success', title: '导出成功', message: `已成功导出 ${currentLogsCache.length} 条遥测记录为 JSON` });
     }
+
+    // Ping 探针检测
+    async function checkPing() {
+      const pingEl = document.getElementById('pingText');
+      if (!pingEl) return;
+      const start = performance.now();
+      try {
+        const res = await fetch('/health', { cache: 'no-store' });
+        const latency = Math.round(performance.now() - start);
+        if (res.ok) pingEl.textContent = `Ping: ${latency}ms`;
+        else pingEl.textContent = 'Degraded';
+      } catch {
+        pingEl.textContent = 'Offline';
+      }
+    }
+    checkPing();
+    setInterval(checkPing, 10000);
 
     // 初始启动
     document.querySelectorAll('.current-year-text').forEach(el => el.textContent = String(new Date().getFullYear()));

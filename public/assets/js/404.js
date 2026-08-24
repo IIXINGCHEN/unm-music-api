@@ -23,53 +23,6 @@
       }
     }
 
-    // --- 灵动岛交互中枢 (Dynamic Island Controller) ---
-    let isIslandExpanded = false;
-
-    window.toggleDynamicIsland = function() {
-      if (isIslandExpanded) {
-        window.collapseDynamicIsland();
-      } else {
-        window.expandDynamicIsland();
-      }
-    };
-
-    window.expandDynamicIsland = function() {
-      const island = document.getElementById('dynamicIsland');
-      const compactView = document.getElementById('islandCompactView');
-      const expandedView = document.getElementById('islandExpandedView');
-      if (!island || !compactView || !expandedView) return;
-
-      isIslandExpanded = true;
-      island.classList.remove('dynamic-island-compact');
-      island.classList.add('dynamic-island-expanded', 'p-4', 'sm:p-6');
-      compactView.classList.add('hidden');
-      expandedView.classList.remove('hidden');
-      lucide.createIcons();
-    };
-
-    window.collapseDynamicIsland = function() {
-      const island = document.getElementById('dynamicIsland');
-      const compactView = document.getElementById('islandCompactView');
-      const expandedView = document.getElementById('islandExpandedView');
-      if (!island || !compactView || !expandedView) return;
-
-      isIslandExpanded = false;
-      island.classList.remove('dynamic-island-expanded', 'p-4', 'sm:p-6');
-      island.classList.add('dynamic-island-compact');
-      expandedView.classList.add('hidden');
-      compactView.classList.remove('hidden');
-      lucide.createIcons();
-    };
-
-    // 点击灵动岛外部自动收起
-    document.addEventListener('click', (e) => {
-      const island = document.getElementById('dynamicIsland');
-      if (isIslandExpanded && island && !island.contains(e.target)) {
-        window.collapseDynamicIsland();
-      }
-    });
-
     if (themeToggle) {
       themeToggle.addEventListener('click', () => {
         const isDark = document.documentElement.classList.contains('dark');
