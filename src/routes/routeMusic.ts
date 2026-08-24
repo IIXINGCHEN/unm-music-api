@@ -158,6 +158,7 @@ musicRoute.get("/stream", async (c) => {
       const upstream = await fetch(channel.url, {
         headers: upstreamHeaders,
         redirect: "follow",
+        signal: c.req.raw.signal,
       });
 
       if (!upstream.ok && upstream.status !== 206) {
@@ -176,11 +177,12 @@ musicRoute.get("/stream", async (c) => {
       // 观测用：标识本次实际服务的通道（direct / proxy）
       headers.set("X-Stream-Channel", channel.name);
 
-      // 注意：流式转发 (upstream.body) 在 Node.js 下由底层自动走 Transfer-Encoding: chunked 分块传输。
-      // 绝不可强行设置上游静态 Content-Length，否则当客户端 Seek、暂停或网络抖动提前关闭连接时，
-      // 浏览器内核 (Chrome/Edge) 检测到实际接收字节数少于 Content-Length 会直接抛出 net::ERR_CONTENT_LENGTH_MISMATCH。
       return new Response(upstream.body, { status: upstream.status, headers });
     } catch (error: any) {
+      if (c.req.raw.signal.aborted || error?.name === "AbortError") {
+        // 客户端主动断开连接（如用户跳曲、拖动进度条、暂停缓冲完毕），正常安静退出
+        return new Response(null, { status: 499 });
+      }
       lastError = `通道[${channel.name}] 请求失败: ${error.message}`;
       console.warn(`[Stream] ${lastError}: ${targetUrl}`);
       continue;

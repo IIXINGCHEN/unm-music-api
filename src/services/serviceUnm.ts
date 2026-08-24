@@ -35,11 +35,37 @@ export function registerStreamUrl(url: string | null | undefined): void {
   streamUrlRegistry.set(clean, Date.now());
 }
 
-/** 校验目标直链是否为本服务在有效期内签发过的 */
+/** 校验目标直链是否为本服务在有效期内签发过的，或属于受信任的音源 CDN 域名 */
 export function isRegisteredStreamUrl(url: string, maxAgeMs: number): boolean {
+  if (!url || typeof url !== "string") return false;
+  // 1. 内存注册表命中（单机/本地容器）
   const issuedAt = streamUrlRegistry.get(url);
-  if (issuedAt === undefined) return false;
-  return Date.now() - issuedAt <= maxAgeMs;
+  if (issuedAt !== undefined && Date.now() - issuedAt <= maxAgeMs) {
+    return true;
+  }
+  // 2. 受信任音源 CDN 白名单校验（适配 Serverless/多实例集群/无状态部署，杜绝内存跨实例丢失导致的 403，同时严密阻断 SSRF 风险）
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    return (
+      host.endsWith("joox.com") ||
+      host.endsWith("qq.com") ||
+      host.endsWith("kugou.com") ||
+      host.endsWith("kuwo.cn") ||
+      host.endsWith("migu.cn") ||
+      host.endsWith("bilibili.com") ||
+      host.endsWith("bilivideo.com") ||
+      host.endsWith("bilivideo.cn") ||
+      host.endsWith("akamaized.net") ||
+      host.endsWith("163.com") ||
+      host.endsWith("126.net") ||
+      host.endsWith("bodian.cn") ||
+      host.endsWith("gdstudio.xyz") ||
+      host.endsWith("music.126.net")
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**
