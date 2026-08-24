@@ -106,57 +106,57 @@
   <div class="ambient-glow bottom-[-100px] left-[-100px] bg-gradient-to-tr from-purple-500/15 via-pink-500/10 to-transparent dark:from-purple-950/20 dark:via-indigo-950/15"></div>
 
   <!-- ========================================================================= -->
-  <!-- 顶部统一吸顶导航栏 (Unified Sticky Top Navigation Bar) -->
+  <!-- 顶部统一固定导航栏 (Fixed Top Navigation Bar) -->
   <!-- ========================================================================= -->
-  <header class="sticky top-0 z-40 w-full glass-panel bg-white/80 dark:bg-slate-950/80 border-b border-slate-200/80 dark:border-white/10 transition-colors shadow-sm backdrop-blur-2xl">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between gap-3 sm:gap-6 relative w-full">
+  <header class="fixed top-0 inset-x-0 z-50 w-full glass-panel bg-white/85 dark:bg-slate-950/85 border-b border-slate-200/80 dark:border-white/10 transition-colors shadow-md shadow-slate-900/5 backdrop-blur-2xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between gap-3 sm:gap-6 relative w-full">
       
       <!-- 1. 左侧：品牌 Logo + 标题 + 版本徽章 -->
-      <div class="flex items-center space-x-2.5 sm:space-x-3 flex-shrink-0">
-        <a href="/" class="flex items-center space-x-2.5 sm:space-x-3 group interactive-btn">
-          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2 transition-transform group-hover:scale-105">
+      <div class="flex items-center space-x-3 sm:space-x-3.5 flex-shrink-0">
+        <a href="/" class="flex items-center space-x-3 group interactive-btn">
+          <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2 transition-transform group-hover:scale-105">
             <img src="./favicon.png" alt="UNM Logo" class="w-full h-full object-contain" />
           </div>
-          <div class="flex items-center space-x-1.5 sm:space-x-2">
-            <span class="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
-            <span class="app-version-badge text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">v3.1.0 PRO</span>
+          <div class="flex items-center space-x-2">
+            <span class="font-extrabold text-base sm:text-xl tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
+            <span class="app-version-badge text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">v3.1.0 PRO</span>
           </div>
         </a>
       </div>
 
-      <!-- 2. 中间：统一核心导航项 (高亮当前遥测大盘) -->
-      <nav class="hidden md:flex items-center space-x-1 p-1 rounded-full bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-white/10 shadow-inner text-xs font-semibold">
-        <a href="/#playlist-station" class="px-3 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
+      <!-- 2. 中间：统一核心导航项 (高对比大字号清晰胶囊，高亮当前遥测大盘) -->
+      <nav class="hidden md:flex items-center space-x-1.5 p-1.5 rounded-full bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-white/10 shadow-inner text-sm font-semibold">
+        <a href="/#playlist-station" class="px-4 py-2 rounded-full text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
           <span>歌单视听</span>
         </a>
-        <a href="/#workbench" class="px-3 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
+        <a href="/#workbench" class="px-4 py-2 rounded-full text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
           <span>API 调试</span>
         </a>
-        <a href="/#providers" class="px-3 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
+        <a href="/#providers" class="px-4 py-2 rounded-full text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
           <span>音源矩阵</span>
         </a>
-        <a href="/dashboard" class="px-3 py-1.5 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 shadow-sm transition">
+        <a href="/dashboard" class="px-4 py-2 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400 font-bold border border-sky-500/20 shadow-sm transition">
           <span>遥测大盘</span>
         </a>
-        <a href="/info" target="_blank" class="px-3 py-1.5 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition hidden lg:inline">
+        <a href="/info" target="_blank" class="px-4 py-2 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition hidden lg:inline">
           <span>系统环境</span>
         </a>
       </nav>
 
-      <!-- 3. 右侧：Ping 探针 + API Key / 极速测试 + 深浅主题切换 -->
+      <!-- 3. 右侧：Ping 探针 + API Key + 深浅主题切换 -->
       <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-        <div id="pingBadge" class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-bold">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <div id="pingBadge" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm font-mono font-bold">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span id="pingText">Ping: --ms</span>
         </div>
 
         <button onclick="openApiKeyModal()" class="p-2 sm:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-amber-500 transition shadow-sm interactive-btn" title="设置监控密钥 (API Key)">
-          <i data-lucide="key" class="w-4 h-4"></i>
+          <i data-lucide="key" class="w-4 h-4 sm:w-5 sm:h-5"></i>
         </button>
 
-        <button id="themeToggle" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition shadow-sm flex items-center justify-center interactive-btn" title="切换深色/浅色模式">
-          <i data-lucide="moon" class="w-4 h-4 sm:w-5 sm:h-5 hidden dark:block"></i>
-          <i data-lucide="sun" class="w-4 h-4 sm:w-5 sm:h-5 block dark:hidden"></i>
+        <button id="themeToggle" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition shadow-sm flex items-center justify-center interactive-btn" title="切换深色/浅色模式">
+          <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+          <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
         </button>
       </div>
 
@@ -164,7 +164,7 @@
   </header>
 
   <!-- 大盘主体内容 (专业级可折叠模块体系) -->
-  <main class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex-1 space-y-8 relative z-10 min-w-0">
+  <main class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-12 flex-1 space-y-8 relative z-10 min-w-0">
 
     <!-- 0. 大盘控制栏 (布局切换 / 轮询频率 / 日志清空与导出) -->
     <div class="p-3.5 sm:p-4 rounded-2xl glass-panel bg-white/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 shadow-sm flex flex-wrap items-center justify-between gap-3">

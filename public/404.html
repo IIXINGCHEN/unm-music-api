@@ -49,50 +49,50 @@
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between mesh-gradient relative overflow-x-hidden">
 
   <!-- ========================================================================= -->
-  <!-- 顶部统一吸顶导航栏 (Unified Sticky Top Navigation Bar) -->
+  <!-- 顶部统一固定导航栏 (Fixed Top Navigation Bar) -->
   <!-- ========================================================================= -->
-  <header class="sticky top-0 z-40 w-full glass-panel bg-white/80 dark:bg-slate-950/80 border-b border-slate-200/80 dark:border-white/10 transition-colors shadow-sm backdrop-blur-2xl">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-18 flex items-center justify-between gap-3 sm:gap-6 relative w-full">
+  <header class="fixed top-0 inset-x-0 z-50 w-full glass-panel bg-white/85 dark:bg-slate-950/85 border-b border-slate-200/80 dark:border-white/10 transition-colors shadow-md shadow-slate-900/5 backdrop-blur-2xl">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between gap-3 sm:gap-6 relative w-full">
       
       <!-- 1. 左侧：品牌 Logo + 标题 + 版本徽章 -->
-      <div class="flex items-center space-x-2.5 sm:space-x-3 flex-shrink-0">
-        <a href="/" class="flex items-center space-x-2.5 sm:space-x-3 group interactive-btn">
-          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2 transition-transform group-hover:scale-105">
+      <div class="flex items-center space-x-3 sm:space-x-3.5 flex-shrink-0">
+        <a href="/" class="flex items-center space-x-3 group interactive-btn">
+          <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2 transition-transform group-hover:scale-105">
             <img src="./favicon.png" alt="UNM Logo" class="w-full h-full object-contain" />
           </div>
-          <div class="flex items-center space-x-1.5 sm:space-x-2">
-            <span class="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
-            <span class="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30">404</span>
+          <div class="flex items-center space-x-2">
+            <span class="font-extrabold text-base sm:text-xl tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30">404</span>
           </div>
         </a>
       </div>
 
-      <!-- 2. 中间：统一核心导航项 -->
-      <nav class="hidden md:flex items-center space-x-1 p-1 rounded-full bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-white/10 shadow-inner text-xs font-semibold">
-        <a href="/#playlist-station" class="px-3 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
+      <!-- 2. 中间：统一核心导航项 (高对比大字号清晰胶囊) -->
+      <nav class="hidden md:flex items-center space-x-1.5 p-1.5 rounded-full bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-white/10 shadow-inner text-sm font-semibold">
+        <a href="/#playlist-station" class="px-4 py-2 rounded-full text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
           <span>歌单视听</span>
         </a>
-        <a href="/#workbench" class="px-3 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
+        <a href="/#workbench" class="px-4 py-2 rounded-full text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
           <span>API 调试</span>
         </a>
-        <a href="/#providers" class="px-3 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
+        <a href="/#providers" class="px-4 py-2 rounded-full text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
           <span>音源矩阵</span>
         </a>
-        <a href="/dashboard" class="px-3 py-1.5 rounded-full text-sky-600 dark:text-sky-400 hover:text-sky-500 hover:bg-white dark:hover:bg-white/10 transition">
+        <a href="/dashboard" class="px-4 py-2 rounded-full text-sky-600 dark:text-sky-400 hover:text-sky-500 hover:bg-white dark:hover:bg-white/10 transition">
           <span>遥测大盘</span>
         </a>
       </nav>
 
       <!-- 3. 右侧：返回主站 + 深浅主题切换 -->
       <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-        <a href="/" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-sky-600 dark:bg-white dark:hover:bg-sky-400 text-white dark:text-slate-900 font-semibold text-xs transition shadow-sm interactive-btn">
-          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+        <a href="/" class="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-sky-600 dark:bg-white dark:hover:bg-sky-400 text-white dark:text-slate-900 font-bold text-xs sm:text-sm transition shadow-md interactive-btn">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
           <span>返回主站</span>
         </a>
 
-        <button id="themeToggle" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition shadow-sm flex items-center justify-center interactive-btn" title="切换深色/浅色模式">
-          <i data-lucide="moon" class="w-4 h-4 sm:w-5 sm:h-5 hidden dark:block"></i>
-          <i data-lucide="sun" class="w-4 h-4 sm:w-5 sm:h-5 block dark:hidden"></i>
+        <button id="themeToggle" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition shadow-sm flex items-center justify-center interactive-btn" title="切换深色/浅色模式">
+          <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+          <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
         </button>
       </div>
 
@@ -100,7 +100,7 @@
   </header>
 
   <!-- 404 主体内容区 (留白与现代卡片) -->
-  <main class="w-full max-w-xl mx-auto px-6 py-12 sm:py-16 flex-1 flex flex-col items-center justify-center text-center">
+  <main class="w-full max-w-xl mx-auto px-6 pt-28 sm:pt-36 pb-12 flex-1 flex flex-col items-center justify-center text-center">
     <div class="glass-card bg-white/80 dark:bg-slate-900/60 p-10 sm:p-12 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-6 w-full">
       <div class="w-16 h-16 rounded-2xl bg-sky-500/10 dark:bg-sky-500/20 text-sky-500 flex items-center justify-center mx-auto shadow-sm">
         <i data-lucide="compass" class="w-8 h-8"></i>
