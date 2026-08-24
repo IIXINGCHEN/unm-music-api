@@ -118,7 +118,7 @@
 
       isIslandExpanded = true;
       island.classList.remove('dynamic-island-compact');
-      island.classList.add('dynamic-island-expanded', 'p-4', 'sm:p-6', 'w-[calc(100vw-32px)]', 'sm:w-[680px]', 'md:w-[780px]');
+      island.classList.add('dynamic-island-expanded', 'p-4', 'sm:p-6');
       compactView.classList.add('hidden');
       expandedView.classList.remove('hidden');
       lucide.createIcons();
@@ -131,7 +131,7 @@
       if (!island || !compactView || !expandedView) return;
 
       isIslandExpanded = false;
-      island.classList.remove('dynamic-island-expanded', 'p-4', 'sm:p-6', 'w-[calc(100vw-32px)]', 'sm:w-[680px]', 'md:w-[780px]');
+      island.classList.remove('dynamic-island-expanded', 'p-4', 'sm:p-6');
       island.classList.add('dynamic-island-compact');
       expandedView.classList.add('hidden');
       compactView.classList.remove('hidden');
