@@ -60,6 +60,16 @@
       });
     }
 
+    // --- XSS 防护：全局 HTML 转义助手（文本节点与双/单引号属性上下文通用） ---
+    window.escapeHtml = function(value) {
+      return String(value === undefined || value === null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+
     // --- Toast 提示 ---
     function showToast({ type = 'info', title = '提示', message = '' }) {
       const container = document.getElementById('toastContainer');
@@ -70,12 +80,15 @@
          type === 'warning' ? 'border-amber-500/40 text-amber-300' :
          'border-sky-500/40 text-sky-300');
       const iconName = type === 'success' ? 'check-circle-2' : type === 'error' ? 'alert-circle' : type === 'warning' ? 'alert-triangle' : 'info';
+      // 标题/消息可能携带上游错误文本或用户输入：骨架 innerHTML 固定，动态内容一律 textContent 注入
       toast.innerHTML = `
         <div class="mt-0.5 flex-shrink-0"><i data-lucide="${iconName}" class="w-5 h-5"></i></div>
         <div class="flex-1 min-w-0">
-          <div class="font-bold text-xs sm:text-sm text-white truncate">${title}</div>
-          <div class="text-[11px] sm:text-xs text-slate-300 mt-0.5 break-words">${message}</div>
+          <div class="font-bold text-xs sm:text-sm text-white truncate js-toast-title"></div>
+          <div class="text-[11px] sm:text-xs text-slate-300 mt-0.5 break-words js-toast-message"></div>
         </div>`;
+      toast.querySelector('.js-toast-title').textContent = title;
+      toast.querySelector('.js-toast-message').textContent = message;
       container.appendChild(toast);
       lucide.createIcons();
       requestAnimationFrame(() => toast.classList.remove('translate-y-2', 'opacity-0'));

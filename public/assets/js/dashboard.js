@@ -7,6 +7,18 @@
     document.querySelectorAll('.current-year-text').forEach(el => el.textContent = String(new Date().getFullYear()));
     lucide.createIcons();
 
+    // --- XSS 防护：本页独立加载（不引入 core.js），需自带转义助手 ---
+    // 大盘渲染的 Referer / IP / 路径等字段均为请求方可控数据
+    function escapeHtml(value) {
+      return String(value === undefined || value === null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+    window.escapeHtml = window.escapeHtml || escapeHtml;
+
     // 现代 Toast 通知系统
     function showToast({ type = 'info', title = '', message = '', duration = 3000 }) {
       const container = document.getElementById('toastContainer');
@@ -31,16 +43,21 @@
       }
 
       toast.className = `glass-panel bg-white/95 dark:bg-slate-900/95 border ${borderClass} shadow-2xl px-4 py-3.5 rounded-2xl flex items-start space-x-3.5 pointer-events-auto transform translate-x-12 opacity-0 transition-all duration-300 ease-out max-w-md`;
+      // 骨架 innerHTML 固定；标题/消息可能携带用户输入或上游错误文本，一律 textContent 注入
       toast.innerHTML = `
         <div class="flex-shrink-0 mt-0.5">${iconHtml}</div>
         <div class="flex-1 text-sm">
-          ${title ? `<div class="font-bold text-slate-900 dark:text-white mb-0.5">${title}</div>` : ''}
-          <div class="text-slate-600 dark:text-slate-300 leading-relaxed">${message}</div>
+          <div class="font-bold text-slate-900 dark:text-white mb-0.5 js-toast-title"></div>
+          <div class="text-slate-600 dark:text-slate-300 leading-relaxed js-toast-message"></div>
         </div>
         <button onclick="dismissToast('${id}')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 interactive-btn">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       `;
+      toast.querySelector('.js-toast-title').textContent = title;
+      toast.querySelector('.js-toast-message').textContent = message;
+      // 空标题隐藏节点，避免残留 mb-0.5 造成多余间距（保持与旧条件渲染一致的视觉）
+      if (!title) toast.querySelector('.js-toast-title').style.display = 'none';
 
       container.appendChild(toast);
       lucide.createIcons();
@@ -583,7 +600,9 @@
 
     // 渲染鉴权锁定内嵌占位卡片 (替代阻断性全屏弹窗循环)
     function renderAuthRequiredState() {
-      const tbody = document.getElementById('tableLogsBody');
+      // 注意：表格实际容器为 #logsTableContent（与 renderTelemetryLogs 一致），此前写入不存在的
+      // #tableLogsBody 导致鉴权锁定卡片从不渲染，401 时用户只看到空白表格
+      const tbody = document.getElementById('logsTableContent');
       if (tbody) {
         tbody.innerHTML = `
           <tr>
@@ -624,7 +643,8 @@
       });
 
       try {
-        const res = await fetch(`/api/monitor/data?${query.toString()}`, {
+        // /monitor/* 双平台兼容路径（Vercel 重写与 Netlify 转发均可直达；独立部署经别名路由同样生效）
+        const res = await fetch(`/monitor/data?${query.toString()}`, {
           headers: getAuthHeaders(),
         });
 
@@ -729,16 +749,17 @@
         statusDonutChartInstance.update();
       }
 
-      // 渲染 Top Callers (Who)
+      // 渲染 Top Callers (Who) —— caller 名称含 Referer/Origin/IP 等外部可控数据，必须转义（含 title 属性）
       const callerContainer = document.getElementById('topCallersList');
       if (stats.topCallers && stats.topCallers.length > 0) {
         callerContainer.innerHTML = stats.topCallers.map(item => {
           const pct = Math.min(Math.round((item.count / total) * 100), 100);
+          const safeName = escapeHtml(item.name);
           return `
             <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/60 dark:border-white/5 space-y-2 interactive-btn">
               <div class="flex items-center justify-between">
-                <span class="truncate max-w-[200px] font-bold text-slate-800 dark:text-slate-200" title="${item.name}">${item.name}</span>
-                <span class="font-bold font-mono px-2.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs">${item.count} 次 (${pct}%)</span>
+                <span class="truncate max-w-[200px] font-bold text-slate-800 dark:text-slate-200" title="${safeName}">${safeName}</span>
+                <span class="font-bold font-mono px-2.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs">${Number(item.count) || 0} 次 (${pct}%)</span>
               </div>
               <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                 <div class="h-full bg-indigo-500 rounded-full" style="width: ${pct}%"></div>
@@ -762,33 +783,35 @@
         return;
       }
 
+      // 日志字段（path/ip/referer/clientType 等）含请求方可控数据：全部经 escapeHtml 转义后再进入模板与属性
       tbody.innerHTML = logs.map(l => {
-        let codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">${l.status}</span>`;
+        const safeId = escapeHtml(l.id);
+        let codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">${Number(l.status) || 0}</span>`;
         if (l.status >= 400 && l.status < 500) {
-          codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">${l.status}</span>`;
+          codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">${Number(l.status) || 0}</span>`;
         } else if (l.status >= 500) {
-          codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">${l.status}</span>`;
+          codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">${Number(l.status) || 0}</span>`;
         }
 
         const callerDisplay = l.referer !== '-'
-          ? `<span class="truncate block max-w-[180px] font-medium text-slate-800 dark:text-slate-200" title="${l.referer}">${l.referer}</span>`
+          ? `<span class="truncate block max-w-[180px] font-medium text-slate-800 dark:text-slate-200" title="${escapeHtml(l.referer)}">${escapeHtml(l.referer)}</span>`
           : `<span class="text-slate-400 font-medium">Direct API</span>`;
 
         return `
-          <tr class="hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition cursor-pointer" onclick="openDrawer('${l.id}')">
-            <td class="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap text-xs sm:text-sm">${l.timeStr}</td>
+          <tr class="hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition cursor-pointer" onclick="openDrawer('${safeId}')">
+            <td class="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap text-xs sm:text-sm">${escapeHtml(l.timeStr)}</td>
             <td class="py-3.5 px-4 font-mono font-semibold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
-              <span class="text-sky-500 font-bold">${l.method}</span> ${l.path}
+              <span class="text-sky-500 font-bold">${escapeHtml(l.method)}</span> ${escapeHtml(l.path)}
             </td>
             <td class="py-3.5 px-4">${codeBadge}</td>
-            <td class="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300 font-semibold text-xs sm:text-sm">${l.duration}ms</td>
+            <td class="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300 font-semibold text-xs sm:text-sm">${Number(l.duration) || 0}ms</td>
             <td class="py-3.5 px-4">${callerDisplay}</td>
             <td class="py-3.5 px-4">
-              <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold">${l.clientType}</span>
+              <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold">${escapeHtml(l.clientType)}</span>
             </td>
-            <td class="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400 text-xs sm:text-sm">${l.ip}</td>
+            <td class="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400 text-xs sm:text-sm">${escapeHtml(l.ip)}</td>
             <td class="py-3.5 px-4 text-right">
-              <button onclick="event.stopPropagation(); openDrawer('${l.id}')" class="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sky-500 hover:text-white transition text-xs font-bold interactive-btn">查看</button>
+              <button onclick="event.stopPropagation(); openDrawer('${safeId}')" class="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sky-500 hover:text-white transition text-xs font-bold interactive-btn">查看</button>
             </td>
           </tr>
         `;
@@ -853,7 +876,7 @@
         message: '确定要重置并清空所有内存遥测日志记录吗？清空后当前聚合统计与明细将全部重置。',
         onConfirm: async () => {
           try {
-            const res = await fetch('/api/monitor/clear', {
+            const res = await fetch('/monitor/clear', {
               method: 'POST',
               headers: getAuthHeaders(),
             });
@@ -862,10 +885,13 @@
               openApiKeyModal();
               return;
             }
+            if (!res.ok) {
+              throw new Error(`服务端返回 HTTP ${res.status}`);
+            }
             loadDashboardData(1);
             showToast({ type: 'success', title: '清空完成', message: '已成功重置所有遥测数据与内存日志' });
           } catch (err) {
-            showToast({ type: 'error', title: '清空失败', message: err.message });
+            showToast({ type: 'error', title: '清空失败', message: err?.message || '网络异常' });
           }
         }
       });

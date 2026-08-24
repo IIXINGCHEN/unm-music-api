@@ -242,13 +242,14 @@ const audio = document.getElementById('mainAudioPlayer');
         list.innerHTML = '<div class="py-6 text-center text-xs text-slate-400 dark:text-slate-500">队列为空 · 可在曲目列表点击「+」加入</div>';
         return;
       }
+      // 曲名/歌手为外部音源数据：转义后再进入模板
       list.innerHTML = playQueue.map((t, i) => {
         const active = i === currentQueueIndex;
         return `<div onclick="playQueueIndex(${i})" class="group flex items-center gap-2.5 px-2.5 py-2 rounded-xl cursor-pointer transition interactive-btn ${active ? 'bg-sky-500/10 border border-sky-500/30' : 'border border-transparent hover:bg-slate-100 dark:hover:bg-white/5'}">
           <span class="w-5 flex-shrink-0 text-center font-mono text-[10px] ${active ? 'text-sky-500 dark:text-sky-400' : 'text-slate-400'}">${active && isPlaying ? '<span class=\'inline-flex items-end h-3 gap-[2px]\'><span class=\'w-[3px] bg-sky-400 animate-wave-1\'></span><span class=\'w-[3px] bg-sky-400 animate-wave-3\'></span><span class=\'w-[3px] bg-sky-400 animate-wave-4\'></span></span>' : (i + 1)}</span>
           <div class="flex-1 min-w-0">
-            <div class="text-xs font-bold truncate ${active ? 'text-sky-600 dark:text-sky-300' : 'text-slate-700 dark:text-slate-300'}">${t.name}</div>
-            <div class="text-[10px] text-slate-400 truncate">${t.artist || ''}</div>
+            <div class="text-xs font-bold truncate ${active ? 'text-sky-600 dark:text-sky-300' : 'text-slate-700 dark:text-slate-300'}">${escapeHtml(t.name)}</div>
+            <div class="text-[10px] text-slate-400 truncate">${escapeHtml(t.artist || '')}</div>
           </div>
           <button onclick="event.stopPropagation();removeFromQueue(${i})" aria-label="从队列移除" class="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-white/5 transition opacity-0 group-hover:opacity-100"><i data-lucide="x" class="w-3 h-3"></i></button>
         </div>`;
@@ -263,7 +264,12 @@ const audio = document.getElementById('mainAudioPlayer');
     function removeFromQueue(i) {
       if (i < 0 || i >= playQueue.length) return;
       playQueue.splice(i, 1);
-      if (i < currentQueueIndex) currentQueueIndex--;
+      // 移除播放中/已过曲目时同步回退索引，保证 ended 自动跳曲落在正确的下一首：
+      //  - i < currentQueueIndex：队列整体前移一位
+      //  - i === currentQueueIndex：当前音频继续播到结束，索引回退后 +1 恰好指向原位后继曲目
+      if (i <= currentQueueIndex) {
+        currentQueueIndex = Math.max(-1, currentQueueIndex - 1);
+      }
       renderPlayerQueue();
     }
     function clearQueue() {
@@ -361,7 +367,10 @@ const audio = document.getElementById('mainAudioPlayer');
       return json.data.url;
     }
 
+    // 播放代际令牌：快速连续切歌时，旧解析结果不得覆盖新选择
+    let _playGeneration = 0;
     async function playSongItem(track) {
+      const gen = ++_playGeneration;
       currentTrack = track;
       showToast({ type: 'info', title: '正在匹配音频', message: `正在为《${track.name}》调度高保真直链...` });
       try {
@@ -369,6 +378,7 @@ const audio = document.getElementById('mainAudioPlayer');
         if (!audioUrl && track.id) {
           audioUrl = await resolveTrackAudioUrl(track);
         }
+        if (gen !== _playGeneration) return; // 已被更新的播放请求取代，丢弃过期结果
         if (!audioUrl) throw new Error('未能获取到可用直链');
         currentTrack._rawUrl = audioUrl;
         if (shouldRouteViaStream(audioUrl)) {
@@ -378,11 +388,14 @@ const audio = document.getElementById('mainAudioPlayer');
         updatePlayerMeta(track);
         audio.src = audioUrl;
         await audio.play();
+        if (gen !== _playGeneration) return;
         showPlayerBar();
         showToast({ type: 'success', title: '开始播放', message: `《${track.name}》- ${track.artist}` });
         loadLyrics(track.lyricId || track.id, track.source || 'netease');
       } catch (err) {
-        showToast({ type: 'error', title: '匹配失败', message: err.message || '未能成功获取直链' });
+        if (gen === _playGeneration) {
+          showToast({ type: 'error', title: '匹配失败', message: err.message || '未能成功获取直链' });
+        }
       }
     }
 
@@ -397,7 +410,7 @@ const audio = document.getElementById('mainAudioPlayer');
       lyricsData = [];
       currentLyricIndex = -1;
       try {
-        const res = await fetch(`/lyric?id=${id}&source=${source}`);
+        const res = await fetch(`/lyric?id=${encodeURIComponent(String(id ?? ''))}&source=${encodeURIComponent(String(source ?? ''))}`);
         const json = await res.json();
         if (json.code === 200 && json.data?.lyric) parseLRC(json.data.lyric);
       } catch (e) {}
@@ -405,12 +418,14 @@ const audio = document.getElementById('mainAudioPlayer');
 
     function parseLRC(lrcText) {
       lyricsData = [];
-      const timeExp = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
+      // 提取首个时间标签用非全局正则；剥离标签必须用全局正则（兼容 [00:01][00:02] 双标签行）
+      const timeExp = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+      const tagAllExp = /\[\d{2}:\d{2}\.\d{2,3}\]/g;
       for (const line of lrcText.split('\n')) {
-        const m = timeExp.exec(line);
+        const m = line.match(timeExp);
         if (m) {
           const time = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + parseFloat('0.' + m[3]);
-          const text = line.replace(timeExp, '').trim();
+          const text = line.replace(tagAllExp, '').trim();
           if (text) lyricsData.push({ time, text });
         }
       }
@@ -454,8 +469,9 @@ const audio = document.getElementById('mainAudioPlayer');
         panel.innerHTML = '<div class="h-full flex items-center justify-center text-xs text-slate-400">暂无歌词 · 纯音乐欣赏</div>';
         return;
       }
+      // 歌词文本来自上游接口：转义后再进入模板（data-lyric-index 与 seekToLyric 仅使用数字索引）
       panel.innerHTML = lyricsData.map((l, i) =>
-        `<p data-lyric-index="${i}" onclick="seekToLyric(${i})" class="lyric-line text-sm text-slate-400 dark:text-slate-500 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 py-1 transition-all duration-300">${l.text}</p>`
+        `<p data-lyric-index="${i}" onclick="seekToLyric(${i})" class="lyric-line text-sm text-slate-400 dark:text-slate-500 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 py-1 transition-all duration-300">${escapeHtml(l.text)}</p>`
       ).join('');
       panel.scrollTop = 0;
     }

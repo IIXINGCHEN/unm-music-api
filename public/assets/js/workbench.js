@@ -360,9 +360,9 @@ let lastRawResponseJson = '';
         showToast({ type: 'success', title: 'API 请求完成', message: `耗时 ${duration}ms` });
       } catch (err) {
         document.getElementById('resStatus').textContent = 'HTTP 500 ERROR';
-        out.innerHTML = `<span class="text-rose-400">请求异常: ${err.message}</span>`;
+        out.innerHTML = `<span class="text-rose-400">请求异常: ${escapeHtml(err?.message || String(err))}</span>`;
         if (resPlayBtn) resPlayBtn.classList.add('hidden');
-        showToast({ type: 'error', title: '请求失败', message: err.message });
+        showToast({ type: 'error', title: '请求失败', message: err?.message || '网络异常' });
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<i data-lucide="send" class="w-3.5 h-3.5"></i><span>发送实时请求</span>';
@@ -386,19 +386,6 @@ let lastRawResponseJson = '';
       }
     }
 
-    // 从后端 /info 同步统一版本号徽章（版本由根目录 VERSION 文件单点管理）
-    async function syncAppVersionBadge() {
-      try {
-        const res = await fetch('/info');
-        const json = await res.json();
-        const v = json?.data?.version;
-        if (v) {
-          document.querySelectorAll('.app-version-badge').forEach(el => {
-            el.textContent = `v${v} PRO`;
-          });
-        }
-      } catch (e) { /* 静态兜底文本保持不变 */ }
-    }
-    syncAppVersionBadge();
+    // 版本徽章同步已由 core.js 统一实现（避免 index 页重复请求 /info）
 
     updateWorkbenchUrlPreview();

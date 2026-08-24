@@ -12,6 +12,8 @@ let playlistFilterKeyword = '';
 let currentPage = 1;
 let totalPages = 1;
 let pageSize = 20;
+// 搜索代际令牌：快速连续搜索时丢弃过期响应，防止旧结果覆盖新结果
+let _searchGeneration = 0;
 
     // --- 搜索与歌单完整获取 + 多端分页管理 ---
     async function executeSearch(page = 1) {
@@ -22,14 +24,16 @@ let pageSize = 20;
         return;
       }
 
+      const gen = ++_searchGeneration;
       currentMode = 'search';
       const tbody = document.getElementById('trackListBody');
-      tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400"><i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-2 animate-spin text-sky-500"></i><span>正在全网跨源搜索《${keyword}》...</span></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400"><i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-2 animate-spin text-sky-500"></i><span>正在全网跨源搜索《${escapeHtml(keyword)}》...</span></td></tr>`;
       lucide.createIcons();
 
       try {
         const res = await fetch(`/search?name=${encodeURIComponent(keyword)}&source=${source}&count=50&page=${page}`);
         const json = await res.json();
+        if (gen !== _searchGeneration) return; // 已有更新的搜索发出，丢弃过期响应
         if (json.code === 200 && Array.isArray(json.data) && json.data.length > 0) {
           allFullTracks = json.data.map(item => ({
             id: item.id || item.song_id || item.mid,
@@ -46,12 +50,14 @@ let pageSize = 20;
           const filterInput = document.getElementById('playlistFilterInput');
           if (filterInput) filterInput.value = '';
           applyTrackListPagination(1);
-        } else {
+        } else if (gen === _searchGeneration) {
           tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400">未检索到匹配的曲目</td></tr>`;
           lucide.createIcons();
         }
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-rose-400">搜索请求异常: ${err.message}</td></tr>`;
+        if (gen === _searchGeneration) {
+          tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-rose-400">搜索请求异常: ${escapeHtml(err.message)}</td></tr>`;
+        }
       }
     }
 
@@ -165,24 +171,33 @@ let pageSize = 20;
         tbody.innerHTML = '<tr><td colspan="5" class="py-12 text-center text-slate-400">未匹配到任何歌曲曲目</td></tr>';
         return;
       }
+      // 曲目元数据来自第三方音源上游，属外部不可信数据：一律经 escapeHtml 转义后再进入模板；
+      // 「填入调试台」按钮仅传递数字索引，点击时再从数组取数据，杜绝把歌名内嵌进 onclick JS 字符串
       tbody.innerHTML = tracks.map((track, idx) => `
         <tr class="hover:bg-slate-100/50 dark:hover:bg-slate-900/60 transition group">
           <td class="py-3 px-4 font-mono text-center text-slate-400">${globalOffset + idx + 1}</td>
           <td class="py-3 px-4 min-w-0">
-            <div class="font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-500 transition-colors">${track.name}</div>
-            <div class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">${track.artist || '未知艺人'}</div>
+            <div class="font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-500 transition-colors">${escapeHtml(track.name)}</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">${escapeHtml(track.artist || '未知艺人')}</div>
           </td>
-          <td class="py-3 px-4 text-slate-600 dark:text-slate-300 truncate max-w-[160px]">${track.album || '-'}</td>
-          <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/10 text-sky-500 border border-sky-500/20 font-mono uppercase">${track.source || 'NCM'}</span></td>
+          <td class="py-3 px-4 text-slate-600 dark:text-slate-300 truncate max-w-[160px]">${escapeHtml(track.album || '-')}</td>
+          <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/10 text-sky-500 border border-sky-500/20 font-mono uppercase">${escapeHtml(track.source || 'NCM')}</span></td>
           <td class="py-3 px-4 text-right whitespace-nowrap">
             <div class="flex items-center justify-end space-x-1.5">
               <button onclick="playSingleTrack(${idx})" class="p-1.5 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 hover:bg-sky-500 hover:text-white transition interactive-btn" title="立即播放"><i data-lucide="play" class="w-3.5 h-3.5"></i></button>
               <button onclick="addSingleTrackToQueue(${idx})" class="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn" title="加入播放队列"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
-              <button onclick="testInWorkbench('${track.id}', '${track.name}')" class="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-cyan-500 transition interactive-btn" title="填入调试台"><i data-lucide="terminal" class="w-3.5 h-3.5"></i></button>
+              <button onclick="testInWorkbenchByIdx(${idx})" class="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-cyan-500 transition interactive-btn" title="填入调试台"><i data-lucide="terminal" class="w-3.5 h-3.5"></i></button>
             </div>
           </td>
         </tr>`).join('');
       lucide.createIcons();
+    }
+
+    // 按当前分页结果集中的索引填入调试台（避免将外部曲目名拼入内联事件）
+    function testInWorkbenchByIdx(idx) {
+      const track = currentSearchResults[idx];
+      if (!track || !track.id) return;
+      testInWorkbench(String(track.id));
     }
 
     function playSingleTrack(idx) {
