@@ -23,23 +23,26 @@ body {
 }
 *, *::before, *::after { box-sizing: border-box; }
 
-/* 用户手动切换主题时的丝滑硬件加速过渡（精准作用于主容器与面板，避免通配符 * 导致的重绘卡顿） */
-html.theme-transitioning body,
-html.theme-transitioning header,
-html.theme-transitioning nav,
-html.theme-transitioning main,
-html.theme-transitioning footer,
-html.theme-transitioning .glass-panel,
-html.theme-transitioning .glass-card,
-html.theme-transitioning section,
-html.theme-transitioning input,
-html.theme-transitioning select,
-html.theme-transitioning button,
-html.theme-transitioning div[class*="rounded-"],
-html.theme-transitioning span[class*="rounded-"] {
-  transition: background-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-              color 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+/* ============================================================
+   现代 GPU 硬件级视图过渡动效 (View Transitions API & Zero-Cost Theme Switch)
+   基于浏览器显卡纹理合成技术，零 CPU 重排重绘，极速圆波扩散丝滑过渡
+   ============================================================ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 9999;
+}
+.dark::view-transition-old(root) {
+  z-index: 9999;
+}
+.dark::view-transition-new(root) {
+  z-index: 1;
 }
 
 /* 高级多层环境流光氛围光斑 (Ambient Aurora Glow) */

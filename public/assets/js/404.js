@@ -13,19 +13,54 @@
     const themeToggle = document.getElementById('themeToggle');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
 
-    function setTheme(isDark, animate = false) {
-      if (animate) document.documentElement.classList.add('theme-transitioning');
-      document.documentElement.classList.toggle('dark', isDark);
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
-      if (animate) {
-        setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 240);
+    function setTheme(isDark, animate = false, event = null) {
+      const applyTheme = () => {
+        document.documentElement.classList.toggle('dark', isDark);
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      };
+
+      if (animate && typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const btn = themeToggle || (event?.currentTarget || event?.target);
+        const rect = btn?.getBoundingClientRect?.();
+        const x = event?.clientX || (rect ? rect.left + rect.width / 2 : window.innerWidth / 2);
+        const y = event?.clientY || (rect ? rect.top + rect.height / 2 : 0);
+        const endRadius = Math.hypot(
+          Math.max(x, window.innerWidth - x),
+          Math.max(y, window.innerHeight - y)
+        );
+
+        const transition = document.startViewTransition(() => {
+          applyTheme();
+        });
+
+        transition.ready.then(() => {
+          const clipPath = [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${endRadius}px at ${x}px ${y}px)`
+          ];
+          document.documentElement.animate(
+            {
+              clipPath: isDark ? clipPath : [...clipPath].reverse()
+            },
+            {
+              duration: 360,
+              easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+              pseudoElement: isDark ? '::view-transition-new(root)' : '::view-transition-old(root)'
+            }
+          );
+        }).catch(() => {
+          applyTheme();
+        });
+        return;
       }
+
+      applyTheme();
     }
 
     if (themeToggle) {
-      themeToggle.addEventListener('click', () => {
+      themeToggle.addEventListener('click', (e) => {
         const isDark = document.documentElement.classList.contains('dark');
-        setTheme(!isDark, true);
+        setTheme(!isDark, true, e);
       });
     }
 

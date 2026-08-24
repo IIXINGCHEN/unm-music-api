@@ -7,24 +7,56 @@
     document.querySelectorAll('.current-year-text').forEach(el => el.textContent = new Date().getFullYear());
     lucide.createIcons();
 
-    // --- 主题切换系统 (极致丝滑零卡顿设计) ---
+    // --- 主题切换系统 (现代 View Transitions API 硬件级圆波扩散 + 零开销瞬切) ---
     const themeToggle = document.getElementById('themeToggle');
-    function setTheme(isDark, animate = false) {
-      if (animate) {
-        document.documentElement.classList.add('theme-transitioning');
+    function setTheme(isDark, animate = false, event = null) {
+      const applyTheme = () => {
+        document.documentElement.classList.toggle('dark', isDark);
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      };
+
+      if (animate && typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const btn = themeToggle || (event?.currentTarget || event?.target);
+        const rect = btn?.getBoundingClientRect?.();
+        const x = event?.clientX || (rect ? rect.left + rect.width / 2 : window.innerWidth / 2);
+        const y = event?.clientY || (rect ? rect.top + rect.height / 2 : 0);
+        const endRadius = Math.hypot(
+          Math.max(x, window.innerWidth - x),
+          Math.max(y, window.innerHeight - y)
+        );
+
+        const transition = document.startViewTransition(() => {
+          applyTheme();
+        });
+
+        transition.ready.then(() => {
+          const clipPath = [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${endRadius}px at ${x}px ${y}px)`
+          ];
+          document.documentElement.animate(
+            {
+              clipPath: isDark ? clipPath : [...clipPath].reverse()
+            },
+            {
+              duration: 360,
+              easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+              pseudoElement: isDark ? '::view-transition-new(root)' : '::view-transition-old(root)'
+            }
+          );
+        }).catch(() => {
+          applyTheme();
+        });
+        return;
       }
-      document.documentElement.classList.toggle('dark', isDark);
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
-      if (animate) {
-        setTimeout(() => {
-          document.documentElement.classList.remove('theme-transitioning');
-        }, 240);
-      }
+
+      // 降级：无任何强制多重重绘的即时切换
+      applyTheme();
     }
     if (themeToggle) {
-      themeToggle.addEventListener('click', () => {
+      themeToggle.addEventListener('click', (e) => {
         const nextDark = !document.documentElement.classList.contains('dark');
-        setTheme(nextDark, true);
+        setTheme(nextDark, true, e);
       });
     }
 
