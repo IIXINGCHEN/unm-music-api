@@ -94,11 +94,32 @@ export async function handler(event: any, contextArg: any, callback?: any): Prom
     headers[k] = v;
   });
 
+  // Set-Cookie 多值保护：Headers.forEach 会把重复头合并为逗号拼接串而破坏 Cookie 语义；
+  // 存在多枚 Cookie 时按 Lambda 规范改用 multiValueHeaders 传递
+  const headersWithGetSetCookie = res.headers as Headers & { getSetCookie?: () => string[] };
+  let multiValueHeaders: Record<string, string[]> | undefined;
+  if (typeof headersWithGetSetCookie.getSetCookie === "function") {
+    const cookies = headersWithGetSetCookie.getSetCookie();
+    if (cookies.length > 0) {
+      delete headers["set-cookie"];
+      multiValueHeaders = { "set-cookie": cookies };
+    }
+  }
+
   const contentType = res.headers.get("content-type") || "";
   let body: string = "";
   let isBase64Encoded = false;
 
-  if (["GET", "HEAD"].includes(request.method) || contentType.includes("json") || contentType.includes("text") || contentType.includes("html")) {
+  // 二进制安全判定：音频/图片等二进制载荷必须 base64 编码返回，
+  // 不能因 GET 方法而走 text() 分支（否则 /stream 音频流会被 UTF-8 解码损坏）
+  const isTextual =
+    contentType.includes("json") ||
+    contentType.includes("text") ||
+    contentType.includes("html") ||
+    contentType.includes("xml") ||
+    contentType.includes("javascript");
+
+  if (isTextual || request.method === "HEAD") {
     body = await res.text();
   } else {
     const buf = new Uint8Array(await res.arrayBuffer());
@@ -106,12 +127,15 @@ export async function handler(event: any, contextArg: any, callback?: any): Prom
     isBase64Encoded = true;
   }
 
-  const lambdaResult = {
+  const lambdaResult: Record<string, unknown> = {
     statusCode: res.status,
     headers,
     body,
     isBase64Encoded,
   };
+  if (multiValueHeaders) {
+    lambdaResult.multiValueHeaders = multiValueHeaders;
+  }
 
   if (isCallbackStyle) {
     callback(null, lambdaResult);
