@@ -17,9 +17,8 @@
       if (animate) document.documentElement.classList.add('theme-transitioning');
       document.documentElement.classList.toggle('dark', isDark);
       localStorage.setItem('theme', isDark ? 'dark' : 'light');
-      lucide.createIcons();
       if (animate) {
-        setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 320);
+        setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 240);
       }
     }
 

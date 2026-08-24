@@ -63,36 +63,64 @@
       setTimeout(() => toast.remove(), 300);
     }
 
-    // 0. API Key 管理逻辑
+    // 0. API Key 管理逻辑 (URL 参数自动同步与免循环弹窗设计)
+    let isAuthPrompted = false;
+    let isAuthRequired = false;
+
+    (function initUrlApiKey() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const queryKey = params.get('api_key') || params.get('key');
+        if (queryKey && queryKey.trim()) {
+          localStorage.setItem('unm_monitor_api_key', queryKey.trim());
+          params.delete('api_key');
+          params.delete('key');
+          const newSearch = params.toString() ? `?${params.toString()}` : '';
+          window.history.replaceState({}, '', `${window.location.pathname}${newSearch}${window.location.hash}`);
+        }
+      } catch (e) {}
+    })();
+
     function getStoredApiKey() {
       return localStorage.getItem('unm_monitor_api_key') || '';
     }
 
     function openApiKeyModal() {
       const modal = document.getElementById('apiKeyModal');
+      if (!modal) return;
       document.getElementById('inputApiKeyModal').value = getStoredApiKey();
       modal.classList.remove('hidden');
       lucide.createIcons();
     }
 
     function closeApiKeyModal() {
-      document.getElementById('apiKeyModal').classList.add('hidden');
+      const modal = document.getElementById('apiKeyModal');
+      if (modal) modal.classList.add('hidden');
     }
 
-    function saveApiKey() {
+    async function saveApiKey() {
       const val = document.getElementById('inputApiKeyModal').value.trim();
       localStorage.setItem('unm_monitor_api_key', val);
       closeApiKeyModal();
-      showToast({ type: 'success', title: '凭证已保存', message: 'API Key 已更新，正在重新加载数据...' });
-      loadDashboardData(1);
+      isAuthPrompted = false;
+      isAuthRequired = false;
+      showToast({ type: 'success', title: '凭证已保存', message: '正在验证并拉取遥测数据...' });
+      await loadDashboardData(1);
+      if (!isAuthRequired && pollInterval > 0 && !pollTimer) {
+        pollTimer = setInterval(() => loadDashboardData(currentPage, false), pollInterval);
+        const dot = document.getElementById('refreshPulseDot');
+        if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
+      }
     }
 
-    function clearSavedApiKey() {
+    async function clearSavedApiKey() {
       localStorage.removeItem('unm_monitor_api_key');
       document.getElementById('inputApiKeyModal').value = '';
       closeApiKeyModal();
+      isAuthPrompted = false;
+      isAuthRequired = false;
       showToast({ type: 'info', title: '凭证已清除', message: '已移除本地保存的 API Key' });
-      loadDashboardData(1);
+      await loadDashboardData(1);
     }
 
     function getAuthHeaders() {
@@ -406,41 +434,73 @@
       });
     }
 
-    // 3. 昼夜模式
+    // 3. 昼夜模式与 Chart 主题无损热更新 (极致丝滑零重绘零网络开销)
     const themeToggle = document.getElementById('themeToggle');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
 
-    function setTheme(isDark, silent = false) {
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('theme', 'dark');
-        if (!silent) showToast({ type: 'info', title: '主题模式', message: '已切换至深色暗夜模式 🌙' });
-      } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('theme', 'light');
-        if (!silent) showToast({ type: 'info', title: '主题模式', message: '已切换至清爽浅色模式 ☀️' });
+    function updateChartTheme(isDark) {
+      const textColor = isDark ? '#94a3b8' : '#64748b';
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+      const borderColor = isDark ? '#0f172a' : '#ffffff';
+      const tooltipBg = isDark ? '#0f172a' : '#ffffff';
+      const tooltipTitle = isDark ? '#ffffff' : '#0f172a';
+      const tooltipBody = isDark ? '#cbd5e1' : '#334155';
+      const tooltipBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+
+      const charts = [waveformChartInstance, endpointsChartInstance, sourcesDonutChartInstance, statusDonutChartInstance];
+      for (const chart of charts) {
+        if (!chart) continue;
+        if (chart.options.scales) {
+          if (chart.options.scales.x) {
+            chart.options.scales.x.ticks.color = textColor;
+            if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = gridColor;
+          }
+          if (chart.options.scales.y) {
+            chart.options.scales.y.ticks.color = textColor;
+            if (chart.options.scales.y.grid) chart.options.scales.y.grid.color = gridColor;
+          }
+        }
+        if (chart.options.plugins?.legend?.labels) {
+          chart.options.plugins.legend.labels.color = textColor;
+        }
+        if (chart.options.plugins?.tooltip) {
+          chart.options.plugins.tooltip.backgroundColor = tooltipBg;
+          chart.options.plugins.tooltip.titleColor = tooltipTitle;
+          chart.options.plugins.tooltip.bodyColor = tooltipBody;
+          chart.options.plugins.tooltip.borderColor = tooltipBorder;
+        }
+        if (chart.data.datasets?.[0]?.borderColor && chart.config.type === 'doughnut') {
+          chart.data.datasets[0].borderColor = borderColor;
+          chart.data.datasets[0].borderWidth = isDark ? 2 : 1;
+        }
+        chart.update('none');
       }
-      lucide.createIcons();
+    }
+
+    function setTheme(isDark, silent = false, animate = false) {
+      if (animate) {
+        document.documentElement.classList.add('theme-transitioning');
+      }
+      document.documentElement.classList.toggle('dark', isDark);
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      updateChartTheme(isDark);
+      if (animate) {
+        setTimeout(() => {
+          document.documentElement.classList.remove('theme-transitioning');
+        }, 240);
+      }
     }
 
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark' || (!savedTheme && prefersDark.matches)) {
-      setTheme(true, true);
+      setTheme(true, true, false);
     } else {
-      setTheme(false, true);
+      setTheme(false, true, false);
     }
 
     themeToggle.addEventListener('click', () => {
-      const isDark = document.documentElement.classList.contains('dark');
-      setTheme(!isDark);
-      if (waveformChartInstance && endpointsChartInstance && sourcesDonutChartInstance && statusDonutChartInstance) {
-        waveformChartInstance.destroy();
-        endpointsChartInstance.destroy();
-        sourcesDonutChartInstance.destroy();
-        statusDonutChartInstance.destroy();
-        initCharts();
-        loadDashboardData(currentPage, false);
-      }
+      const nextDark = !document.documentElement.classList.contains('dark');
+      setTheme(nextDark, false, true);
     });
 
     // --- 灵动岛交互中枢 (Dynamic Island Controller) ---
@@ -455,10 +515,15 @@
     function changePollInterval(val) {
       pollInterval = parseInt(val, 10);
       clearInterval(pollTimer);
+      pollTimer = null;
       const dot = document.getElementById('refreshPulseDot');
       if (pollInterval > 0) {
-        dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
-        pollTimer = setInterval(() => loadDashboardData(currentPage, false), pollInterval);
+        if (!isAuthRequired) {
+          dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
+          pollTimer = setInterval(() => loadDashboardData(currentPage, false), pollInterval);
+        } else {
+          dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500';
+        }
         showToast({ type: 'info', title: '轮询配置', message: `自动刷新间隔已设置为 ${pollInterval / 1000} 秒` });
       } else {
         dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
@@ -485,7 +550,34 @@
       showToast({ type: 'info', title: '过滤条件已更新', message: `端点: ${ep || '全部'} · 状态: ${st || '全部'}` });
     }
 
-    // 5. 拉取监控数据 (带自动 API Key 鉴权头)
+    // 渲染鉴权锁定内嵌占位卡片 (替代阻断性全屏弹窗循环)
+    function renderAuthRequiredState() {
+      const tbody = document.getElementById('tableLogsBody');
+      if (tbody) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="py-12 px-4 text-center">
+              <div class="max-w-md mx-auto p-6 sm:p-8 rounded-3xl bg-amber-500/10 border border-amber-500/25 text-center space-y-3.5 shadow-sm">
+                <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center mx-auto">
+                  <i data-lucide="key" class="w-6 h-6"></i>
+                </div>
+                <div>
+                  <h4 class="font-extrabold text-base text-slate-900 dark:text-white">监控接口安全鉴权保护</h4>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">服务端已配置 MONITOR_SECRET_KEY。请输入正确的访问凭证以加载实时遥测与请求明细。</p>
+                </div>
+                <button onclick="openApiKeyModal()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md shadow-amber-500/20 transition interactive-btn inline-flex items-center space-x-1.5">
+                  <i data-lucide="key" class="w-4 h-4"></i>
+                  <span>输入访问密钥 (API Key)</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
+      }
+    }
+
+    // 5. 拉取监控数据 (带自动 API Key 鉴权头与防死循环设计)
     async function loadDashboardData(page = 1, showSpinner = true) {
       currentPage = page;
       const pathFilter = document.getElementById('selectEndpointFilter').value;
@@ -506,9 +598,33 @@
         });
 
         if (res.status === 401) {
-          showToast({ type: 'warning', title: '需要鉴权', message: '监控接口需要访问密钥凭证 (API Key)' });
-          openApiKeyModal();
+          isAuthRequired = true;
+          // 遇到 401 立即停止后台轮询，杜绝任何周期性弹窗刷屏
+          if (pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+          }
+          const dot = document.getElementById('refreshPulseDot');
+          if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500';
+
+          const modal = document.getElementById('apiKeyModal');
+          const isModalHidden = modal ? modal.classList.contains('hidden') : true;
+
+          // 仅在首次未提示且弹窗关闭时优雅提示一次
+          if (!isAuthPrompted) {
+            isAuthPrompted = true;
+            showToast({ type: 'warning', title: '需要鉴权', message: '监控接口需要访问密钥凭证 (API Key)' });
+            if (isModalHidden) {
+              openApiKeyModal();
+            }
+          }
+
+          renderAuthRequiredState();
           return;
+        }
+
+        if (res.ok) {
+          isAuthRequired = false;
         }
 
         const json = await res.json();

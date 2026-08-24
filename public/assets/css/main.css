@@ -23,12 +23,23 @@ body {
 }
 *, *::before, *::after { box-sizing: border-box; }
 
-/* 仅在用户手动切换主题时生效的丝滑过渡（防止刷新加载时白闪） */
-html.theme-transitioning,
-html.theme-transitioning *,
-html.theme-transitioning *::before,
-html.theme-transitioning *::after {
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, fill 0.3s ease, stroke 0.3s ease, box-shadow 0.3s ease !important;
+/* 用户手动切换主题时的丝滑硬件加速过渡（精准作用于主容器与面板，避免通配符 * 导致的重绘卡顿） */
+html.theme-transitioning body,
+html.theme-transitioning header,
+html.theme-transitioning nav,
+html.theme-transitioning main,
+html.theme-transitioning footer,
+html.theme-transitioning .glass-panel,
+html.theme-transitioning .glass-card,
+html.theme-transitioning section,
+html.theme-transitioning input,
+html.theme-transitioning select,
+html.theme-transitioning button,
+html.theme-transitioning div[class*="rounded-"],
+html.theme-transitioning span[class*="rounded-"] {
+  transition: background-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 /* 高级多层环境流光氛围光斑 (Ambient Aurora Glow) */
