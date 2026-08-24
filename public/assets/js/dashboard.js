@@ -739,22 +739,65 @@
       showToast({ type: 'success', title: '导出成功', message: `已成功导出 ${currentLogsCache.length} 条遥测记录为 JSON` });
     }
 
-    // Ping 探针检测
+    // Ping 探针检测 (多端智能延迟感知)
     async function checkPing() {
       const pingEl = document.getElementById('pingText');
-      if (!pingEl) return;
+      const mobilePingEl = document.getElementById('mobilePingText');
+      const pingBadges = document.querySelectorAll('#pingBadge, #mobilePingBadge');
       const start = performance.now();
       try {
         const res = await fetch('/health', { cache: 'no-store' });
         const latency = Math.round(performance.now() - start);
-        if (res.ok) pingEl.textContent = `Ping: ${latency}ms`;
-        else pingEl.textContent = 'Degraded';
+        const text = res.ok ? `${latency}ms` : 'Degraded';
+        if (pingEl) pingEl.textContent = `Ping: ${text}`;
+        if (mobilePingEl) mobilePingEl.textContent = `Ping: ${text}`;
+
+        pingBadges.forEach(badge => {
+          badge.classList.remove('bg-emerald-500/10', 'text-emerald-600', 'dark:text-emerald-400', 'border-emerald-500/20',
+            'bg-amber-500/10', 'text-amber-600', 'dark:text-amber-400', 'border-amber-500/20',
+            'bg-rose-500/10', 'text-rose-600', 'dark:text-rose-400', 'border-rose-500/20');
+          if (res.ok && latency < 80) {
+            badge.classList.add('bg-emerald-500/10', 'text-emerald-600', 'dark:text-emerald-400', 'border-emerald-500/20');
+          } else if (res.ok && latency < 200) {
+            badge.classList.add('bg-amber-500/10', 'text-amber-600', 'dark:text-amber-400', 'border-amber-500/20');
+          } else {
+            badge.classList.add('bg-rose-500/10', 'text-rose-600', 'dark:text-rose-400', 'border-rose-500/20');
+          }
+        });
       } catch {
-        pingEl.textContent = 'Offline';
+        if (pingEl) pingEl.textContent = 'Offline';
+        if (mobilePingEl) mobilePingEl.textContent = 'Offline';
       }
     }
     checkPing();
     setInterval(checkPing, 10000);
+
+    // 移动端抽屉
+    function toggleMobileDrawer(forceClose = false) {
+      const drawer = document.getElementById('mobileDrawer');
+      const icon = document.getElementById('mobileMenuIcon');
+      if (!drawer) return;
+
+      const isOpening = forceClose ? false : drawer.classList.contains('hidden');
+      if (isOpening) {
+        drawer.classList.remove('hidden');
+        drawer.classList.add('flex', 'mobile-drawer-animated');
+        if (icon) icon.setAttribute('data-lucide', 'x');
+      } else {
+        drawer.classList.add('hidden');
+        drawer.classList.remove('flex', 'mobile-drawer-animated');
+        if (icon) icon.setAttribute('data-lucide', 'menu');
+      }
+      lucide.createIcons();
+    }
+
+    document.addEventListener('click', (e) => {
+      const drawer = document.getElementById('mobileDrawer');
+      const toggleBtn = e.target.closest('[onclick*="toggleMobileDrawer"]');
+      if (drawer && !drawer.classList.contains('hidden') && !drawer.contains(e.target) && !toggleBtn) {
+        toggleMobileDrawer(true);
+      }
+    });
 
     // 全局导出，供 HTML onclick 直接调用
     window.openApiKeyModal = openApiKeyModal;
@@ -769,6 +812,7 @@
     window.openDrawer = openDrawer;
     window.closeDrawer = closeDrawer;
     window.dismissToast = dismissToast;
+    window.toggleMobileDrawer = toggleMobileDrawer;
 
     // 初始启动
     document.querySelectorAll('.current-year-text').forEach(el => el.textContent = String(new Date().getFullYear()));

@@ -54,26 +54,114 @@
       }, 3500);
     }
 
-    // --- 服务 Ping 探活 ---
+    // --- 服务 Ping 探活 (多端智能延迟感知) ---
     async function checkHealthPing() {
       const startTime = performance.now();
+      const pingEl = document.getElementById('pingText');
+      const mobilePingEl = document.getElementById('mobilePingText');
+      const pingBadges = document.querySelectorAll('#pingBadge, #mobilePingBadge');
       try {
         const res = await fetch('/ping');
         const latency = Math.round(performance.now() - startTime);
-        if (res.ok) document.getElementById('pingText').textContent = `Ping: ${latency}ms`;
+        const text = res.ok ? `${latency}ms` : 'Degraded';
+        if (pingEl) pingEl.textContent = `Ping: ${text}`;
+        if (mobilePingEl) mobilePingEl.textContent = `Ping: ${text}`;
+
+        pingBadges.forEach(badge => {
+          badge.classList.remove('bg-emerald-500/10', 'text-emerald-600', 'dark:text-emerald-400', 'border-emerald-500/20',
+            'bg-amber-500/10', 'text-amber-600', 'dark:text-amber-400', 'border-amber-500/20',
+            'bg-rose-500/10', 'text-rose-600', 'dark:text-rose-400', 'border-rose-500/20');
+          if (res.ok && latency < 80) {
+            badge.classList.add('bg-emerald-500/10', 'text-emerald-600', 'dark:text-emerald-400', 'border-emerald-500/20');
+          } else if (res.ok && latency < 200) {
+            badge.classList.add('bg-amber-500/10', 'text-amber-600', 'dark:text-amber-400', 'border-amber-500/20');
+          } else {
+            badge.classList.add('bg-rose-500/10', 'text-rose-600', 'dark:text-rose-400', 'border-rose-500/20');
+          }
+        });
       } catch (e) {
-        document.getElementById('pingText').textContent = 'Offline';
+        if (pingEl) pingEl.textContent = 'Offline';
+        if (mobilePingEl) mobilePingEl.textContent = 'Offline';
       }
     }
     checkHealthPing();
     setInterval(checkHealthPing, 10000);
 
-    // --- 移动端抽屉 ---
-    function toggleMobileDrawer() {
+    // --- 移动端导航抽屉 (平滑微动效与外部点击关闭) ---
+    function toggleMobileDrawer(forceClose = false) {
       const drawer = document.getElementById('mobileDrawer');
-      drawer.classList.toggle('hidden');
-      drawer.classList.toggle('flex');
+      const icon = document.getElementById('mobileMenuIcon');
+      if (!drawer) return;
+
+      const isOpening = forceClose ? false : drawer.classList.contains('hidden');
+      if (isOpening) {
+        drawer.classList.remove('hidden');
+        drawer.classList.add('flex', 'mobile-drawer-animated');
+        if (icon) icon.setAttribute('data-lucide', 'x');
+      } else {
+        drawer.classList.add('hidden');
+        drawer.classList.remove('flex', 'mobile-drawer-animated');
+        if (icon) icon.setAttribute('data-lucide', 'menu');
+      }
+      lucide.createIcons();
     }
+
+    // 点击页面任意外部区域自动收起移动端导航抽屉
+    document.addEventListener('click', (e) => {
+      const drawer = document.getElementById('mobileDrawer');
+      const toggleBtn = e.target.closest('[onclick*="toggleMobileDrawer"]');
+      if (drawer && !drawer.classList.contains('hidden') && !drawer.contains(e.target) && !toggleBtn) {
+        toggleMobileDrawer(true);
+      }
+    });
+
+    // 滚动监听与导航高亮联动 (ScrollSpy)
+    function initNavScrollSpy() {
+      const navLinks = document.querySelectorAll('header nav a.nav-pill-item');
+      if (!navLinks.length) return;
+      const sections = ['playlist-station', 'workbench', 'providers'];
+
+      window.addEventListener('scroll', () => {
+        const scrollY = window.scrollY + 140;
+        let currentSection = '';
+
+        for (const secId of sections) {
+          const el = document.getElementById(secId);
+          if (el) {
+            const top = el.offsetTop;
+            const height = el.offsetHeight;
+            if (scrollY >= top && scrollY < top + height) {
+              currentSection = secId;
+              break;
+            }
+          }
+        }
+
+        navLinks.forEach(link => {
+          const href = link.getAttribute('href') || '';
+          if (currentSection && (href === `#${currentSection}` || href === `/#${currentSection}`)) {
+            link.classList.add('active');
+          } else if (href.startsWith('#') || href.startsWith('/#')) {
+            link.classList.remove('active');
+          }
+        });
+      }, { passive: true });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initNavScrollSpy);
+    } else {
+      initNavScrollSpy();
+    }
+
+    // 快速定位至音乐播放器
+    window.scrollToPlayer = function() {
+      const playerBar = document.getElementById('playerBar');
+      if (playerBar) {
+        playerBar.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        playerBar.classList.add('ring-2', 'ring-sky-500');
+        setTimeout(() => playerBar.classList.remove('ring-2', 'ring-sky-500'), 1500);
+      }
+    };
 
     // --- 折叠系统 (纯 SVG 表格图标) ---
     function bindCollapse(btnId, iconId, bodyId, stateKey) {

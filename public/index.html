@@ -61,72 +61,127 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- 顶部统一固定导航栏 (Fixed Top Navigation Bar) -->
+  <!-- 顶部现代化玻璃拟态导航中枢 (Modern Fixed Navigation Bar) -->
   <!-- ========================================================================= -->
-  <header class="fixed top-0 inset-x-0 z-50 w-full glass-panel bg-white/85 dark:bg-slate-950/85 border-b border-slate-200/80 dark:border-white/10 transition-colors shadow-md shadow-slate-900/5 backdrop-blur-2xl">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between gap-3 sm:gap-6 relative w-full">
+  <header class="fixed top-0 inset-x-0 z-50 w-full nav-glass-header transition-all duration-300">
+    <!-- 顶部极细微高光反光线 -->
+    <div class="nav-specular-highlight"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2.5 sm:gap-6 relative w-full">
       
-      <!-- 1. 左侧：品牌 Logo + 标题 + 版本徽章 -->
-      <div class="flex items-center space-x-3 sm:space-x-3.5 flex-shrink-0">
-        <a href="/" class="flex items-center space-x-3 group interactive-btn">
-          <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2 transition-transform group-hover:scale-105">
+      <!-- 1. 左侧：品牌 Logo + 状态光标 + 标题 + 版本徽章 -->
+      <div class="flex items-center space-x-3 flex-shrink-0">
+        <a href="/" class="flex items-center space-x-3 group interactive-btn" aria-label="UNM-Server 首页">
+          <div class="relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-white to-slate-100 dark:from-slate-800 dark:to-slate-900 shadow-md border border-slate-200/90 dark:border-white/10 flex items-center justify-center p-1.5 sm:p-2 transition-all duration-300 group-hover:scale-105 group-hover:shadow-sky-500/20 group-hover:border-sky-500/40">
             <img src="./favicon.png" alt="UNM Logo" class="w-full h-full object-contain" />
+            <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border-2 border-white dark:border-slate-950"></span>
+            </span>
           </div>
           <div class="flex items-center space-x-2">
-            <span class="font-extrabold text-base sm:text-xl tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
-            <span class="app-version-badge text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">v3.1.0 PRO</span>
+            <span class="font-extrabold text-base sm:text-xl tracking-tight text-slate-900 dark:text-white group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors">UNM-Server</span>
+            <span class="app-version-badge text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-sm hidden xs:inline-flex">v3.1.0 PRO</span>
           </div>
         </a>
       </div>
 
-      <!-- 2. 中间：统一核心导航项 (高对比大字号清晰胶囊) -->
-      <nav class="hidden md:flex items-center space-x-1.5 p-1.5 rounded-full bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-white/10 shadow-inner text-sm font-semibold">
-        <a href="#playlist-station" class="px-4 py-2 rounded-full text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
+      <!-- 2. 中间：分段胶囊导航项 (带图标与平滑高亮) + 律动声波 -->
+      <nav class="hidden md:flex items-center space-x-1 p-1 rounded-full bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-white/10 shadow-inner backdrop-blur-xl text-xs sm:text-sm font-semibold">
+        <a href="#playlist-station" class="nav-pill-item group flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all duration-200">
+          <i data-lucide="disc-3" class="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors"></i>
           <span>歌单视听</span>
         </a>
-        <a href="#workbench" class="px-4 py-2 rounded-full text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
+        <a href="#workbench" class="nav-pill-item group flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all duration-200">
+          <i data-lucide="terminal" class="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors"></i>
           <span>API 调试</span>
         </a>
-        <a href="#providers" class="px-4 py-2 rounded-full text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition">
+        <a href="#providers" class="nav-pill-item group flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all duration-200">
+          <i data-lucide="layers" class="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors"></i>
           <span>音源矩阵</span>
         </a>
-        <a href="/dashboard" class="px-4 py-2 rounded-full text-sky-600 dark:text-sky-400 hover:text-sky-500 hover:bg-white dark:hover:bg-white/10 transition">
+        <a href="/dashboard" class="nav-pill-item group flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-sky-600 dark:text-sky-400 hover:text-sky-500 dark:hover:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-500/10 transition-all duration-200">
+          <i data-lucide="activity" class="w-4 h-4 text-sky-500"></i>
           <span>遥测大盘</span>
+          <span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span>
         </a>
-        <a href="/info" target="_blank" class="px-4 py-2 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition hidden lg:inline">
+        <a href="/info" target="_blank" class="nav-pill-item group hidden xl:flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all duration-200">
+          <i data-lucide="cpu" class="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors"></i>
           <span>系统环境</span>
         </a>
 
         <!-- 正在播放音乐时的律动指示条 -->
-        <div id="islandMusicPill" class="hidden items-center space-x-2 pl-3 pr-4 py-1 border-l border-slate-200 dark:border-white/10">
+        <div id="islandMusicPill" class="hidden items-center space-x-2 pl-2.5 pr-3.5 py-1 border-l border-slate-200/80 dark:border-white/10 ml-1">
           <div id="islandAudioWaves" class="flex items-center space-x-0.5 h-3.5 flex-shrink-0">
             <span class="audio-bar"></span>
             <span class="audio-bar"></span>
             <span class="audio-bar"></span>
             <span class="audio-bar"></span>
           </div>
-          <span id="islandTrackTitle" class="text-xs font-medium text-sky-600 dark:text-sky-400 max-w-[140px] truncate">播放中...</span>
+          <span id="islandTrackTitle" class="text-xs font-medium text-sky-600 dark:text-sky-400 max-w-[130px] truncate cursor-pointer hover:underline" onclick="scrollToPlayer()" title="点击定位播放器">播放中...</span>
         </div>
       </nav>
 
-      <!-- 3. 右侧：Ping 探针 + 极速测试 + 深浅主题切换 -->
+      <!-- 3. 右侧：Ping 探针 + 极速测试 + 深浅主题切换 + 移动端菜单开关 -->
       <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-        <div id="pingBadge" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm font-mono font-bold">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <div id="pingBadge" class="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-all">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
           <span id="pingText">Ping: --ms</span>
         </div>
 
-        <button onclick="executeQuickTest()" class="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm transition shadow-md shadow-sky-500/20 interactive-btn" title="一键测试音源解析 (周杰伦《晴天》)">
+        <button onclick="executeQuickTest()" class="inline-flex items-center space-x-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm transition shadow-md shadow-sky-500/20 interactive-btn" title="一键测试音源解析 (周杰伦《晴天》)">
           <i data-lucide="zap" class="w-4 h-4"></i>
           <span class="hidden sm:inline">极速测试</span>
         </button>
 
-        <button id="themeToggle" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition shadow-sm flex items-center justify-center interactive-btn" title="切换深色/浅色模式">
-          <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
-          <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
+        <button id="themeToggle" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 hover:border-sky-500/30 transition shadow-sm flex items-center justify-center interactive-btn" title="切换深色/浅色模式">
+          <i data-lucide="moon" class="w-4 h-4 sm:w-5 sm:h-5 hidden dark:block"></i>
+          <i data-lucide="sun" class="w-4 h-4 sm:w-5 sm:h-5 block dark:hidden"></i>
+        </button>
+
+        <!-- 移动端汉堡折叠按钮 -->
+        <button onclick="toggleMobileDrawer()" class="md:hidden w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:text-sky-500 hover:border-sky-500/30 transition shadow-sm flex items-center justify-center interactive-btn" aria-label="展开导航菜单">
+          <i data-lucide="menu" id="mobileMenuIcon" class="w-4 h-4"></i>
         </button>
       </div>
 
+    </div>
+
+    <!-- 移动端全景半透明下拉抽屉 -->
+    <div id="mobileDrawer" class="hidden md:hidden fixed top-[64px] sm:top-[80px] inset-x-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border-b border-slate-200/80 dark:border-white/10 shadow-2xl transition-all duration-300 overflow-hidden flex-col">
+      <div class="px-4 py-5 space-y-3 max-w-lg mx-auto w-full">
+        <div class="grid grid-cols-2 gap-2 text-xs font-bold">
+          <a href="#playlist-station" onclick="toggleMobileDrawer()" class="flex items-center space-x-2.5 p-3 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5 text-slate-800 dark:text-slate-200 hover:text-sky-500 dark:hover:text-sky-400 transition">
+            <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center flex-shrink-0"><i data-lucide="disc-3" class="w-4 h-4"></i></div>
+            <span>歌单视听</span>
+          </a>
+          <a href="#workbench" onclick="toggleMobileDrawer()" class="flex items-center space-x-2.5 p-3 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5 text-slate-800 dark:text-slate-200 hover:text-sky-500 dark:hover:text-sky-400 transition">
+            <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center flex-shrink-0"><i data-lucide="terminal" class="w-4 h-4"></i></div>
+            <span>API 调试</span>
+          </a>
+          <a href="#providers" onclick="toggleMobileDrawer()" class="flex items-center space-x-2.5 p-3 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5 text-slate-800 dark:text-slate-200 hover:text-sky-500 dark:hover:text-sky-400 transition">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center flex-shrink-0"><i data-lucide="layers" class="w-4 h-4"></i></div>
+            <span>音源矩阵</span>
+          </a>
+          <a href="/dashboard" onclick="toggleMobileDrawer()" class="flex items-center space-x-2.5 p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 transition">
+            <div class="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-500 flex items-center justify-center flex-shrink-0"><i data-lucide="activity" class="w-4 h-4"></i></div>
+            <span>遥测大盘</span>
+          </a>
+        </div>
+        <div class="pt-2 border-t border-slate-200/60 dark:border-white/5 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <a href="/info" target="_blank" class="flex items-center space-x-1.5 hover:text-sky-500 transition">
+            <i data-lucide="cpu" class="w-4 h-4"></i>
+            <span>系统环境与节点状态</span>
+          </a>
+          <div id="mobilePingBadge" class="inline-flex items-center space-x-1.5 px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-bold">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="mobilePingText">Ping: --ms</span>
+          </div>
+        </div>
+      </div>
     </div>
   </header>
 
