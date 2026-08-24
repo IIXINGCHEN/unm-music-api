@@ -55,11 +55,11 @@ const audio = document.getElementById('mainAudioPlayer');
 
     // 判定是否需要经 /stream 同源中转：
     // 1. https 下的 http 明文流（解决浏览器 Mixed Content 拦截）
-    // 2. 具备严格 Referer 防盗链校验的音源 CDN（B站 bilivideo / akamaized / m4s / 咪咕等）
+    // 2. 具备严格 Referer / Origin 防盗链校验或分块传输校验的音源 CDN（JOOX / 咪咕 / B站 / 酷狗 / 酷我 / 腾讯等）
     function shouldRouteViaStream(url) {
       if (!url) return false;
       if (location.protocol === 'https:' && url.startsWith('http://')) return true;
-      return /bilivideo\.com|akamaized\.net|bilibili\.com|\.m4s|migu\.cn/i.test(url);
+      return /joox\.com|bilivideo\.com|akamaized\.net|bilibili\.com|\.m4s|migu\.cn|kugou\.com|kuwo\.cn|qq\.com|163\.com/i.test(url);
     }
 
     // 连续失败计数：整张队列全部失败后停止自动跳曲，避免无限循环

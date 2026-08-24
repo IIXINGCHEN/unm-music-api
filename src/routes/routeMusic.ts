@@ -149,6 +149,7 @@ musicRoute.get("/stream", async (c) => {
     upstreamHeaders["Referer"] = "https://www.kuwo.cn/";
   } else if (lowUrl.includes("joox.com")) {
     upstreamHeaders["Referer"] = "https://www.joox.com/";
+    upstreamHeaders["Origin"] = "https://www.joox.com";
   }
 
   let lastError = "";
@@ -167,10 +168,16 @@ musicRoute.get("/stream", async (c) => {
 
       const headers = new Headers();
       headers.set("Content-Type", upstream.headers.get("content-type") || "audio/mpeg");
-      const contentLength = upstream.headers.get("content-length");
-      if (contentLength) headers.set("Content-Length", contentLength);
       const contentRange = upstream.headers.get("content-range");
       if (contentRange) headers.set("Content-Range", contentRange);
+
+      const contentLength = upstream.headers.get("content-length");
+      const isChunked = upstream.headers.get("transfer-encoding") === "chunked";
+      const isCompressed = Boolean(upstream.headers.get("content-encoding"));
+      // 仅在明确非分块且非透明解压时转发 Content-Length，防止上游 CDN 乱序或解压导致客户端 net::ERR_CONTENT_LENGTH_MISMATCH
+      if (contentLength && !isChunked && !isCompressed) {
+        headers.set("Content-Length", contentLength);
+      }
       headers.set("Accept-Ranges", "bytes");
       headers.set("Cache-Control", "no-store");
       // 观测用：标识本次实际服务的通道（direct / proxy）
