@@ -12,7 +12,7 @@
       try {
         var s = localStorage.getItem('theme');
         var p = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var isDark = s ? s === 'dark' : (p || true);
+        var isDark = s ? s === 'dark' : p;
         if (isDark) {
           document.documentElement.classList.add('dark');
         } else {
@@ -223,8 +223,7 @@
     </div>
   </footer>
 
-  <!-- 页面逻辑：主题切换与图标 -->
-  <script src="/vendor/lucide.min.js"></script>
+  <!-- 页面逻辑：主题切换与图标（lucide 已在 <head> 引入，此处不重复加载） -->
   <script src="/assets/js/404.js"></script>
   <script>lucide.createIcons();</script>
 </body>

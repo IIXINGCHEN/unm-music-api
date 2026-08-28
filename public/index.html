@@ -13,7 +13,7 @@
       try {
         var s = localStorage.getItem('theme');
         var p = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var isDark = s ? s === 'dark' : (p || true);
+        var isDark = s ? s === 'dark' : p;
         if (isDark) {
           document.documentElement.classList.add('dark');
         } else {
