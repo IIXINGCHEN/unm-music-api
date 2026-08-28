@@ -61,10 +61,6 @@ export class LRUCache<T = unknown> {
     });
   }
 
-  has(key: string): boolean {
-    return this.get(key) !== null;
-  }
-
   delete(key: string): boolean {
     return this.cache.delete(key);
   }

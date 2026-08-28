@@ -78,9 +78,17 @@ export const MONITOR_CONFIG = {
   DEFAULT_MAX_LOGS: 1000,
   DEFAULT_PAGE: 1,
   DEFAULT_LIMIT: 50,
+  MAX_PAGE_LIMIT: 200, // /monitor/data 单页 limit 上限
   DEFAULT_MAX_STAT_KEYS: 500,
 } as const;
 
 export const RATE_LIMIT_CONFIG = {
   DEFAULT_CLEANUP_INTERVAL_MS: 120000, // 2 分钟清理周期
+  MAX_IP_KEYS: 10000, // IP 追踪表容量上限：防止伪造 XFF 海量新键导致内存慢性膨胀
+} as const;
+
+export const PLAYLIST_CONFIG = {
+  MAX_LIMIT: 5000, // /playlist 单次最大返回曲目数上限，杜绝无界并发上游请求
+  DETAIL_CHUNK_SIZE: 200, // 网易云批量详情接口单批曲目数
+  DETAIL_CHUNK_CONCURRENCY: 5, // 详情批量拉取的并发 chunk 数上限
 } as const;

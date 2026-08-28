@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono";
 import { z } from "zod";
-import { env, AUDIO_CONFIG } from "../config/index.js";
+import { env, AUDIO_CONFIG, PLAYLIST_CONFIG } from "../config/index.js";
 import { gdStudio } from "../services/serviceGdStudio.js";
 import { successResponse, errorResponse } from "../utils/utilResponse.js";
 import type { ApiResponse } from "../types/typeApi.js";
@@ -107,7 +107,9 @@ resourceRoute.get("/playlist/:id", async (c) => {
   }
 
   const query = c.req.query();
-  const limit = query.limit ? parseInt(query.limit, 10) || 1000 : 1000;
+  // limit clamp 到 [1, MAX_LIMIT]：杜绝超大值触发对上游的无界并发批量详情请求
+  const rawLimit = query.limit ? parseInt(query.limit, 10) || 1000 : 1000;
+  const limit = Math.min(Math.max(rawLimit, 1), PLAYLIST_CONFIG.MAX_LIMIT);
   const idsOnly = query.idsOnly === "true" || query.raw === "true";
 
   try {

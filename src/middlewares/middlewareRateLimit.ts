@@ -58,6 +58,11 @@ export const rateLimitMiddleware: MiddlewareHandler = async (c, next) => {
 
   let record = ipMap.get(ip);
   if (!record) {
+    // 容量上限保护（与 monitorService.bumpCount 同语义）：追踪表打满后新键不再建条目（放行），
+    // 已有键照常限流，防止伪造 XFF 海量新 IP 导致内存慢性膨胀
+    if (ipMap.size >= RATE_LIMIT_CONFIG.MAX_IP_KEYS) {
+      return await next();
+    }
     record = { timestamps: [] };
     ipMap.set(ip, record);
   }

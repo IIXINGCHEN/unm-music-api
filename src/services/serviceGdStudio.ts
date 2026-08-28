@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance } from "axios";
-import { env, HTTP_CONFIG, AUDIO_CONFIG, UPSTREAM_APIS } from "../config/index.js";
+import { env, HTTP_CONFIG, AUDIO_CONFIG, UPSTREAM_APIS, PLAYLIST_CONFIG } from "../config/index.js";
 import { globalCache } from "./serviceCache.js";
 import { sanitizeParam } from "../utils/utilString.js";
 import type {
@@ -260,45 +260,47 @@ class GDStudioService {
           }
         }
 
-        // 找出尚未取得详情的曲目 ID，按 200 个一组并发批量拉取全部详情
+        // 找出尚未取得详情的曲目 ID，按 DETAIL_CHUNK_SIZE 个一组分块
         const missingIds = targetIds.filter((id) => !trackMap.has(id));
         if (missingIds.length > 0) {
-          const chunkSize = 200;
           const chunks: string[][] = [];
-          for (let i = 0; i < missingIds.length; i += chunkSize) {
-            chunks.push(missingIds.slice(i, i + chunkSize));
+          for (let i = 0; i < missingIds.length; i += PLAYLIST_CONFIG.DETAIL_CHUNK_SIZE) {
+            chunks.push(missingIds.slice(i, i + PLAYLIST_CONFIG.DETAIL_CHUNK_SIZE));
           }
 
-          await Promise.all(
-            chunks.map(async (chunk) => {
-              try {
-                // 网易云标准批量获取详情接口
-                const batchUrl = `${UPSTREAM_APIS.NETEASE_SONG_DETAIL_V3}?c=[${chunk.map((id) => `{"id":${id}}`).join(",")}]`;
-                const batchRes = await this.client.get<{ songs?: Array<any> }>(batchUrl, {
-                  headers: {
-                    Referer: UPSTREAM_APIS.NETEASE_REFERER,
-                    "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
-                  },
-                  timeout: 8000,
-                });
-                if (Array.isArray(batchRes.data?.songs)) {
-                  for (const s of batchRes.data.songs) {
-                    const idStr = String(s.id);
-                    trackMap.set(idStr, {
-                      id: idStr,
-                      name: s.name || "未知曲目",
-                      artist: (s.ar || s.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
-                      album: s.al?.name || s.album?.name || "未知专辑",
-                      picUrl: s.al?.picUrl || s.album?.picUrl || "",
-                      duration: s.dt ? Math.round(s.dt / 1000) : (s.duration ? Math.round(s.duration / 1000) : 0),
-                    });
+          // 限流并发分批推进：避免超大歌单一次性打满数百个并发上游请求
+          for (let i = 0; i < chunks.length; i += PLAYLIST_CONFIG.DETAIL_CHUNK_CONCURRENCY) {
+            await Promise.all(
+              chunks.slice(i, i + PLAYLIST_CONFIG.DETAIL_CHUNK_CONCURRENCY).map(async (chunk) => {
+                try {
+                  // 网易云标准批量获取详情接口
+                  const batchUrl = `${UPSTREAM_APIS.NETEASE_SONG_DETAIL_V3}?c=[${chunk.map((id) => `{"id":${id}}`).join(",")}]`;
+                  const batchRes = await this.client.get<{ songs?: Array<any> }>(batchUrl, {
+                    headers: {
+                      Referer: UPSTREAM_APIS.NETEASE_REFERER,
+                      "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
+                    },
+                    timeout: 8000,
+                  });
+                  if (Array.isArray(batchRes.data?.songs)) {
+                    for (const s of batchRes.data.songs) {
+                      const idStr = String(s.id);
+                      trackMap.set(idStr, {
+                        id: idStr,
+                        name: s.name || "未知曲目",
+                        artist: (s.ar || s.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
+                        album: s.al?.name || s.album?.name || "未知专辑",
+                        picUrl: s.al?.picUrl || s.album?.picUrl || "",
+                        duration: s.dt ? Math.round(s.dt / 1000) : (s.duration ? Math.round(s.duration / 1000) : 0),
+                      });
+                    }
                   }
+                } catch (batchErr: any) {
+                  console.warn(`[Playlist] 批量获取歌曲详情 chunk 异常: ${batchErr.message}`);
                 }
-              } catch (batchErr: any) {
-                console.warn(`[Playlist] 批量获取歌曲详情 chunk 异常: ${batchErr.message}`);
-              }
-            })
-          );
+              })
+            );
+          }
         }
 
         // 严格按照歌单官方原始顺序组装完整列表，杜绝漏歌、乱序
@@ -371,68 +373,6 @@ class GDStudioService {
     }
 
     return null;
-  }
-
-  /**
-   * 获取网易云歌单或专辑的歌曲 ID 列表
-   */
-  async getPlaylistSongIds(playlistId: string | number): Promise<string[]> {
-    const cleanId = sanitizeParam(playlistId, 50);
-    if (!cleanId) return [];
-
-    const cacheKey = `playlist:ids:${cleanId}`;
-    const cached = globalCache.get(cacheKey) as string[] | null;
-    if (cached) return cached;
-
-    // 1. 优先尝试网易云官方歌单接口
-    try {
-      const ncmUrl = `${UPSTREAM_APIS.NETEASE_PLAYLIST_DETAIL}?id=${encodeURIComponent(cleanId)}`;
-      const res = await this.client.get<{
-        playlist?: {
-          trackIds?: Array<{ id: number | string }>;
-          tracks?: Array<{ id: number | string }>;
-        };
-      }>(ncmUrl, {
-        headers: {
-          Referer: UPSTREAM_APIS.NETEASE_REFERER,
-          "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
-        },
-        timeout: 8000,
-      });
-
-      const playlist = res.data && res.data.playlist;
-      const trackList = playlist?.trackIds || playlist?.tracks;
-      if (Array.isArray(trackList) && trackList.length > 0) {
-        const ids = trackList.map((t) => String(t.id)).filter(Boolean);
-        globalCache.set(cacheKey, ids, env.CACHE_TTL_PLAYLIST);
-        return ids;
-      }
-    } catch (err: any) {
-      console.warn(`[Playlist] 网易云官方歌单拉取失败: ${err.message}，尝试专辑接口回退...`);
-    }
-
-    // 2. 回退尝试 GD Studio netease_album
-    try {
-      const albumData = await this.callApi<GDTrack[]>(
-        "search",
-        {
-          source: "netease_album",
-          name: cleanId,
-        },
-        env.CACHE_TTL_PLAYLIST
-      );
-      if (Array.isArray(albumData) && albumData.length > 0) {
-        const ids = albumData.map((song) => String(song.id)).filter(Boolean);
-        if (ids.length > 0) {
-          globalCache.set(cacheKey, ids, env.CACHE_TTL_PLAYLIST);
-          return ids;
-        }
-      }
-    } catch (err: any) {
-      console.warn(`[Playlist] GD Studio netease_album 获取失败: ${err.message}`);
-    }
-
-    return [];
   }
 }
 

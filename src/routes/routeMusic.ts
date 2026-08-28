@@ -6,6 +6,7 @@ import {
   getNeteaseSong,
   getOtherSourceSong,
   getCrossSourceSong,
+  getAvailableProviders,
   isRegisteredStreamUrl,
 } from "../services/serviceUnm.js";
 import { successResponse, errorResponse } from "../utils/utilResponse.js";
@@ -14,6 +15,10 @@ import type { ApiResponse } from "../types/typeApi.js";
 import type { MatchedAudio, NcmAudioResult } from "../types/typeMusic.js";
 
 const musicRoute = new Hono();
+
+// 已知 provider 白名单（UNM 引擎初始化完成后快照）：过滤 /match?server= 中的未知项，
+// 防止任意字符串进入缓存键导致 LRU 缓存抖动，以及无效 server 触发多源降级检索放大上游调用
+const KNOWN_PROVIDERS = new Set(getAvailableProviders());
 
 const matchSchema = z.object({
   id: z.string().min(1, "缺少 id 参数").max(80),
@@ -70,7 +75,13 @@ musicRoute.get("/match", async (c) => {
       return c.json<ApiResponse<MatchedAudio>>(successResponse(crossData, "跨源直链获取成功"));
     }
 
-    const servers = rawServer ? rawServer.split(",").map((s) => s.trim()).filter(Boolean) : null;
+    // 过滤未知 provider（小写归一）；全部无效时保持空数组，由 matchSong 回退默认音源列表
+    const servers = rawServer
+      ? rawServer
+          .split(",")
+          .map((s) => s.trim().toLowerCase())
+          .filter((s) => s && KNOWN_PROVIDERS.has(s))
+      : null;
     const data = await matchSong(id, servers, br || env.DEFAULT_BITRATE, { refresh: refreshMode });
     (c as any).set?.("matchedSource", data.source);
     return c.json<ApiResponse<MatchedAudio>>(successResponse(data, "匹配成功"));

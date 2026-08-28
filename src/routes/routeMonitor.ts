@@ -14,8 +14,12 @@ const monitorRoute = new Hono();
 //                     业务路由均挂根路径，唯独监控曾用完整 /api 前缀而在双平台 404
 const dataHandler = (c: any) => {
   const query = c.req.query();
-  const page = query.page ? parseInt(query.page, 10) : MONITOR_CONFIG.DEFAULT_PAGE;
-  const limit = query.limit ? parseInt(query.limit, 10) : MONITOR_CONFIG.DEFAULT_LIMIT;
+  // page/limit 归一化：NaN 兜底默认值并 clamp，杜绝 ?page=abc 之类的退化分页行为
+  const page = Math.max(1, parseInt(query.page, 10) || MONITOR_CONFIG.DEFAULT_PAGE);
+  const limit = Math.min(
+    MONITOR_CONFIG.MAX_PAGE_LIMIT,
+    Math.max(1, parseInt(query.limit, 10) || MONITOR_CONFIG.DEFAULT_LIMIT)
+  );
   const path = query.path || "";
   const status = query.status || "";
   const keyword = query.keyword || "";
