@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "predev": "tailwindcss -c tailwind.config.cjs -i public/assets/css/tailwind.input.css -o public/assets/css/tailwind.css --minify",
     "build": "tsup",
     "prebuild": "node scripts/sync-version.mjs && tailwindcss -c tailwind.config.cjs -i public/assets/css/tailwind.input.css -o public/assets/css/tailwind.css --minify",
     "start": "node dist/index.js",
