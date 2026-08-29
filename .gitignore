@@ -34,6 +34,8 @@ coverage
 
 # Agent reviews, notes & local workspace caches (禁止入库)
 .agents/
+.claude/
+public/assets/css/tailwind.css
 .agents/**
 .agents/eng-code-reviews/
 .agents/code-reviews/
