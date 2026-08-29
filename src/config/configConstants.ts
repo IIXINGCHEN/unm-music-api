@@ -28,7 +28,6 @@ export const AUDIO_CONFIG = {
 
 export const CACHE_POLICY = {
   DEFAULT_MAX_ITEMS: 2000,
-  TTL_DEFAULT: 3600 * 1000, // 1 小时
   TTL_AUDIO_STREAM: 2 * 3600 * 1000, // 2 小时
   TTL_SEARCH_RESULT: 30 * 60 * 1000, // 30 分钟
   TTL_LYRIC: 12 * 3600 * 1000, // 12 小时

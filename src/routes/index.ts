@@ -11,4 +11,4 @@ routes.route("/", musicRoute);
 routes.route("/", resourceRoute);
 routes.route("/", monitorRoute);
 
-export { routes, infoRoute, musicRoute, resourceRoute, monitorRoute };
+export { routes };
