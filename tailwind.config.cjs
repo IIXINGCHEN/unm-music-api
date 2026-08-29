@@ -48,15 +48,6 @@ module.exports = {
           950: '#040711',
         },
       },
-      animation: {
-        'pulse-glow': 'pulseGlow 4s ease-in-out infinite',
-      },
-      keyframes: {
-        pulseGlow: {
-          '0%, 100%': { opacity: '0.3' },
-          '50%': { opacity: '0.7' },
-        },
-      },
     },
   },
   plugins: [],

@@ -452,9 +452,6 @@
     }
 
     // 3. 昼夜模式与 Chart 主题无损热更新 (极致丝滑零重绘零网络开销)
-    const themeToggle = document.getElementById('themeToggle');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
-
     function updateChartTheme(isDark) {
       const textColor = isDark ? '#94a3b8' : '#64748b';
       const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
@@ -494,65 +491,8 @@
       }
     }
 
-    function setTheme(isDark, silent = false, animate = false, event = null) {
-      const applyTheme = () => {
-        document.documentElement.classList.toggle('dark', isDark);
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        updateChartTheme(isDark);
-      };
-
-      if (animate && typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        const btn = themeToggle || (event?.currentTarget || event?.target);
-        const rect = btn?.getBoundingClientRect?.();
-        const x = event?.clientX || (rect ? rect.left + rect.width / 2 : window.innerWidth / 2);
-        const y = event?.clientY || (rect ? rect.top + rect.height / 2 : 0);
-        const endRadius = Math.hypot(
-          Math.max(x, window.innerWidth - x),
-          Math.max(y, window.innerHeight - y)
-        );
-
-        const transition = document.startViewTransition(() => {
-          applyTheme();
-        });
-
-        transition.ready.then(() => {
-          const clipPath = [
-            `circle(0px at ${x}px ${y}px)`,
-            `circle(${endRadius}px at ${x}px ${y}px)`
-          ];
-          document.documentElement.animate(
-            {
-              clipPath: isDark ? clipPath : [...clipPath].reverse()
-            },
-            {
-              duration: 360,
-              easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-              pseudoElement: isDark ? '::view-transition-new(root)' : '::view-transition-old(root)'
-            }
-          );
-        }).catch(() => {
-          applyTheme();
-        });
-        return;
-      }
-
-      applyTheme();
-    }
-
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark.matches)) {
-      setTheme(true, true, false);
-    } else {
-      setTheme(false, true, false);
-    }
-
-    themeToggle.addEventListener('click', (e) => {
-      const nextDark = !document.documentElement.classList.contains('dark');
-      setTheme(nextDark, false, true, e);
-    });
-
-    // --- 灵动岛交互中枢 (Dynamic Island Controller) ---
-    let isIslandExpanded = false;
+    // 主题切换实现复用共享模块 theme.js，仅注入图表联动钩子
+    initThemeSystem({ onChange: updateChartTheme });
 
     let pollTimer = null;
     let pollInterval = 3000;

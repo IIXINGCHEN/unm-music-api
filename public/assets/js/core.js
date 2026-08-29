@@ -7,58 +7,8 @@
     document.querySelectorAll('.current-year-text').forEach(el => el.textContent = new Date().getFullYear());
     lucide.createIcons();
 
-    // --- 主题切换系统 (现代 View Transitions API 硬件级圆波扩散 + 零开销瞬切) ---
-    const themeToggle = document.getElementById('themeToggle');
-    function setTheme(isDark, animate = false, event = null) {
-      const applyTheme = () => {
-        document.documentElement.classList.toggle('dark', isDark);
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-      };
-
-      if (animate && typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        const btn = themeToggle || (event?.currentTarget || event?.target);
-        const rect = btn?.getBoundingClientRect?.();
-        const x = event?.clientX || (rect ? rect.left + rect.width / 2 : window.innerWidth / 2);
-        const y = event?.clientY || (rect ? rect.top + rect.height / 2 : 0);
-        const endRadius = Math.hypot(
-          Math.max(x, window.innerWidth - x),
-          Math.max(y, window.innerHeight - y)
-        );
-
-        const transition = document.startViewTransition(() => {
-          applyTheme();
-        });
-
-        transition.ready.then(() => {
-          const clipPath = [
-            `circle(0px at ${x}px ${y}px)`,
-            `circle(${endRadius}px at ${x}px ${y}px)`
-          ];
-          document.documentElement.animate(
-            {
-              clipPath: isDark ? clipPath : [...clipPath].reverse()
-            },
-            {
-              duration: 360,
-              easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-              pseudoElement: isDark ? '::view-transition-new(root)' : '::view-transition-old(root)'
-            }
-          );
-        }).catch(() => {
-          applyTheme();
-        });
-        return;
-      }
-
-      // 降级：无任何强制多重重绘的即时切换
-      applyTheme();
-    }
-    if (themeToggle) {
-      themeToggle.addEventListener('click', (e) => {
-        const nextDark = !document.documentElement.classList.contains('dark');
-        setTheme(nextDark, true, e);
-      });
-    }
+    // --- 主题切换系统：实现见共享模块 theme.js ---
+    initThemeSystem();
 
     // --- XSS 防护：全局 HTML 转义助手（文本节点与双/单引号属性上下文通用） ---
     window.escapeHtml = function(value) {
@@ -230,53 +180,6 @@
     const togglePlaylistStation = bindCollapse('btnPlaylistToggle', 'iconPlaylistToggle', 'playlistStationBody', '_playlistCollapsed');
     const toggleWorkbenchStation = bindCollapse('btnWorkbenchToggle', 'iconWorkbenchToggle', 'workbenchStationBody', '_workbenchCollapsed');
     const toggleSpecsTable = bindCollapse('btnSpecsToggle', 'iconSpecsToggle', 'specsTableContent', '_specsCollapsed');
-
-    // --- 灵动岛交互中枢 (Dynamic Island Controller) ---
-    let isIslandExpanded = false;
-
-    function toggleDynamicIsland() {
-      if (isIslandExpanded) {
-        collapseDynamicIsland();
-      } else {
-        expandDynamicIsland();
-      }
-    }
-
-    function expandDynamicIsland() {
-      const island = document.getElementById('dynamicIsland');
-      const compactView = document.getElementById('islandCompactView');
-      const expandedView = document.getElementById('islandExpandedView');
-      if (!island || !compactView || !expandedView) return;
-
-      isIslandExpanded = true;
-      island.classList.remove('dynamic-island-compact');
-      island.classList.add('dynamic-island-expanded', 'p-4', 'sm:p-6');
-      compactView.classList.add('hidden');
-      expandedView.classList.remove('hidden');
-      lucide.createIcons();
-    }
-
-    function collapseDynamicIsland() {
-      const island = document.getElementById('dynamicIsland');
-      const compactView = document.getElementById('islandCompactView');
-      const expandedView = document.getElementById('islandExpandedView');
-      if (!island || !compactView || !expandedView) return;
-
-      isIslandExpanded = false;
-      island.classList.remove('dynamic-island-expanded', 'p-4', 'sm:p-6');
-      island.classList.add('dynamic-island-compact');
-      expandedView.classList.add('hidden');
-      compactView.classList.remove('hidden');
-      lucide.createIcons();
-    }
-
-    // 点击灵动岛外部自动优雅收起
-    document.addEventListener('click', (e) => {
-      const island = document.getElementById('dynamicIsland');
-      if (isIslandExpanded && island && !island.contains(e.target)) {
-        collapseDynamicIsland();
-      }
-    });
 
     // 播放器状态同步到导航栏（歌曲名、歌手、声波律动）
     window.syncIslandMusicState = function(track, isPlaying) {

@@ -31,12 +31,8 @@
     [data-lucide] { display: inline-block; vertical-align: middle; }
   </style>
 
-  <!-- 字体样式异步加载：不阻塞首帧 -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" /></noscript>
+  <!-- 品牌字体自托管（latin 子集，由 scripts/sync-fonts.mjs 生成）；中文回退系统字体栈 -->
+  <link rel="stylesheet" href="./assets/css/fonts.css" />
 
   <!-- 核心样式表 (标准引入 + 服务端直出内联支持) -->
   <link rel="stylesheet" href="./assets/css/tailwind.css" />
@@ -44,6 +40,7 @@
   <link rel="stylesheet" href="./assets/css/404.css" />
   <!--INLINE_PAGE_CSS-->
   <script src="/vendor/lucide.min.js"></script>
+  <script src="/assets/js/theme.js"></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between mesh-gradient relative overflow-x-hidden">
