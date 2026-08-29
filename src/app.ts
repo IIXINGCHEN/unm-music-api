@@ -161,8 +161,8 @@ const injectPageCss = (html: string, style: string) => {
   if (html.includes("<!--INLINE_PAGE_CSS-->")) {
     return html.replace("<!--INLINE_PAGE_CSS-->", () => style);
   }
-  // 如果没有占位符，安全插入到 </head> 之前
-  return html.replace("</head>", `${style}\n</head>`);
+  // 如果没有占位符，安全插入到 </head> 之前（函数式替换规避 $ 特殊序列）
+  return html.replace("</head>", () => `${style}\n</head>`);
 };
 app.get("/", async (c) => {
   const htmlPath = resolvePublicFile("index.html");
