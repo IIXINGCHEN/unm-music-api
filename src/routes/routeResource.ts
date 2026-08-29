@@ -9,7 +9,7 @@ import type { GDTrack, GDPicResponse, LyricResult, PlaylistDetail } from "../typ
 const resourceRoute = new Hono();
 
 const searchSchema = z.object({
-  name: z.string().min(1, "缺少 name 参数").max(100),
+  name: z.string().trim().min(1, "缺少 name 参数").max(100),
   source: z.string().max(30).optional(),
   count: z.string().optional().transform((val) => (val ? parseInt(val, 10) : env.DEFAULT_SEARCH_COUNT)),
   pages: z.string().optional(),
@@ -17,13 +17,13 @@ const searchSchema = z.object({
 });
 
 const picSchema = z.object({
-  id: z.string().min(1, "缺少 id 参数").max(100),
+  id: z.string().trim().min(1, "缺少 id 参数").max(100),
   source: z.string().max(30).optional(),
   size: z.string().optional().transform((val) => (val ? parseInt(val, 10) : env.DEFAULT_PICTURE_SIZE)),
 });
 
 const lyricSchema = z.object({
-  id: z.string().min(1, "缺少 id 参数").max(100),
+  id: z.string().trim().min(1, "缺少 id 参数").max(100),
   source: z.string().max(30).optional(),
 });
 

@@ -7,7 +7,7 @@ import { env, APP_INFO, HTTP_CONFIG } from "./config/index.js";
 import { routes } from "./routes/index.js";
 import { monitorService } from "./services/serviceMonitor.js";
 import { rateLimitMiddleware } from "./middlewares/middlewareRateLimit.js";
-import { isAllowedDomain } from "./utils/utilSecurity.js";
+import { isAllowedDomain, getClientIp } from "./utils/utilSecurity.js";
 import { errorResponse, successResponse } from "./utils/utilResponse.js";
 import { resolvePublicFile } from "./utils/utilPath.js";
 import type { ApiResponse } from "./types/typeApi.js";
@@ -23,10 +23,7 @@ app.use("*", async (c, next) => {
 
   // 记录监控日志
   const pathName = c.req.path;
-  const ip =
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
-    c.req.header("x-real-ip") ||
-    "127.0.0.1";
+  const ip = getClientIp(c);
   const referer = c.req.header("referer") || "";
   const origin = c.req.header("origin") || "";
   const userAgent = c.req.header("user-agent") || "";
@@ -164,8 +161,8 @@ const injectPageCss = (html: string, style: string) => {
   if (html.includes("<!--INLINE_PAGE_CSS-->")) {
     return html.replace("<!--INLINE_PAGE_CSS-->", () => style);
   }
-  // 如果没有占位符，安全插入到 </head> 之前
-  return html.replace("</head>", `${style}\n</head>`);
+  // 如果没有占位符，安全插入到 </head> 之前（函数式替换规避 $ 特殊序列）
+  return html.replace("</head>", () => `${style}\n</head>`);
 };
 app.get("/", async (c) => {
   const htmlPath = resolvePublicFile("index.html");

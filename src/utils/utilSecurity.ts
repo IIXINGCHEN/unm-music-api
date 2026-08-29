@@ -1,8 +1,27 @@
 import crypto from "node:crypto";
+import { getConnInfo } from "@hono/node-server/conninfo";
+import type { Context } from "hono";
 
 /**
  * 安全防御与数据清洗工具库
  */
+
+/**
+ * 解析客户端真实 IP：优先信任反向代理注入的 XFF / x-real-ip；
+ * 直连部署（无反代）下回退读取 socket 地址，避免全部客户端共享同一限流键。
+ * Serverless 环境 c.env 无 incoming 时静默回退默认值。
+ */
+export function getClientIp(c: Context): string {
+  const forwarded = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
+  if (forwarded) return forwarded;
+  const realIp = c.req.header("x-real-ip")?.trim();
+  if (realIp) return realIp;
+  try {
+    return getConnInfo(c).remote.address || "127.0.0.1";
+  } catch {
+    return "127.0.0.1";
+  }
+}
 
 /**
  * 恒定时间安全字符串比较（基于 SHA-256 哈希散列与 timingSafeEqual，杜绝时序攻击）
@@ -89,8 +108,16 @@ export const SENSITIVE_KEYS = new Set([
   "key",
   "api_key",
   "apikey",
+  "appkey",
+  "access_token",
+  "refresh_token",
+  "id_token",
+  "secret_key",
+  "client_secret",
+  "app_secret",
   "password",
   "passwd",
+  "pwd",
   "authorization",
   "auth",
   "cookie",
