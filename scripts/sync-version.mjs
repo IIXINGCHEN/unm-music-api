@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
  * 版本号同步脚本：以根目录 VERSION 文件为唯一版本来源（Single Source of Truth）。
- * 自动同步两处派生位置：
+ * 自动同步三处派生位置：
  *   1) package.json 的 version 字段
  *   2) src/config/configVersion.ts 的 FALLBACK_VERSION 兜底常量
+ *   3) README.md 的版本徽章与 /info 接口示例
  * 由 pnpm build 前的 prebuild 钩子自动触发，也可手动执行 pnpm sync:version。
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -44,5 +45,23 @@ if (!FALLBACK_PATTERN.test(cfg)) {
 cfg = cfg.replace(FALLBACK_PATTERN, `const FALLBACK_VERSION = "${version}";`);
 writeFileSync(cfgPath, cfg, "utf-8");
 console.log(`[sync-version] configVersion.ts FALLBACK_VERSION -> ${version}`);
+
+// 3) 同步 README.md 版本徽章与 /info 示例（只读环境自动跳过，不阻断构建）
+try {
+  const readmePath = `${root}README.md`;
+  let readme = readFileSync(readmePath, "utf-8");
+  const before = readme;
+  readme = readme
+    .replace(/version-v[\w.-]+-/, `version-v${version}-`)
+    .replace(/版本 \(`[\w.-]+`\)/, `版本 (\`${version}\`)`);
+  if (readme !== before) {
+    writeFileSync(readmePath, readme, "utf-8");
+    console.log(`[sync-version] README.md -> ${version}`);
+  } else {
+    console.log(`[sync-version] README.md 已对齐: ${version}`);
+  }
+} catch (err) {
+  console.warn(`[sync-version] 跳过 README.md 同步: ${err.message}`);
+}
 
 console.log(`[sync-version] 全部版本号已与根目录 VERSION 文件对齐: v${version}`);

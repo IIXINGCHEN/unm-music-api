@@ -7,7 +7,7 @@
 **网易云音乐解灰与跨平台高保真音乐 API 服务**  
 *(Modern TypeScript 5.x + Hono 4.x + Serverless Edition)*
 
-[![Version](https://img.shields.io/badge/version-v3.0.1-sky.svg?style=flat-square)](https://github.com/IIXINGCHEN/unm-music-api/releases)
+[![Version](https://img.shields.io/badge/version-v3.1.0-sky.svg?style=flat-square)](https://github.com/IIXINGCHEN/unm-music-api/releases)
 [![License](https://img.shields.io/badge/license-MIT-emerald.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-indigo.svg?style=flat-square)](https://nodejs.org/)
 [![Docker](https://img.shields.io/badge/docker-multi--arch-blue.svg?style=flat-square)](https://github.com/IIXINGCHEN/unm-music-api/pkgs/container/unm-music-api)
@@ -244,7 +244,7 @@ pnpm prd
 - **说明**: 批量提取歌单或专辑下所有歌曲 ID 组成的字符串数组。
 
 ### 7. 系统状态与监控大盘 API
-- `GET /info`：获取服务基础信息、版本 (`3.0.1`) 及当前启用的可用音源列表。
+- `GET /info`：获取服务基础信息、版本 (`3.1.0`) 及当前启用的可用音源列表。
 - `GET /health`：获取健康检查探针，支持 `?verbose=true` 查看 Node.js 内存占用与缓存命中统计。
 - `GET /ping`：轻量秒级存活检查（返回 `{"code": 200, "message": "pong"}`）。
 - `GET /api/monitor/data`：拉取近 1000 条脱敏请求审计日志、QPS、状态码与音源命中率（受 `MONITOR_SECRET_KEY` 保护）。
