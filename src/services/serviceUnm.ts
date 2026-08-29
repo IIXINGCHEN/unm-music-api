@@ -1,14 +1,13 @@
 import axios from "axios";
 import {
   env,
-  AUDIO_CONFIG,
   PROVIDER_CONFIG,
   UPSTREAM_APIS,
   HTTP_CONFIG,
 } from "../config/index.js";
 import { globalCache } from "./serviceCache.js";
 import { gdStudio } from "./serviceGdStudio.js";
-import { sanitizeParam, formatProxyUrl } from "../utils/utilString.js";
+import { sanitizeParam, formatProxyUrl, clampBitrate, normalizeSource } from "../utils/utilString.js";
 import type { SongDetail, MatchedAudio, NcmAudioResult } from "../types/typeMusic.js";
 
 // 静态导入 UNM 引擎（Node.js ESM 规范要求深层导入必须显式指定 .js 扩展名）
@@ -18,6 +17,41 @@ import * as unmConstsNS from "@unblockneteasemusic/server/src/consts.js";
 import * as unmMatchNS from "@unblockneteasemusic/server";
 
 const unmConsts = unmConstsNS as any;
+
+interface MatchMeta {
+  id: string;
+  url: string;
+  br?: number;
+  size?: number;
+  source?: string;
+  md5?: string | null;
+}
+
+/**
+ * MatchedAudio 组装五连：反代 URL 处理、白名单登记与响应对象构造。
+ * matchSong 与 getCrossSourceSong 的收尾完全一致，收敛于此。
+ */
+function toMatchedAudio(
+  meta: MatchMeta,
+  cleanBr: number,
+  info: { title?: string; artist?: string; album?: string; pic?: string } = {}
+): MatchedAudio {
+  const proxyUrl = formatProxyUrl(meta.url, env.PROXY_URL);
+  registerStreamUrl(meta.url);
+  return {
+    id: meta.id,
+    url: meta.url,
+    br: meta.br || cleanBr * 1000,
+    size: meta.size || 0,
+    source: meta.source || "gdstudio",
+    md5: meta.md5 || null,
+    proxyUrl,
+    title: info.title ?? "",
+    artist: info.artist ?? "",
+    album: info.album ?? "",
+    pic: info.pic ?? "",
+  };
+}
 
 // ---- 流媒体直链白名单注册表 ----
 // /stream 同源中转端点仅允许转发「本服务签发过的」音源直链，防止被滥用为开放代理 (SSRF)
@@ -324,9 +358,7 @@ export async function matchSong(
     throw new Error("缺少歌曲 ID 参数");
   }
 
-  const cleanBr = (AUDIO_CONFIG.SUPPORTED_BITRATES as readonly number[]).includes(Number(br))
-    ? Number(br)
-    : env.DEFAULT_BITRATE;
+  const cleanBr = clampBitrate(br);
 
   const serverList = Array.isArray(servers) && servers.length > 0
     ? servers
@@ -400,23 +432,11 @@ export async function matchSong(
   }
 
   // 5. 反代 URL 处理与 /stream 中转白名单登记
-  const finalUrl = matchResult.url;
-  const proxyUrl = formatProxyUrl(finalUrl, env.PROXY_URL);
-  registerStreamUrl(finalUrl);
-
-  const responseData: MatchedAudio = {
-    id: cleanId,
-    url: finalUrl,
-    br: matchResult.br || cleanBr * 1000,
-    size: matchResult.size || 0,
-    source: matchResult.source || "gdstudio",
-    md5: matchResult.md5 || null,
-    proxyUrl,
-    title: detail?.name || "",
-    artist: detail?.artist || "",
-    album: detail?.album || "",
-    pic: detail?.picUrl || "",
-  };
+  const responseData = toMatchedAudio(
+    { id: cleanId, url: matchResult.url, br: matchResult.br, size: matchResult.size, source: matchResult.source, md5: matchResult.md5 },
+    cleanBr,
+    { title: detail?.name || "", artist: detail?.artist || "", album: detail?.album || "", pic: detail?.picUrl || "" }
+  );
 
   globalCache.set(cacheKey, responseData, env.CACHE_TTL_AUDIO);
   return responseData;
@@ -430,9 +450,7 @@ export async function getNeteaseSong(
   br: number | string = env.DEFAULT_BITRATE
 ): Promise<NcmAudioResult> {
   const cleanId = sanitizeParam(id, 50);
-  const cleanBr = (AUDIO_CONFIG.SUPPORTED_BITRATES as readonly number[]).includes(Number(br))
-    ? Number(br)
-    : env.DEFAULT_BITRATE;
+  const cleanBr = clampBitrate(br);
 
   const direct = await gdStudio.getUrl(cleanId, env.DEFAULT_SEARCH_SOURCE, cleanBr);
   if (direct && direct.url) {
@@ -510,7 +528,7 @@ export async function getCrossSourceSong(
   opts: { refresh?: boolean } = {}
 ): Promise<MatchedAudio> {
   const cleanId = sanitizeParam(id, 80);
-  const cleanSource = sanitizeParam(source, 30).toLowerCase();
+  const cleanSource = normalizeSource(source, "");
   if (!cleanId) {
     throw new Error("缺少音源曲目 ID 参数");
   }
@@ -518,9 +536,7 @@ export async function getCrossSourceSong(
     throw new Error("缺少音源平台参数 source");
   }
 
-  const cleanBr = (AUDIO_CONFIG.SUPPORTED_BITRATES as readonly number[]).includes(Number(br))
-    ? Number(br)
-    : env.DEFAULT_BITRATE;
+  const cleanBr = clampBitrate(br);
 
   const cacheKey = `cross:${cleanSource}:${cleanId}:${cleanBr}`;
   if (!opts.refresh) {
@@ -536,23 +552,10 @@ export async function getCrossSourceSong(
     throw new Error(`音源 ${cleanSource} 未能返回该曲目的播放链接`);
   }
 
-  const finalUrl = audio.url;
-  const proxyUrl = formatProxyUrl(finalUrl, env.PROXY_URL);
-  registerStreamUrl(finalUrl);
-
-  const responseData: MatchedAudio = {
-    id: cleanId,
-    url: finalUrl,
-    br: audio.br || cleanBr * 1000,
-    size: audio.size || 0,
-    source: cleanSource,
-    md5: null,
-    proxyUrl,
-    title: "",
-    artist: "",
-    album: "",
-    pic: "",
-  };
+  const responseData = toMatchedAudio(
+    { id: cleanId, url: audio.url, br: audio.br, size: audio.size, source: cleanSource, md5: null },
+    cleanBr
+  );
 
   globalCache.set(cacheKey, responseData, env.CACHE_TTL_AUDIO);
   return responseData;

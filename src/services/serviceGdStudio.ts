@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance } from "axios";
 import { env, HTTP_CONFIG, AUDIO_CONFIG, UPSTREAM_APIS, PLAYLIST_CONFIG } from "../config/index.js";
 import { globalCache } from "./serviceCache.js";
-import { sanitizeParam } from "../utils/utilString.js";
+import { sanitizeParam, clampBitrate, normalizeSource } from "../utils/utilString.js";
 import type {
   GDTrack,
   GDUrlResponse,
@@ -71,7 +71,7 @@ class GDStudioService {
 
     const cleanCount = Math.min(Math.max(count || env.DEFAULT_SEARCH_COUNT, 1), AUDIO_CONFIG.MAX_SEARCH_COUNT);
     const cleanPages = Math.max(pages || AUDIO_CONFIG.DEFAULT_SEARCH_PAGE, 1);
-    const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
+    const cleanSource = normalizeSource(source, env.DEFAULT_SEARCH_SOURCE);
 
     const data = await this.callApi<GDTrack[]>(
       "search",
@@ -98,10 +98,8 @@ class GDStudioService {
     const cleanId = sanitizeParam(id, 50);
     if (!cleanId) return null;
 
-    const cleanSource = sanitizeParam(source, 30, env.DEFAULT_AUDIO_SOURCE).toLowerCase();
-    const cleanBr = (AUDIO_CONFIG.SUPPORTED_BITRATES as readonly number[]).includes(Number(br))
-      ? Number(br)
-      : env.DEFAULT_BITRATE;
+    const cleanSource = normalizeSource(source, env.DEFAULT_AUDIO_SOURCE);
+    const cleanBr = clampBitrate(br);
 
     const data = await this.callApi<GDUrlResponse>(
       "url",
@@ -136,7 +134,7 @@ class GDStudioService {
     const cleanId = sanitizeParam(id, 100);
     if (!cleanId) return null;
 
-    const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
+    const cleanSource = normalizeSource(source, env.DEFAULT_SEARCH_SOURCE);
     const cleanSize = (AUDIO_CONFIG.SUPPORTED_PICTURE_SIZES as readonly number[]).includes(Number(size))
       ? Number(size)
       : env.DEFAULT_PICTURE_SIZE;
@@ -168,7 +166,7 @@ class GDStudioService {
     const cleanId = sanitizeParam(id, 100);
     if (!cleanId) return { lyric: "", tlyric: "" };
 
-    const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
+    const cleanSource = normalizeSource(source, env.DEFAULT_SEARCH_SOURCE);
 
     const fetchOnce = () =>
       this.callApi<GDLyricResponse>(
