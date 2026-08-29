@@ -21,7 +21,7 @@ const musicRoute = new Hono();
 const KNOWN_PROVIDERS = new Set(getAvailableProviders());
 
 const matchSchema = z.object({
-  id: z.string().min(1, "缺少 id 参数").max(80),
+  id: z.string().trim().min(1, "缺少 id 参数").max(80),
   server: z.string().max(200).optional(),
   br: z.string().max(10).optional(),
   // 跨源直取：传入 GD Studio 搜索结果的平台名（kugou/kuwo/joox 等），此时 id 应为该平台的 url_id
@@ -31,12 +31,12 @@ const matchSchema = z.object({
 });
 
 const ncmgetSchema = z.object({
-  id: z.string().min(1, "缺少 id 参数").max(50),
+  id: z.string().trim().min(1, "缺少 id 参数").max(50),
   br: z.string().max(10).optional(),
 });
 
 const othergetSchema = z.object({
-  name: z.string().min(1, "缺少 name 参数").max(100),
+  name: z.string().trim().min(1, "缺少 name 参数").max(100),
 });
 
 // 快速匹配测试 (/test)
