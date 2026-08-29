@@ -153,22 +153,11 @@
     };
 
     function toggleSection(sec) {
-      sectionStates[sec] = !sectionStates[sec];
-      const content = document.getElementById(`content${capitalize(sec)}`);
-      const icon = document.getElementById(`iconToggle${capitalize(sec)}`);
-      const label = document.getElementById(`labelToggle${capitalize(sec)}`);
-
-      if (sectionStates[sec]) {
-        content.classList.remove('hidden');
-        icon.classList.remove('rotate-180');
-        label.textContent = sec === 'logs' ? '收起表格' : '收起面板';
-        showToast({ type: 'info', title: '面板展开', message: `已展开 ${sec.toUpperCase()} 监控模块` });
-      } else {
-        content.classList.add('hidden');
-        icon.classList.add('rotate-180');
-        label.textContent = sec === 'logs' ? '展开表格' : '展开面板';
-        showToast({ type: 'info', title: '面板折叠', message: `已收起 ${sec.toUpperCase()} 监控模块` });
-      }
+      const next = !sectionStates[sec];
+      setSectionVisibility(sec, next);
+      showToast(next
+        ? { type: 'info', title: '面板展开', message: `已展开 ${sec.toUpperCase()} 监控模块` }
+        : { type: 'info', title: '面板折叠', message: `已收起 ${sec.toUpperCase()} 监控模块` });
     }
 
     function capitalize(str) {
@@ -885,33 +874,6 @@
     checkPing();
     setInterval(checkPing, 10000);
 
-    // 移动端抽屉
-    function toggleMobileDrawer(forceClose = false) {
-      const drawer = document.getElementById('mobileDrawer');
-      const icon = document.getElementById('mobileMenuIcon');
-      if (!drawer) return;
-
-      const isOpening = forceClose ? false : drawer.classList.contains('hidden');
-      if (isOpening) {
-        drawer.classList.remove('hidden');
-        drawer.classList.add('flex', 'mobile-drawer-animated');
-        if (icon) icon.setAttribute('data-lucide', 'x');
-      } else {
-        drawer.classList.add('hidden');
-        drawer.classList.remove('flex', 'mobile-drawer-animated');
-        if (icon) icon.setAttribute('data-lucide', 'menu');
-      }
-      lucide.createIcons();
-    }
-
-    document.addEventListener('click', (e) => {
-      const drawer = document.getElementById('mobileDrawer');
-      const toggleBtn = e.target.closest('[onclick*="toggleMobileDrawer"]');
-      if (drawer && !drawer.classList.contains('hidden') && !drawer.contains(e.target) && !toggleBtn) {
-        toggleMobileDrawer(true);
-      }
-    });
-
     // 全局导出，供 HTML onclick 直接调用
     window.openApiKeyModal = openApiKeyModal;
     window.closeApiKeyModal = closeApiKeyModal;
@@ -925,7 +887,6 @@
     window.openDrawer = openDrawer;
     window.closeDrawer = closeDrawer;
     window.dismissToast = dismissToast;
-    window.toggleMobileDrawer = toggleMobileDrawer;
 
     // 初始启动
     document.querySelectorAll('.current-year-text').forEach(el => el.textContent = String(new Date().getFullYear()));

@@ -81,34 +81,6 @@
     checkHealthPing();
     setInterval(checkHealthPing, 10000);
 
-    // --- 移动端导航抽屉 (平滑微动效与外部点击关闭) ---
-    function toggleMobileDrawer(forceClose = false) {
-      const drawer = document.getElementById('mobileDrawer');
-      const icon = document.getElementById('mobileMenuIcon');
-      if (!drawer) return;
-
-      const isOpening = forceClose ? false : drawer.classList.contains('hidden');
-      if (isOpening) {
-        drawer.classList.remove('hidden');
-        drawer.classList.add('flex', 'mobile-drawer-animated');
-        if (icon) icon.setAttribute('data-lucide', 'x');
-      } else {
-        drawer.classList.add('hidden');
-        drawer.classList.remove('flex', 'mobile-drawer-animated');
-        if (icon) icon.setAttribute('data-lucide', 'menu');
-      }
-      lucide.createIcons();
-    }
-
-    // 点击页面任意外部区域自动收起移动端导航抽屉
-    document.addEventListener('click', (e) => {
-      const drawer = document.getElementById('mobileDrawer');
-      const toggleBtn = e.target.closest('[onclick*="toggleMobileDrawer"]');
-      if (drawer && !drawer.classList.contains('hidden') && !drawer.contains(e.target) && !toggleBtn) {
-        toggleMobileDrawer(true);
-      }
-    });
-
     // 滚动监听与导航高亮联动 (ScrollSpy)
     function initNavScrollSpy() {
       const navLinks = document.querySelectorAll('header nav a.nav-pill-item');

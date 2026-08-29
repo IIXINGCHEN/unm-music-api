@@ -10,34 +10,5 @@
     }).catch(() => {});
     lucide.createIcons();
 
-    // 主题切换实现见共享模块 theme.js
+    // 主题切换与移动端抽屉实现见共享模块 theme.js / drawer.js
     initThemeSystem();
-
-    // 移动端导航抽屉
-    function toggleMobileDrawer(forceClose = false) {
-      const drawer = document.getElementById('mobileDrawer');
-      const icon = document.getElementById('mobileMenuIcon');
-      if (!drawer) return;
-
-      const isOpening = forceClose ? false : drawer.classList.contains('hidden');
-      if (isOpening) {
-        drawer.classList.remove('hidden');
-        drawer.classList.add('flex', 'mobile-drawer-animated');
-        if (icon) icon.setAttribute('data-lucide', 'x');
-      } else {
-        drawer.classList.add('hidden');
-        drawer.classList.remove('flex', 'mobile-drawer-animated');
-        if (icon) icon.setAttribute('data-lucide', 'menu');
-      }
-      lucide.createIcons();
-    }
-
-    document.addEventListener('click', (e) => {
-      const drawer = document.getElementById('mobileDrawer');
-      const toggleBtn = e.target.closest('[onclick*="toggleMobileDrawer"]');
-      if (drawer && !drawer.classList.contains('hidden') && !drawer.contains(e.target) && !toggleBtn) {
-        toggleMobileDrawer(true);
-      }
-    });
-
-    window.toggleMobileDrawer = toggleMobileDrawer;
