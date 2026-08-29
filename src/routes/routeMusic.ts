@@ -9,7 +9,7 @@ import {
   getAvailableProviders,
   isRegisteredStreamUrl,
 } from "../services/serviceUnm.js";
-import { successResponse, errorResponse } from "../utils/utilResponse.js";
+import { successResponse, errorResponse, parseQuery } from "../utils/utilResponse.js";
 import { formatProxyUrl } from "../utils/utilString.js";
 import type { ApiResponse } from "../types/typeApi.js";
 import type { MatchedAudio, NcmAudioResult } from "../types/typeMusic.js";
@@ -52,15 +52,8 @@ musicRoute.get("/test", async (c) => {
 
 // 核心歌曲解灰匹配 (/match)
 musicRoute.get("/match", async (c) => {
-  const query = c.req.query();
-  const parsed = matchSchema.safeParse(query);
-  if (!parsed.success) {
-    return c.json<ApiResponse>(
-      errorResponse(400, parsed.error.issues[0]?.message || "参数不完整"),
-      400
-    );
-  }
-
+  const parsed = parseQuery(c, matchSchema);
+  if (parsed.err) return parsed.err;
   const { id, server: rawServer, br, source, refresh } = parsed.data;
   const refreshMode = refresh === "true" || refresh === "1";
   const normalizedSource = source ? source.trim().toLowerCase() : "";
@@ -93,15 +86,8 @@ musicRoute.get("/match", async (c) => {
 
 // 网易云歌曲直链获取 (/ncmget)
 musicRoute.get("/ncmget", async (c) => {
-  const query = c.req.query();
-  const parsed = ncmgetSchema.safeParse(query);
-  if (!parsed.success) {
-    return c.json<ApiResponse>(
-      errorResponse(400, parsed.error.issues[0]?.message || "参数不完整"),
-      400
-    );
-  }
-
+  const parsed = parseQuery(c, ncmgetSchema);
+  if (parsed.err) return parsed.err;
   const { id, br } = parsed.data;
   try {
     const data = await getNeteaseSong(id, br || env.DEFAULT_BITRATE);
@@ -205,15 +191,8 @@ musicRoute.get("/stream", async (c) => {
 
 // 其他音源获取 (/otherget)
 musicRoute.get("/otherget", async (c) => {
-  const query = c.req.query();
-  const parsed = othergetSchema.safeParse(query);
-  if (!parsed.success) {
-    return c.json<ApiResponse>(
-      errorResponse(400, parsed.error.issues[0]?.message || "参数不完整"),
-      400
-    );
-  }
-
+  const parsed = parseQuery(c, othergetSchema);
+  if (parsed.err) return parsed.err;
   const { name } = parsed.data;
   try {
     const data = await getOtherSourceSong(name);

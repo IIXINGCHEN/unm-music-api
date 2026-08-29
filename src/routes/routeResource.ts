@@ -2,7 +2,7 @@ import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { env, AUDIO_CONFIG, PLAYLIST_CONFIG } from "../config/index.js";
 import { gdStudio } from "../services/serviceGdStudio.js";
-import { successResponse, errorResponse } from "../utils/utilResponse.js";
+import { successResponse, errorResponse, parseQuery } from "../utils/utilResponse.js";
 import type { ApiResponse } from "../types/typeApi.js";
 import type { GDTrack, GDPicResponse, LyricResult, PlaylistDetail } from "../types/typeMusic.js";
 
@@ -29,15 +29,8 @@ const lyricSchema = z.object({
 
 // 跨平台歌曲搜索 (/search)
 resourceRoute.get("/search", async (c) => {
-  const query = c.req.query();
-  const parsed = searchSchema.safeParse(query);
-  if (!parsed.success) {
-    return c.json<ApiResponse>(
-      errorResponse(400, parsed.error.issues[0]?.message || "参数不完整"),
-      400
-    );
-  }
-
+  const parsed = parseQuery(c, searchSchema);
+  if (parsed.err) return parsed.err;
   const { name, source, count, pages, page } = parsed.data;
   const pageNum = parseInt(pages || page || "1", 10) || AUDIO_CONFIG.DEFAULT_SEARCH_PAGE;
 
@@ -52,15 +45,8 @@ resourceRoute.get("/search", async (c) => {
 
 // 专辑封面图获取 (/pic 与 /picture)
 const handlePicture = async (c: Context) => {
-  const query = c.req.query();
-  const parsed = picSchema.safeParse(query);
-  if (!parsed.success) {
-    return c.json<ApiResponse>(
-      errorResponse(400, parsed.error.issues[0]?.message || "参数不完整"),
-      400
-    );
-  }
-
+  const parsed = parseQuery(c, picSchema);
+  if (parsed.err) return parsed.err;
   const { id, source, size } = parsed.data;
   try {
     const data = await gdStudio.getPic(id, source || env.DEFAULT_SEARCH_SOURCE, size);
@@ -80,15 +66,8 @@ resourceRoute.get("/picture", handlePicture);
 
 // 歌词获取 (/lyric)
 resourceRoute.get("/lyric", async (c) => {
-  const query = c.req.query();
-  const parsed = lyricSchema.safeParse(query);
-  if (!parsed.success) {
-    return c.json<ApiResponse>(
-      errorResponse(400, parsed.error.issues[0]?.message || "参数不完整"),
-      400
-    );
-  }
-
+  const parsed = parseQuery(c, lyricSchema);
+  if (parsed.err) return parsed.err;
   const { id, source } = parsed.data;
   try {
     const data = await gdStudio.getLyric(id, source || env.DEFAULT_SEARCH_SOURCE);
