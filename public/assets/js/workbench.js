@@ -54,20 +54,29 @@ let lastRawResponseJson = '';
       window.open(buildWorkbenchUrl(), '_blank');
     }
 
-    function copyResponseJson() {
+    async function copyResponseJson() {
       const out = document.getElementById('jsonOutput');
       if (!out) return;
-      const text = lastRawResponseJson || out.textContent || '';
-      navigator.clipboard.writeText(text).then(() =>
-        showToast({ type: 'success', title: 'JSON 已复制', message: '响应数据已复制到剪贴板' })
-      );
+      if (!lastRawResponseJson) {
+        showToast({ type: 'warning', title: '暂无响应可复制', message: '请先发送一次实时请求' });
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(lastRawResponseJson);
+        showToast({ type: 'success', title: 'JSON 已复制', message: '响应数据已复制到剪贴板' });
+      } catch {
+        showToast({ type: 'error', title: '复制失败', message: '浏览器未授予剪贴板权限，请手动复制' });
+      }
     }
 
-    function copyWorkbenchCurl() {
+    async function copyWorkbenchCurl() {
       const curlCmd = `curl -X GET "${window.location.origin}${buildWorkbenchUrl()}"`;
-      navigator.clipboard.writeText(curlCmd).then(() =>
-        showToast({ type: 'success', title: 'cURL 已复制', message: curlCmd })
-      );
+      try {
+        await navigator.clipboard.writeText(curlCmd);
+        showToast({ type: 'success', title: 'cURL 已复制', message: curlCmd });
+      } catch {
+        showToast({ type: 'error', title: '复制失败', message: '浏览器未授予剪贴板权限，请手动复制' });
+      }
     }
 
     function syntaxHighlightJson(json) {
