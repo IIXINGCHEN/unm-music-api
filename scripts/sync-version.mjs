@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
  * 版本号同步脚本：以根目录 VERSION 文件为唯一版本来源（Single Source of Truth）。
- * 自动同步两处派生位置：
+ * 自动同步四处派生位置：
  *   1) package.json 的 version 字段
  *   2) src/config/configVersion.ts 的 FALLBACK_VERSION 兜底常量
+ *   3) public/*.html 静态资源的 ?v= 版本戳
+ *   4) public/*.html 里 .app-version-badge 徽标文字（v<major>.<minor> PRO，不再硬编码）
  * 由 pnpm build 前的 prebuild 钩子自动触发，也可手动执行 pnpm sync:version。
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -61,6 +63,23 @@ for (const f of htmlFiles) {
     console.log(`[sync-version] ${f} 静态资源已加版本戳 ?v=${stamp}`);
   } else {
     console.log(`[sync-version] ${f} 版本戳已是最新: ?v=${stamp}`);
+  }
+}
+
+// 4) 前端版本徽标：public/*.html 里 .app-version-badge 的 "vX.Y PRO" 硬编码
+//    改为从 VERSION 文件派生（v<major>.<minor> PRO），与后端 /info 版本同源。
+//    幂等替换：已对齐时不改写文件。
+const shortVer = version.split(".").slice(0, 2).join(".");
+const badgeRe = /(<span class="app-version-badge[^"]*">)v\d+\.\d+ PRO(<\/span>)/g;
+for (const f of htmlFiles) {
+  const p = `${root}${f}`;
+  const html = readFileSync(p, "utf-8");
+  const updated = html.replace(badgeRe, `$1v${shortVer} PRO$2`);
+  if (updated !== html) {
+    writeFileSync(p, updated, "utf-8");
+    console.log(`[sync-version] ${f} 版本徽标已同步: v${shortVer} PRO`);
+  } else {
+    console.log(`[sync-version] ${f} 版本徽标已对齐: v${shortVer} PRO`);
   }
 }
 
