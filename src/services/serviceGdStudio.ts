@@ -301,19 +301,16 @@ class GDStudioService {
           }
         }
 
-        // 严格按照歌单官方原始顺序组装完整列表，杜绝漏歌、乱序
-        const tracks: PlaylistTrack[] = targetIds.map((id) => {
+        // 严格按歌单官方原始顺序组装列表，只保留**真实取到元数据**的曲目。
+        // 原实现在缺失时合成占位对象（"歌单曲目 #id" / artist="网易云音乐" / duration=0），
+        // 其形状与真实条目一致，消费端无法区分，等于把降级结果伪装成成功。
+        // 改为如实返回已获取到的曲目，并通过 partialLoaded 显式声明缺失数量。
+        const tracks: PlaylistTrack[] = [];
+        for (const id of targetIds) {
           const existing = trackMap.get(id);
-          if (existing) return existing;
-          return {
-            id: String(id),
-            name: `歌单曲目 #${id}`,
-            artist: "网易云音乐",
-            album: playlist.name || "精选歌单",
-            picUrl: playlist.coverImgUrl || "",
-            duration: 0,
-          };
-        });
+          if (existing) tracks.push(existing);
+        }
+        const missingCount = targetIds.length - tracks.length;
 
         const result: PlaylistDetail = {
           id: cleanId,
@@ -324,6 +321,7 @@ class GDStudioService {
           trackCount: playlist.trackCount || rawSongIds.length,
           tracks,
           songIds: rawSongIds,
+          partialLoaded: missingCount > 0 ? missingCount : undefined,
         };
 
         globalCache.set(cacheKey, result, env.CACHE_TTL_PLAYLIST);
