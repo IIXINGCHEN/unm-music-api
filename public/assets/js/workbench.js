@@ -171,8 +171,18 @@ let lastRawResponseJson = '';
         const res = await fetch('/test');
         const json = await res.json();
         if (json.code === 200 && json.data?.url) {
-          showToast({ type: 'success', title: '测试匹配成功', message: `命中音源: ${json.data.source}` });
-          playSongItem({ id: '186016', name: '晴天', artist: '周杰伦', source: json.data.source, url: json.data.url });
+          const d = json.data;
+          showToast({ type: 'success', title: '测试匹配成功', message: `命中音源: ${d.source}` });
+          // 使用 /test 返回的真实元数据（之前硬编码为《晴天》，与实际播放的测试曲不一致）
+          playSongItem({
+            id: d.id,
+            name: d.title || d.name || '未知曲目',
+            artist: d.artist || '未知艺人',
+            album: d.album,
+            picUrl: d.pic || d.picUrl,
+            source: d.source,
+            url: d.url
+          });
         } else {
           throw new Error(json.message || '未返回有效音频');
         }
