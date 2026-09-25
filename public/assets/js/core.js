@@ -141,10 +141,12 @@
           body.classList.add('hidden');
           icon.classList.add('rotate-180');
           btn.title = '展开表格';
+          btn.setAttribute('aria-expanded', 'false');
         } else {
           body.classList.remove('hidden');
           icon.classList.remove('rotate-180');
           btn.title = '折叠表格';
+          btn.setAttribute('aria-expanded', 'true');
         }
         lucide.createIcons();
       };
