@@ -16,7 +16,8 @@
     "release": "node scripts/release.mjs",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f"
+    "docker:logs": "docker compose logs -f",
+    "test": "tsx --test \"src/**/*.test.ts\""
   },
   "author": "imsyy",
   "license": "MIT",
