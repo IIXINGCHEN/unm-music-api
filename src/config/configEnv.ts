@@ -166,6 +166,10 @@ const envSchema = z.object({
     .default("120")
     .transform((val) => parseInt(val, 10))
     .pipe(z.number().min(1).max(10000)),
+  // 受信反向代理（逗号分隔，支持精确 IP 与 IPv4 CIDR，如 "127.0.0.1,::1,10.0.0.0/8"）。
+  // 仅当直连对端属于受信代理时，才采信 X-Forwarded-For / X-Real-IP 取真实客户端 IP，
+  // 否则一律使用直连对端 IP，防止客户端伪造请求头绕过限流。
+  TRUSTED_PROXIES: z.string().default("127.0.0.1,::1"),
 });
 
 export type Env = z.infer<typeof envSchema>;

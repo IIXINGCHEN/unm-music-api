@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from "hono";
 import { env, RATE_LIMIT_CONFIG } from "../config/index.js";
 import { errorResponse } from "../utils/utilResponse.js";
+import { getClientIp } from "../utils/utilNet.js";
 import type { ApiResponse } from "../types/typeApi.js";
 
 interface IpRecord {
@@ -47,10 +48,8 @@ export const rateLimitMiddleware: MiddlewareHandler = async (c, next) => {
     return await next();
   }
 
-  const ip =
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
-    c.req.header("x-real-ip") ||
-    "127.0.0.1";
+  // 仅受信代理才采信 X-Forwarded-For，防止客户端伪造 IP 绕过限流
+  const ip = getClientIp(c);
 
   const now = Date.now();
   const windowMs = env.RATE_LIMIT_WINDOW_MS;

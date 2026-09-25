@@ -8,6 +8,7 @@ import { routes } from "./routes/index.js";
 import { monitorService } from "./services/serviceMonitor.js";
 import { rateLimitMiddleware } from "./middlewares/middlewareRateLimit.js";
 import { isAllowedDomain } from "./utils/utilSecurity.js";
+import { getClientIp } from "./utils/utilNet.js";
 import { errorResponse, successResponse } from "./utils/utilResponse.js";
 import { resolvePublicFile } from "./utils/utilPath.js";
 import type { ApiResponse } from "./types/typeApi.js";
@@ -21,12 +22,9 @@ app.use("*", async (c, next) => {
   const duration = Date.now() - start;
   c.header("X-Response-Time", `${duration}ms`);
 
-  // 记录监控日志
+  // 记录监控日志（与限流共用可信代理链下的真实客户端 IP）
   const pathName = c.req.path;
-  const ip =
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
-    c.req.header("x-real-ip") ||
-    "127.0.0.1";
+  const ip = getClientIp(c);
   const referer = c.req.header("referer") || "";
   const origin = c.req.header("origin") || "";
   const userAgent = c.req.header("user-agent") || "";

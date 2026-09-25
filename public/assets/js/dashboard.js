@@ -6,6 +6,16 @@
 document.getElementById('year').textContent = new Date().getFullYear();
     lucide.createIcons();
 
+    // HTML 转义：阻断遥测日志等外部可控字段经 innerHTML 注入脚本（存储型 XSS）
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     // 现代 Toast 通知系统
     function showToast({ type = 'info', title = '', message = '', duration = 3000 }) {
       const container = document.getElementById('toastContainer');
@@ -33,8 +43,8 @@ document.getElementById('year').textContent = new Date().getFullYear();
       toast.innerHTML = `
         <div class="flex-shrink-0 mt-0.5">${iconHtml}</div>
         <div class="flex-1 text-sm">
-          ${title ? `<div class="font-bold text-slate-900 dark:text-white mb-0.5">${title}</div>` : ''}
-          <div class="text-slate-600 dark:text-slate-300 leading-relaxed">${message}</div>
+          ${title ? `<div class="font-bold text-slate-900 dark:text-white mb-0.5">${escapeHtml(title)}</div>` : ''}
+          <div class="text-slate-600 dark:text-slate-300 leading-relaxed">${escapeHtml(message)}</div>
         </div>
         <button onclick="dismissToast('${id}')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 interactive-btn">
           <i data-lucide="x" class="w-4 h-4"></i>
@@ -116,12 +126,10 @@ document.getElementById('year').textContent = new Date().getFullYear();
         content.classList.remove('hidden');
         icon.classList.remove('rotate-180');
         label.textContent = sec === 'logs' ? '收起表格' : '收起面板';
-        showToast({ type: 'info', title: '面板展开', message: `已展开 ${sec.toUpperCase()} 监控模块` });
       } else {
         content.classList.add('hidden');
         icon.classList.add('rotate-180');
         label.textContent = sec === 'logs' ? '展开表格' : '展开面板';
-        showToast({ type: 'info', title: '面板折叠', message: `已收起 ${sec.toUpperCase()} 监控模块` });
       }
     }
 
@@ -143,19 +151,16 @@ document.getElementById('year').textContent = new Date().getFullYear();
         setSectionVisibility('kpis', true);
         setSectionVisibility('charts', true);
         setSectionVisibility('logs', true);
-        showToast({ type: 'info', title: '布局模式', message: '已切换至全景概览模式' });
       } else if (preset === 'charts') {
         btnCharts.className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
         setSectionVisibility('kpis', true);
         setSectionVisibility('charts', true);
         setSectionVisibility('logs', false);
-        showToast({ type: 'info', title: '布局模式', message: '已切换至图表分析矩阵专注模式' });
       } else if (preset === 'logs') {
         btnLogs.className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
         setSectionVisibility('kpis', false);
         setSectionVisibility('charts', false);
         setSectionVisibility('logs', true);
-        showToast({ type: 'info', title: '布局模式', message: '已切换至日志排查专注模式' });
       }
     }
 
@@ -413,11 +418,11 @@ document.getElementById('year').textContent = new Date().getFullYear();
       if (isDark) {
         document.documentElement.classList.add('dark');
         localStorage.setItem('theme', 'dark');
-        if (!silent) showToast({ type: 'info', title: '主题模式', message: '已切换至深色暗夜模式 🌙' });
+        if (!silent) showToast({ type: 'info', title: '主题模式', message: '已切换至深色暗夜模式' });
       } else {
         document.documentElement.classList.remove('dark');
         localStorage.setItem('theme', 'light');
-        if (!silent) showToast({ type: 'info', title: '主题模式', message: '已切换至清爽浅色模式 ☀️' });
+        if (!silent) showToast({ type: 'info', title: '主题模式', message: '已切换至清爽浅色模式' });
       }
       lucide.createIcons();
     }
@@ -456,10 +461,8 @@ document.getElementById('year').textContent = new Date().getFullYear();
       if (pollInterval > 0) {
         dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
         pollTimer = setInterval(() => loadDashboardData(currentPage, false), pollInterval);
-        showToast({ type: 'info', title: '轮询配置', message: `自动刷新间隔已设置为 ${pollInterval / 1000} 秒` });
       } else {
         dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
-        showToast({ type: 'warning', title: '轮询已暂停', message: '已暂停后台自动数据刷新' });
       }
     }
 
@@ -469,9 +472,6 @@ document.getElementById('year').textContent = new Date().getFullYear();
       searchDebounce = setTimeout(() => {
         const kw = document.getElementById('inputSearchKeyword').value.trim();
         loadDashboardData(1);
-        if (kw) {
-          showToast({ type: 'info', title: '筛选检索', message: `正在检索关键词: "${kw}"` });
-        }
       }, 350);
     }
 
@@ -479,7 +479,6 @@ document.getElementById('year').textContent = new Date().getFullYear();
       const ep = document.getElementById('selectEndpointFilter').value;
       const st = document.getElementById('selectStatusFilter').value;
       loadDashboardData(1);
-      showToast({ type: 'info', title: '过滤条件已更新', message: `端点: ${ep || '全部'} · 状态: ${st || '全部'}` });
     }
 
     // 5. 拉取监控数据 (带自动 API Key 鉴权头)
@@ -587,7 +586,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
           return `
             <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/60 dark:border-white/5 space-y-2 interactive-btn">
               <div class="flex items-center justify-between">
-                <span class="truncate max-w-[200px] font-bold text-slate-800 dark:text-slate-200" title="${item.name}">${item.name}</span>
+                <span class="truncate max-w-[200px] font-bold text-slate-800 dark:text-slate-200" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
                 <span class="font-bold font-mono px-2.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs">${item.count} 次 (${pct}%)</span>
               </div>
               <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
@@ -621,22 +620,22 @@ document.getElementById('year').textContent = new Date().getFullYear();
         }
 
         const callerDisplay = l.referer !== '-'
-          ? `<span class="truncate block max-w-[180px] font-medium text-slate-800 dark:text-slate-200" title="${l.referer}">${l.referer}</span>`
+          ? `<span class="truncate block max-w-[180px] font-medium text-slate-800 dark:text-slate-200" title="${escapeHtml(l.referer)}">${escapeHtml(l.referer)}</span>`
           : `<span class="text-slate-400 font-medium">Direct API</span>`;
 
         return `
           <tr class="hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition cursor-pointer" onclick="openDrawer('${l.id}')">
-            <td class="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap text-xs sm:text-sm">${l.timeStr}</td>
+            <td class="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap text-xs sm:text-sm">${escapeHtml(l.timeStr)}</td>
             <td class="py-3.5 px-4 font-mono font-semibold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
-              <span class="text-sky-500 font-bold">${l.method}</span> ${l.path}
+              <span class="text-sky-500 font-bold">${escapeHtml(l.method)}</span> ${escapeHtml(l.path)}
             </td>
             <td class="py-3.5 px-4">${codeBadge}</td>
             <td class="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300 font-semibold text-xs sm:text-sm">${l.duration}ms</td>
             <td class="py-3.5 px-4">${callerDisplay}</td>
             <td class="py-3.5 px-4">
-              <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold">${l.clientType}</span>
+              <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold">${escapeHtml(l.clientType)}</span>
             </td>
-            <td class="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400 text-xs sm:text-sm">${l.ip}</td>
+            <td class="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400 text-xs sm:text-sm">${escapeHtml(l.ip)}</td>
             <td class="py-3.5 px-4 text-right">
               <button onclick="event.stopPropagation(); openDrawer('${l.id}')" class="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sky-500 hover:text-white transition text-xs font-bold interactive-btn">查看</button>
             </td>
@@ -653,7 +652,6 @@ document.getElementById('year').textContent = new Date().getFullYear();
       const target = currentPage + delta;
       if (target >= 1) {
         loadDashboardData(target);
-        showToast({ type: 'info', title: '分页切换', message: `正在加载第 ${target} 页数据...` });
       }
     }
 
@@ -672,7 +670,6 @@ document.getElementById('year').textContent = new Date().getFullYear();
 
       document.getElementById('drawerOverlay').classList.remove('hidden');
       lucide.createIcons();
-      showToast({ type: 'info', title: '明细展开', message: `已载入请求 ${item.path} 遥测结构` });
     }
 
     function closeDrawer() {

@@ -30,6 +30,15 @@
     }
 
     // --- Toast 提示 ---
+    // HTML 转义：title/message 可能拼接用户输入（如曲名、搜索词），阻断脚本注入
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
     function showToast({ type = 'info', title = '提示', message = '' }) {
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
@@ -42,8 +51,8 @@
       toast.innerHTML = `
         <div class="mt-0.5 flex-shrink-0"><i data-lucide="${iconName}" class="w-5 h-5"></i></div>
         <div class="flex-1 min-w-0">
-          <div class="font-bold text-xs sm:text-sm text-white truncate">${title}</div>
-          <div class="text-[11px] sm:text-xs text-slate-300 mt-0.5 break-words">${message}</div>
+          <div class="font-bold text-xs sm:text-sm text-white truncate">${escapeHtml(title)}</div>
+          <div class="text-[11px] sm:text-xs text-slate-300 mt-0.5 break-words">${escapeHtml(message)}</div>
         </div>`;
       container.appendChild(toast);
       lucide.createIcons();
