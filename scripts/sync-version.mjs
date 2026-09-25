@@ -41,4 +41,21 @@ cfg = cfg.replace(/const FALLBACK_VERSION = "[^"]+";/, `const FALLBACK_VERSION =
 writeFileSync(cfgPath, cfg, "utf-8");
 console.log(`[sync-version] configVersion.ts FALLBACK_VERSION -> ${version}`);
 
+// 3) 静态资源版本戳：给 public/*.html 里本地 CSS/JS/vendor 引用加 ?v=版本号。
+//    发版后浏览器与 CDN 按新 URL 拉取，根治"代码已更新、页面仍用旧缓存"的问题。
+//    幂等：已有的 ?v=xxx 会被替换为当前版本，不会叠加。
+const htmlFiles = ["public/index.html", "public/dashboard.html"];
+const stampRe = /((?:src|href)="\.?\/(?:assets|vendor)\/[^"?]+)(\?v=[^"]*)?(")/g;
+for (const f of htmlFiles) {
+  const p = `${root}${f}`;
+  const html = readFileSync(p, "utf-8");
+  const stamped = html.replace(stampRe, `$1?v=${version}$3`);
+  if (stamped !== html) {
+    writeFileSync(p, stamped, "utf-8");
+    console.log(`[sync-version] ${f} 静态资源已加版本戳 ?v=${version}`);
+  } else {
+    console.log(`[sync-version] ${f} 版本戳已对齐: ?v=${version}`);
+  }
+}
+
 console.log(`[sync-version] 全部版本号已与根目录 VERSION 文件对齐: v${version}`);
