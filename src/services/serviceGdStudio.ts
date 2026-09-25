@@ -31,7 +31,11 @@ class GDStudioService {
    * 通用调用 GD Studio API 并按策略缓存
    */
   async callApi<T>(types: string, params: Record<string, string | number> = {}, ttl: number = env.CACHE_TTL_AUDIO): Promise<T> {
-    const cacheKey = `gd:${types}:${JSON.stringify(params)}`;
+    // 缓存键归一化：键名排序后序列化，避免相同语义参数因键序不同导致缓存穿透
+    const stableParams = Object.keys(params)
+      .sort()
+      .map((k) => [k, (params as Record<string, any>)[k]] as const);
+    const cacheKey = `gd:${types}:${JSON.stringify(stableParams)}`;
     const cached = globalCache.get(cacheKey) as T | null;
     if (cached) {
       return cached;
@@ -257,11 +261,16 @@ class GDStudioService {
         }
 
         // 如果 tracks 数量少于 limit 且还有更多 trackIds，按 200 个一组批量拉取全部详情
+        // 受限并发（3路）+ allSettled：避免单请求串行放大为数十次上游调用
         if (tracks.length < limit && rawSongIds.length > tracks.length) {
           const neededIds = rawSongIds.slice(tracks.length, limit);
           const chunkSize = 200;
+          const chunks: string[][] = [];
           for (let i = 0; i < neededIds.length; i += chunkSize) {
-            const chunk = neededIds.slice(i, i + chunkSize);
+            chunks.push(neededIds.slice(i, i + chunkSize));
+          }
+          const CONCURRENCY = 3;
+          const fetchChunk = async (chunk: string[]) => {
             try {
               const batchUrl = `https://music.163.com/api/song/detail?ids=[${chunk.join(",")}]`;
               const batchRes = await this.client.get<{ songs?: Array<any> }>(batchUrl, {
@@ -272,7 +281,7 @@ class GDStudioService {
                 timeout: 8000,
               });
               if (Array.isArray(batchRes.data?.songs)) {
-                const moreTracks = batchRes.data.songs.map((s: any) => ({
+                return batchRes.data.songs.map((s: any) => ({
                   id: String(s.id),
                   name: s.name || "未知曲目",
                   artist: (s.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
@@ -280,10 +289,17 @@ class GDStudioService {
                   picUrl: s.album?.picUrl || "",
                   duration: s.duration ? Math.round(s.duration / 1000) : 0,
                 }));
-                tracks.push(...moreTracks);
               }
             } catch (batchErr: any) {
               console.warn(`[Playlist] 批量获取歌曲详情 chunk 异常: ${batchErr.message}`);
+            }
+            return [];
+          };
+          for (let i = 0; i < chunks.length; i += CONCURRENCY) {
+            const batch = chunks.slice(i, i + CONCURRENCY);
+            const results = await Promise.allSettled(batch.map(fetchChunk));
+            for (const r of results) {
+              if (r.status === "fulfilled") tracks.push(...r.value);
             }
           }
 
@@ -427,4 +443,3 @@ class GDStudioService {
 }
 
 export const gdStudio = new GDStudioService();
-export const gdstudio = gdStudio;

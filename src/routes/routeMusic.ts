@@ -3,10 +3,10 @@ import { z } from "zod";
 import { env, PROVIDER_CONFIG } from "../config/index.js";
 import { matchSong, getNeteaseSong, getOtherSourceSong } from "../services/serviceUnm.js";
 import { successResponse, errorResponse } from "../utils/utilResponse.js";
-import type { ApiResponse } from "../types/typeApi.js";
+import type { ApiResponse, AppEnv } from "../types/typeApi.js";
 import type { MatchedAudio, NcmAudioResult } from "../types/typeMusic.js";
 
-const musicRoute = new Hono();
+const musicRoute = new Hono<AppEnv>();
 
 const matchSchema = z.object({
   id: z.string().min(1, "缺少 id 参数").max(50),
@@ -27,7 +27,7 @@ const othergetSchema = z.object({
 musicRoute.get("/test", async (c) => {
   try {
     const data = await matchSong(env.DEFAULT_TEST_SONG_ID, [...PROVIDER_CONFIG.PRIMARY_DECRYPT_PROVIDERS]);
-    (c as any).set?.("matchedSource", data.source);
+    c.set("matchedSource", data.source);
     return c.json<ApiResponse<MatchedAudio>>(successResponse(data, "测试匹配成功"));
   } catch (error: any) {
     return c.json<ApiResponse>(errorResponse(500, `测试匹配失败: ${error.message}`), 500);
@@ -50,7 +50,7 @@ musicRoute.get("/match", async (c) => {
 
   try {
     const data = await matchSong(id, servers, br || env.DEFAULT_BITRATE);
-    (c as any).set?.("matchedSource", data.source);
+    c.set("matchedSource", data.source);
     return c.json<ApiResponse<MatchedAudio>>(successResponse(data, "匹配成功"));
   } catch (error: any) {
     console.error(`[Match Error] id=${id}:`, error.message);

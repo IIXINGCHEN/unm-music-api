@@ -3,15 +3,21 @@ import { z } from "zod";
 import { env, AUDIO_CONFIG } from "../config/index.js";
 import { gdStudio } from "../services/serviceGdStudio.js";
 import { successResponse, errorResponse } from "../utils/utilResponse.js";
-import type { ApiResponse } from "../types/typeApi.js";
+import type { ApiResponse, AppEnv } from "../types/typeApi.js";
 import type { GDTrack, GDPicResponse, LyricResult, PlaylistDetail } from "../types/typeMusic.js";
 
-const resourceRoute = new Hono();
+const resourceRoute = new Hono<AppEnv>();
 
 const searchSchema = z.object({
   name: z.string().min(1, "缺少 name 参数").max(100),
   source: z.string().max(30).optional(),
-  count: z.string().optional().transform((val) => (val ? parseInt(val, 10) : env.DEFAULT_SEARCH_COUNT)),
+  count: z
+    .string()
+    .optional()
+    .transform((val) => {
+      const n = parseInt(val ?? "", 10);
+      return Number.isInteger(n) ? n : env.DEFAULT_SEARCH_COUNT;
+    }),
   pages: z.string().optional(),
   page: z.string().optional(),
 });
@@ -19,7 +25,13 @@ const searchSchema = z.object({
 const picSchema = z.object({
   id: z.string().min(1, "缺少 id 参数").max(100),
   source: z.string().max(30).optional(),
-  size: z.string().optional().transform((val) => (val ? parseInt(val, 10) : env.DEFAULT_PICTURE_SIZE)),
+  size: z
+    .string()
+    .optional()
+    .transform((val) => {
+      const n = parseInt(val ?? "", 10);
+      return Number.isInteger(n) ? n : env.DEFAULT_PICTURE_SIZE;
+    }),
 });
 
 const lyricSchema = z.object({
@@ -107,7 +119,11 @@ resourceRoute.get("/playlist/:id", async (c) => {
   }
 
   const query = c.req.query();
-  const limit = query.limit ? parseInt(query.limit, 10) || 1000 : 1000;
+  const limitRaw = parseInt(query.limit ?? "", 10);
+  const limit =
+    Number.isInteger(limitRaw) && limitRaw > 0
+      ? Math.min(limitRaw, AUDIO_CONFIG.MAX_PLAYLIST_LIMIT)
+      : AUDIO_CONFIG.DEFAULT_PLAYLIST_LIMIT;
   const idsOnly = query.idsOnly === "true" || query.raw === "true";
 
   try {

@@ -24,6 +24,8 @@ export const AUDIO_CONFIG = {
   DEFAULT_SEARCH_SOURCE: "netease",
   DEFAULT_AUDIO_SOURCE: "joox",
   DEFAULT_TEST_SONG_ID: "158616",
+  DEFAULT_PLAYLIST_LIMIT: 1000,
+  MAX_PLAYLIST_LIMIT: 2000,
 } as const;
 
 export const CACHE_POLICY = {
@@ -77,6 +79,7 @@ export const MONITOR_CONFIG = {
   DEFAULT_MAX_LOGS: 1000,
   DEFAULT_PAGE: 1,
   DEFAULT_LIMIT: 50,
+  MAX_LIMIT: 200,
 } as const;
 
 export const RATE_LIMIT_CONFIG = {

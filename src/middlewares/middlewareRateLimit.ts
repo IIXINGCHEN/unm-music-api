@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from "hono";
+import type { AppEnv } from "../types/typeApi.js";
 import { env, RATE_LIMIT_CONFIG } from "../config/index.js";
 import { errorResponse } from "../utils/utilResponse.js";
 import { getClientIp } from "../utils/utilNet.js";
@@ -29,21 +30,19 @@ if (typeof cleanupTimer.unref === "function") {
 /**
  * 轻量级滑动窗口 API 速率限制中间件
  */
-export const rateLimitMiddleware: MiddlewareHandler = async (c, next) => {
+export const rateLimitMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
   if (!env.ENABLE_RATE_LIMIT) {
     return await next();
   }
 
   // 对静态资源或健康检查豁免高频限流
+  // 仅豁免真实存在的静态资源前缀与健康检查：后缀匹配可被 "/match.html" 类伪造路径绕过
   const path = c.req.path;
+  const STATIC_EXEMPT_PREFIXES = ["/assets/", "/vendor/", "/favicon", "/dashboard", "/monitor"];
   if (
     path === "/health" ||
-    path.startsWith("/dashboard") ||
-    path.startsWith("/favicon") ||
-    path.endsWith(".html") ||
-    path.endsWith(".png") ||
-    path.endsWith(".css") ||
-    path.endsWith(".js")
+    path === "/ping" ||
+    STATIC_EXEMPT_PREFIXES.some((p) => path.startsWith(p))
   ) {
     return await next();
   }

@@ -101,7 +101,8 @@ function firstForwardedIp(c: Context): string | undefined {
  * 真实客户端 IP（限流与遥测共用）：
  * - 仅当直连对端是受信代理时，才采信 X-Forwarded-For / X-Real-IP；
  * - 否则一律使用直连对端 IP，防止客户端伪造请求头绕过限流；
- * - 拿不到 socket 的环境（Serverless）退化为旧行为：取请求头，兜底 127.0.0.1。
+ * - 拿不到 socket 的环境（Serverless）：优先平台注入的可信头
+ *   （Netlify: x-nf-client-connection-ip），拒绝采信客户端可伪造的头。
  */
 export function getClientIp(c: Context): string {
   const xffFirst = firstForwardedIp(c);
@@ -113,5 +114,7 @@ export function getClientIp(c: Context): string {
     }
     return peer;
   }
-  return xffFirst || xri || "127.0.0.1";
+  // Serverless 环境：平台可信头优先，否则不采信客户端头
+  const platformIp = c.req.header("x-nf-client-connection-ip")?.trim();
+  return platformIp || "127.0.0.1";
 }

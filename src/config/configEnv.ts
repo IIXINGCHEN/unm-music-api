@@ -26,6 +26,8 @@ const possibleEnvPaths: string[] = [
 for (const envPath of possibleEnvPaths) {
   if (fs.existsSync(envPath)) {
     dotenv.config({ path: envPath });
+    // 记录实际加载的 .env 来源，便于审计（上级目录探测可能命中非预期的文件）
+    console.log(`[Config] 已加载环境变量文件: ${envPath}`);
     break;
   }
 }
@@ -39,7 +41,7 @@ const envSchema = z.object({
     .default(String(HTTP_CONFIG.DEFAULT_PORT))
     .transform((val) => parseInt(val, 10))
     .pipe(z.number().min(1).max(65535)),
-  ALLOWED_DOMAIN: z.string().default(HTTP_CONFIG.DEFAULT_ALLOWED_ORIGIN),
+  ALLOWED_DOMAIN: z.string().min(1, "ALLOWED_DOMAIN 不可为空字符串，如需开放请显式设为 *").default(HTTP_CONFIG.DEFAULT_ALLOWED_ORIGIN),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 
   // 2. GD Studio 音乐 API 配置
@@ -184,6 +186,8 @@ function parseEnv(): Env {
   const parsed = result.data;
 
   // 将 UNM 特性开关同步到 process.env 供 @unblockneteasemusic/server 内部使用
+  // 安全注意：Cookie 回写后全局可见（process.env），任何依赖包均可读取。
+  // 仅在配置了对应 Cookie 时写入；/info 等端点已核验不暴露这些值。
   if (parsed.ENABLE_FLAC) process.env.ENABLE_FLAC = "true";
   if (parsed.SELECT_MAX_BR) process.env.SELECT_MAX_BR = "true";
   if (parsed.FOLLOW_SOURCE_ORDER) process.env.FOLLOW_SOURCE_ORDER = "true";

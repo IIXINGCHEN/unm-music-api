@@ -20,7 +20,12 @@ export function timingSafeCompare(a: string | undefined | null, b: string | unde
  * 校验来源 Origin / Referer 是否在授权白名单内（严格校验协议与 Hostname，杜绝 startsWith 弱匹配漏洞）
  */
 export function isAllowedDomain(incoming: string | undefined | null, allowedConfig: string): boolean {
-  if (!allowedConfig || allowedConfig.trim() === "*") {
+  if (!allowedConfig) {
+    // 空配置不再隐含放行：调用方已排除 "*" 的开放语义，
+    // 能走到这里的空字符串属于误配置，fail-closed 拒绝，避免白名单被静默绕过
+    return false;
+  }
+  if (allowedConfig.trim() === "*") {
     return true;
   }
   if (!incoming || typeof incoming !== "string") {
@@ -85,15 +90,23 @@ export function isAllowedDomain(incoming: string | undefined | null, allowedConf
  */
 export const SENSITIVE_KEYS = new Set([
   "token",
+  "access_token",
+  "refresh_token",
   "secret",
+  "secret_key",
   "key",
   "api_key",
   "apikey",
+  "api-key",
   "password",
   "passwd",
   "authorization",
   "auth",
   "cookie",
+  "session",
+  "jwt",
+  "signature",
+  "sig",
 ]);
 
 export function sanitizeQuery(query: Record<string, any>): Record<string, any> {
@@ -122,6 +135,10 @@ export function sanitizeUrl(fullUrl: string): string {
     }
     return fullUrl.startsWith("http") ? url.toString() : `${url.pathname}${url.search}`;
   } catch {
-    return fullUrl;
+    // URL 解析失败时以正则兜底脱敏，避免凭证明文入库（绝不原样返回）
+    return fullUrl.replace(
+      /((?:token|secret|key|api_?-?key|password|passwd|auth|cookie|session|jwt|sig(?:nature)?)[^=&#\s]*=)([^&#\s]+)/gi,
+      "$1******"
+    );
   }
 }

@@ -23,8 +23,13 @@ type NetlifyContext = {
 };
 
 function isLegacyEvent(arg: any): arg is LegacyEvent {
-  return arg && typeof arg === "object" && !("text" in arg) &&
-    ("httpMethod" in arg || "rawUrl" in arg || "path" in arg || "headers" in arg);
+  if (!arg || typeof arg !== "object" || arg instanceof Request) return false;
+  return (
+    Object.hasOwn(arg, "httpMethod") ||
+    Object.hasOwn(arg, "rawUrl") ||
+    Object.hasOwn(arg, "path") ||
+    Object.hasOwn(arg, "headers")
+  );
 }
 
 function buildRequestFromEvent(ev: LegacyEvent): Request {

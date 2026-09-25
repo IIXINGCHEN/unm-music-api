@@ -155,9 +155,17 @@ export async function matchSong(
     ? Number(br)
     : env.DEFAULT_BITRATE;
 
-  const serverList = Array.isArray(servers) && servers.length > 0
+  const rawServers = Array.isArray(servers) && servers.length > 0
     ? servers
     : env.DEFAULT_MATCH_SERVERS.split(",").map((s) => s.trim()).filter(Boolean);
+
+  // 音源有效性校验：过滤不存在的音源名，全量非法时回退默认优先级并打日志
+  const availableProviders = new Set(Object.keys(unmConsts.PROVIDERS || {}));
+  let serverList = rawServers.filter((s) => availableProviders.has(s));
+  if (serverList.length === 0) {
+    console.warn(`[UNM Match] 音源配置无效 (${rawServers.join(",") || "空"})，已回退默认优先级`);
+    serverList = [...PROVIDER_CONFIG.DEFAULT_PRIORITY_LIST].filter((s) => availableProviders.has(s));
+  }
 
   const cacheKey = `match:${cleanId}:${serverList.join(",")}:${cleanBr}`;
   const cached = globalCache.get(cacheKey) as MatchedAudio | null;

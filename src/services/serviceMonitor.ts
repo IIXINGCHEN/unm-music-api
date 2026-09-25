@@ -54,6 +54,8 @@ class MonitorService {
   private totalDuration: number = 0;
   private endpointMap: Map<string, number> = new Map();
   private callerMap: Map<string, number> = new Map();
+  // 日志 ID 单调计数器：避免 Math.random() 在同毫秒高并发下的理论碰撞
+  private logSeq: number = 0;
   private sourceMap: Map<string, number> = new Map();
   private statusMap: Map<string, number> = new Map();
   private startTime: number = Date.now();
@@ -120,7 +122,7 @@ class MonitorService {
     const cleanedUrl = sanitizeUrl(logData.fullUrl);
 
     const logItem: RequestLog = {
-      id: `req_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      id: `req_${Date.now()}_${(++this.logSeq).toString(36)}`,
       timestamp: now.toISOString(),
       timeStr,
       method: logData.method,
