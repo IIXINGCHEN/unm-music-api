@@ -141,3 +141,20 @@ function initRevealOnScroll() {
   els.forEach(el => io.observe(el));
 }
 initRevealOnScroll();
+
+/* iOS 底部 TabBar 滚动联动高亮 */
+(function initIosTabBarSpy() {
+  const items = Array.from(document.querySelectorAll('#iosTabBar [data-tabtarget]'));
+  if (!items.length || !('IntersectionObserver' in window)) return;
+  const setActive = id => items.forEach(el => {
+    const on = el.dataset.tabtarget === id;
+    el.classList.toggle('text-[#007aff]', on);
+    el.classList.toggle('dark:text-[#0a84ff]', on);
+    el.classList.toggle('text-slate-500', !on);
+    el.classList.toggle('dark:text-slate-400', !on);
+  });
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-35% 0px -55% 0px' });
+  items.forEach(el => { const sec = document.getElementById(el.dataset.tabtarget); if (sec) io.observe(sec); });
+})();

@@ -64,10 +64,10 @@
   </div>
 
   <!-- ========================================================================= -->
-  <!-- 1. 顶部 Sticky 玻璃导航栏 -->
+  <!-- 1. iOS 悬浮 Liquid Glass 导航 -->
   <!-- ========================================================================= -->
-  <header class="sticky top-0 z-40 w-full border-b border-slate-200/70 dark:border-white/[0.07] glass-panel bg-white/75 dark:bg-[#05070f]/75 transition-colors">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-[4.5rem] flex items-center justify-between w-full">
+  <header class="fixed top-0 inset-x-0 z-[80] w-full pointer-events-none">
+    <div class="max-w-7xl mx-3 sm:mx-6 lg:mx-auto mt-3 px-3 sm:px-5 h-14 sm:h-16 flex items-center justify-between liquid-glass-strong rounded-full pointer-events-auto">
       <div class="flex items-center space-x-3 sm:space-x-7 min-w-0">
         <a href="/" class="flex items-center space-x-2.5 group flex-shrink-0">
           <div class="relative w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-slate-900 shadow-lg shadow-sky-500/10 border border-slate-200 dark:border-white/10 flex items-center justify-center p-2 transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
@@ -75,33 +75,33 @@
             <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-[#05070f] animate-pulse-glow"></span>
           </div>
           <div class="flex items-center space-x-2">
-            <span class="font-extrabold text-base sm:text-xl tracking-tight text-slate-900 dark:text-white truncate">UNM<span class="text-gradient">-Server</span></span>
-            <span class="app-version-badge text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex-shrink-0 font-mono">v4.1 PRO</span>
+            <span class="font-extrabold text-base sm:text-xl tracking-tight text-slate-900 dark:text-white whitespace-nowrap">UNM<span class="text-gradient">-Server</span></span>
+            <span class="app-version-badge hidden min-[400px]:inline-flex text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex-shrink-0 font-mono whitespace-nowrap">v4.1 PRO</span>
           </div>
         </a>
 
-        <nav class="hidden lg:flex items-center space-x-0.5 text-sm font-semibold text-slate-600 dark:text-slate-300">
-          <a href="#playlist-station" class="px-3 py-2 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-500/10 transition flex items-center space-x-1.5"><i data-lucide="list-music" class="w-4 h-4 text-sky-500"></i><span>歌单视听</span></a>
-          <a href="#artist-spotlight" class="px-3 py-2 rounded-xl hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-500/10 transition flex items-center space-x-1.5"><i data-lucide="mic-2" class="w-4 h-4 text-rose-500"></i><span>艺人专栏</span></a>
-          <a href="#workbench" class="px-3 py-2 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-500/10 transition flex items-center space-x-1.5"><i data-lucide="terminal" class="w-4 h-4 text-cyan-500"></i><span>API 调试台</span></a>
-          <a href="#providers" class="px-3 py-2 rounded-xl hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-emerald-500/10 transition flex items-center space-x-1.5"><i data-lucide="radio" class="w-4 h-4 text-emerald-500"></i><span>音源矩阵</span></a>
-          <a href="#vip-subscription" class="px-3 py-2 rounded-xl hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-500/10 transition flex items-center space-x-1.5"><i data-lucide="crown" class="w-4 h-4 text-amber-500"></i><span>Pro 部署</span></a>
-          <a href="#specs" class="px-3 py-2 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-500/10 transition flex items-center space-x-1.5"><i data-lucide="book-open" class="w-4 h-4 text-indigo-400"></i><span>REST 规范</span></a>
+        <nav class="hidden xl:flex items-center space-x-0.5 text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <a href="#playlist-station" class="px-2.5 py-2 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-500/10 transition flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0"><i data-lucide="list-music" class="w-4 h-4 text-sky-500"></i><span>歌单视听</span></a>
+          <a href="#artist-spotlight" class="px-3 py-2 rounded-xl hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-500/10 transition flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0"><i data-lucide="mic-2" class="w-4 h-4 text-rose-500"></i><span>艺人专栏</span></a>
+          <a href="#workbench" class="px-2.5 py-2 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-500/10 transition flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0"><i data-lucide="terminal" class="w-4 h-4 text-cyan-500"></i><span>API 调试台</span></a>
+          <a href="#providers" class="px-3 py-2 rounded-xl hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-emerald-500/10 transition flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0"><i data-lucide="radio" class="w-4 h-4 text-emerald-500"></i><span>音源矩阵</span></a>
+          <a href="#vip-subscription" class="px-3 py-2 rounded-xl hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-500/10 transition flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0"><i data-lucide="crown" class="w-4 h-4 text-amber-500"></i><span>Pro 部署</span></a>
+          <a href="#specs" class="px-2.5 py-2 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-500/10 transition flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0"><i data-lucide="book-open" class="w-4 h-4 text-indigo-400"></i><span>REST 规范</span></a>
         </nav>
       </div>
 
       <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-        <div id="pingBadge" class="hidden md:inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-bold">
+        <div id="pingBadge" class="hidden 2xl:inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-bold whitespace-nowrap">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span id="pingText">Ping: --ms</span>
         </div>
 
-        <a href="/dashboard" class="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-500/25 font-bold text-sm transition btn-ghost">
+        <a href="/dashboard" class="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-full bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-500/25 font-bold text-sm transition">
           <i data-lucide="activity" class="w-4 h-4"></i>
           <span>遥测大盘</span>
         </a>
 
-        <button onclick="executeQuickTest()" class="hidden md:inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl btn-aurora text-white font-bold text-sm">
+        <button onclick="executeQuickTest()" class="hidden md:inline-flex items-center gap-1.5 px-4 min-h-[36px] rounded-full bg-[#007aff] dark:bg-[#0a84ff] text-white font-bold text-sm shadow-lg shadow-blue-500/30 active:scale-95 transition">
           <i data-lucide="zap" class="w-4 h-4"></i>
           <span>一键极速测试</span>
         </button>
@@ -111,7 +111,7 @@
           <i data-lucide="sun" class="w-4 h-4 sm:w-5 sm:h-5 block dark:hidden"></i>
         </button>
 
-        <button onclick="toggleMobileDrawer()" class="lg:hidden w-9 h-9 rounded-xl bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="展开导航">
+        <button onclick="toggleMobileDrawer()" class="xl:hidden w-9 h-9 rounded-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="展开导航">
           <i data-lucide="menu" class="w-5 h-5"></i>
         </button>
       </div>
@@ -119,30 +119,30 @@
   </header>
 
   <!-- 移动端导航抽屉 -->
-  <div id="mobileDrawer" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xl hidden flex-col justify-between p-6 transition-all duration-300 lg:hidden">
-    <div class="flex items-center justify-between border-b border-white/10 pb-4">
+  <div id="mobileDrawer" class="fixed inset-0 z-[95] bg-slate-300/70 dark:bg-slate-950/80 backdrop-blur-2xl hidden flex-col justify-between p-6 transition-all duration-300 xl:hidden">
+    <div class="flex items-center justify-between border-b border-slate-900/10 dark:border-white/10 pb-4">
       <div class="flex items-center space-x-3">
         <img src="./favicon.png" class="w-8 h-8 object-contain" alt="Logo" />
-        <span class="font-extrabold text-lg text-white">UNM<span class="text-gradient">-Server</span></span>
+        <span class="font-extrabold text-lg text-slate-900 dark:text-white">UNM<span class="text-gradient">-Server</span></span>
       </div>
-      <button onclick="toggleMobileDrawer()" class="p-2 rounded-xl bg-white/10 text-slate-300 hover:text-white transition" aria-label="关闭导航"><i data-lucide="x" class="w-5 h-5"></i></button>
+      <button onclick="toggleMobileDrawer()" class="p-2 rounded-full bg-slate-900/10 dark:bg-white/10 text-slate-600 dark:text-slate-300 transition" aria-label="关闭导航"><i data-lucide="x" class="w-5 h-5"></i></button>
     </div>
-    <div class="flex flex-col space-y-3 py-8 text-base font-bold text-slate-200">
-      <a href="#playlist-station" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-sky-500/40 transition"><i data-lucide="list-music" class="w-5 h-5 text-sky-400"></i><span>精选歌单视听</span></a>
-      <a href="#artist-spotlight" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-rose-500/40 transition"><i data-lucide="mic-2" class="w-5 h-5 text-rose-400"></i><span>艺人专栏速搜</span></a>
-      <a href="#workbench" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-cyan-500/40 transition"><i data-lucide="terminal" class="w-5 h-5 text-cyan-400"></i><span>API 在线调试台</span></a>
-      <a href="#providers" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-500/40 transition"><i data-lucide="radio" class="w-5 h-5 text-emerald-400"></i><span>13 大音源矩阵</span></a>
-      <a href="#vip-subscription" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-amber-500/40 transition"><i data-lucide="crown" class="w-5 h-5 text-amber-400"></i><span>Pro 生产级部署</span></a>
-      <a href="#specs" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-indigo-500/40 transition"><i data-lucide="book-open" class="w-5 h-5 text-indigo-400"></i><span>REST 接口规范</span></a>
-      <a href="/dashboard" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-sky-500/15 text-sky-300 border border-sky-500/30"><i data-lucide="activity" class="w-5 h-5"></i><span>全链路遥测大盘</span></a>
+    <div class="flex flex-col space-y-3 py-8 text-base font-bold text-slate-800 dark:text-slate-200">
+      <a href="#playlist-station" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 hover:border-sky-500/40 transition"><i data-lucide="list-music" class="w-5 h-5 text-sky-400"></i><span>精选歌单视听</span></a>
+      <a href="#artist-spotlight" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 hover:border-rose-500/40 transition"><i data-lucide="mic-2" class="w-5 h-5 text-rose-400"></i><span>艺人专栏速搜</span></a>
+      <a href="#workbench" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 hover:border-cyan-500/40 transition"><i data-lucide="terminal" class="w-5 h-5 text-cyan-400"></i><span>API 在线调试台</span></a>
+      <a href="#providers" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 hover:border-emerald-500/40 transition"><i data-lucide="radio" class="w-5 h-5 text-emerald-400"></i><span>13 大音源矩阵</span></a>
+      <a href="#vip-subscription" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 hover:border-amber-500/40 transition"><i data-lucide="crown" class="w-5 h-5 text-amber-400"></i><span>Pro 生产级部署</span></a>
+      <a href="#specs" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 hover:border-indigo-500/40 transition"><i data-lucide="book-open" class="w-5 h-5 text-indigo-400"></i><span>REST 接口规范</span></a>
+      <a href="/dashboard" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/30"><i data-lucide="activity" class="w-5 h-5"></i><span>全链路遥测大盘</span></a>
     </div>
-    <div class="border-t border-white/10 pt-4 text-center text-xs text-slate-400 font-mono">UNM-Server · Hono + TypeScript</div>
+    <div class="border-t border-slate-900/10 dark:border-white/10 pt-4 text-center text-xs text-slate-500 dark:text-slate-400 font-mono">UNM-Server · Hono + TypeScript</div>
   </div>
 
-  <main class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-16 sm:space-y-28 flex-1 relative z-10 min-w-0">
+  <main class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-32 pb-10 sm:pb-16 space-y-16 sm:space-y-28 flex-1 relative z-10 min-w-0">
 
     <!-- Hero 核心展示区 -->
-    <section class="relative space-y-8 sm:space-y-10 w-full min-w-0 pt-4 sm:pt-10 pb-2">
+    <section class="relative space-y-8 sm:space-y-10 w-full min-w-0 pt-2 sm:pt-6 pb-2">
       <div class="watermark absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[34vw] sm:text-[24vw] lg:text-[19rem] pointer-events-none select-none" aria-hidden="true">UNM</div>
 
       <div class="relative flex items-center justify-center reveal">
@@ -158,7 +158,7 @@
       </div>
 
       <div class="relative text-center max-w-5xl mx-auto space-y-5 sm:space-y-6">
-        <h1 class="reveal text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.08]" style="--reveal-delay:80ms">
+        <h1 class="reveal ios-large-title text-[2.65rem] leading-[1.06] sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 dark:text-white" style="--reveal-delay:80ms">
           企业级跨源音乐流媒体<br />
           <span class="text-gradient">无损音频解析中台网关</span>
         </h1>
@@ -169,12 +169,12 @@
       </div>
 
       <div class="relative flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 reveal" style="--reveal-delay:240ms">
-        <button onclick="executeQuickTest()" class="reveal w-full sm:w-auto px-8 py-4 rounded-2xl btn-aurora text-white font-bold text-sm sm:text-base flex items-center justify-center space-x-2.5" style="--reveal-delay:240ms">
+        <button onclick="executeQuickTest()" class="reveal w-full sm:w-auto ios-btn ios-btn-filled !min-h-[52px] !px-8 !text-base space-x-2.5" style="--reveal-delay:240ms">
           <i data-lucide="play" class="w-5 h-5"></i>
           <span>即刻一键测试解析</span>
           <span class="font-mono font-medium text-white/70 text-xs hidden sm:inline">周杰伦《晴天》</span>
         </button>
-        <a href="#workbench" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white/80 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10 hover:border-sky-500/50 text-slate-800 dark:text-slate-200 font-bold text-sm sm:text-base transition btn-ghost backdrop-blur-xl flex items-center justify-center space-x-2.5">
+        <a href="#workbench" class="w-full sm:w-auto ios-btn ios-btn-tinted !min-h-[52px] !px-8 !text-base space-x-2.5">
           <i data-lucide="terminal" class="w-5 h-5 text-sky-500"></i>
           <span>进入 API 交互调试台</span>
         </a>
@@ -182,7 +182,7 @@
 
       <!-- 核心指标带 -->
       <div class="relative reveal" style="--reveal-delay:320ms">
-        <div class="grad-border top-glow rounded-3xl px-6 sm:px-10 py-6 sm:py-7 grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 backdrop-blur-xl">
+        <div class="liquid-glass ios-rounded px-6 sm:px-10 py-6 sm:py-7 grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           <div class="text-center space-y-1">
             <div class="text-3xl sm:text-4xl font-black font-mono text-slate-900 dark:text-white tracking-tight">13</div>
             <div class="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">音源节点并发竞速</div>
@@ -204,7 +204,7 @@
     </section>
 
     <!-- 歌单视听工坊 -->
-    <section id="playlist-station" class="reveal grad-border top-glow rounded-[2rem] p-5 sm:p-9 lg:p-11 shadow-2xl shadow-slate-900/5 dark:shadow-black/30 space-y-6 sm:space-y-8 w-full min-w-0 overflow-hidden backdrop-blur-xl">
+    <section id="playlist-station" class="scroll-mt-24 md:scroll-mt-28 reveal liquid-glass ios-rounded-lg p-5 sm:p-9 lg:p-11 shadow-2xl shadow-slate-900/5 dark:shadow-black/30 space-y-6 sm:space-y-8 w-full min-w-0 overflow-hidden">
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-slate-200/60 dark:border-white/10 pb-5">
         <div class="space-y-2">
           <div class="eyebrow"><span>Interactive Music Hub</span></div>
@@ -237,10 +237,10 @@
               <option value="migu">咪咕音乐 (Migu)</option>
             </select>
             <div class="relative flex-1 sm:w-72 lg:w-80">
-              <input id="searchKeywordInput" type="text" placeholder="搜索歌曲 / 歌手 (例如: 天赐的声音)" onkeydown="if(event.key==='Enter') executeSearch(1)" class="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition" />
+              <input id="searchKeywordInput" type="text" placeholder="搜索歌曲 / 歌手 (例如: 天赐的声音)" onkeydown="if(event.key==='Enter') executeSearch(1)" class="w-full pl-10 pr-3.5 py-2.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition" />
               <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
             </div>
-            <button onclick="executeSearch(1)" class="px-6 py-2.5 rounded-xl btn-aurora text-white font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5 flex-shrink-0"><i data-lucide="search" class="w-4 h-4"></i><span>搜索</span></button>
+            <button onclick="executeSearch(1)" class="ios-btn ios-btn-filled ios-btn-sm !text-sm space-x-1.5 flex-shrink-0"><i data-lucide="search" class="w-4 h-4"></i><span>搜索</span></button>
           </div>
         </div>
 
@@ -390,7 +390,7 @@
     </section>
 
     <!-- 艺人专栏速搜 -->
-    <section id="artist-spotlight" class="reveal space-y-6 sm:space-y-8 w-full min-w-0">
+    <section id="artist-spotlight" class="scroll-mt-24 md:scroll-mt-28 reveal space-y-6 sm:space-y-8 w-full min-w-0">
       <div class="text-center max-w-2xl mx-auto space-y-3">
         <div class="eyebrow eyebrow-center justify-center"><span>Artist Spotlight</span></div>
         <h2 class="text-2xl sm:text-[2rem] font-black tracking-tight text-slate-900 dark:text-white">艺人专栏 · 一键速搜</h2>
@@ -457,7 +457,7 @@
     </section>
 
     <!-- API 在线交互调试台 -->
-    <section id="workbench" class="reveal grad-border top-glow rounded-[2rem] p-5 sm:p-9 lg:p-11 shadow-2xl shadow-slate-900/5 dark:shadow-black/30 space-y-6 w-full min-w-0 overflow-hidden backdrop-blur-xl">
+    <section id="workbench" class="scroll-mt-24 md:scroll-mt-28 reveal liquid-glass ios-rounded-lg p-5 sm:p-9 lg:p-11 shadow-2xl shadow-slate-900/5 dark:shadow-black/30 space-y-6 w-full min-w-0 overflow-hidden">
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-slate-200/60 dark:border-white/10 pb-5">
         <div class="space-y-2">
           <div class="eyebrow"><span>Interactive API Sandbox</span></div>
@@ -475,13 +475,13 @@
       </div>
 
       <div id="workbenchStationBody" class="space-y-5 sm:space-y-6 transition-all duration-300 w-full min-w-0">
-        <div class="flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-slate-100/90 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs font-semibold max-w-full overflow-x-auto custom-scroll" id="apiTabs">
-          <button onclick="switchApiTab('match')" class="px-3.5 py-2 rounded-xl tab-active transition whitespace-nowrap border border-transparent" data-tab="match">/match 智能解灰</button>
-          <button onclick="switchApiTab('ncmget')" class="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition whitespace-nowrap border border-transparent" data-tab="ncmget">/ncmget 官方直链</button>
-          <button onclick="switchApiTab('search')" class="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition whitespace-nowrap border border-transparent" data-tab="search">/search 全网搜索</button>
-          <button onclick="switchApiTab('lyric')" class="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition whitespace-nowrap border border-transparent" data-tab="lyric">/lyric 逐字歌词</button>
-          <button onclick="switchApiTab('pic')" class="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition whitespace-nowrap border border-transparent" data-tab="pic">/pic 高清封面</button>
-          <button onclick="switchApiTab('playlist')" class="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition whitespace-nowrap border border-transparent" data-tab="playlist">/playlist 歌单解析</button>
+        <div class="ios-segmented flex items-center gap-1 text-xs font-semibold max-w-full" id="apiTabs">
+          <button onclick="switchApiTab('match')" class="px-4 py-2 rounded-full tab-active transition whitespace-nowrap min-h-[36px] inline-flex items-center" data-tab="match">/match 智能解灰</button>
+          <button onclick="switchApiTab('ncmget')" class="px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 transition whitespace-nowrap min-h-[36px] inline-flex items-center" data-tab="ncmget">/ncmget 官方直链</button>
+          <button onclick="switchApiTab('search')" class="px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 transition whitespace-nowrap min-h-[36px] inline-flex items-center" data-tab="search">/search 全网搜索</button>
+          <button onclick="switchApiTab('lyric')" class="px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 transition whitespace-nowrap min-h-[36px] inline-flex items-center" data-tab="lyric">/lyric 逐字歌词</button>
+          <button onclick="switchApiTab('pic')" class="px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 transition whitespace-nowrap min-h-[36px] inline-flex items-center" data-tab="pic">/pic 高清封面</button>
+          <button onclick="switchApiTab('playlist')" class="px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 transition whitespace-nowrap min-h-[36px] inline-flex items-center" data-tab="playlist">/playlist 歌单解析</button>
           <button onclick="switchApiTab('health')" class="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-emerald-500 transition whitespace-nowrap border border-transparent" data-tab="health">/health 健康诊断</button>
           <button onclick="switchApiTab('info')" class="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-purple-500 transition whitespace-nowrap border border-transparent" data-tab="info">/info 系统环境</button>
         </div>
@@ -559,49 +559,49 @@
     </section>
 
     <!-- 13 大音源支持矩阵 -->
-    <section id="providers" class="reveal space-y-6 sm:space-y-10 w-full min-w-0">
+    <section id="providers" class="scroll-mt-24 md:scroll-mt-28 reveal space-y-6 sm:space-y-10 w-full min-w-0">
       <div class="text-center max-w-2xl mx-auto space-y-3">
         <div class="eyebrow eyebrow-center justify-center"><span>Multi-Source Cluster</span></div>
         <h2 class="text-2xl sm:text-[2rem] font-black tracking-tight text-slate-900 dark:text-white">13 大音源集群调度能力</h2>
         <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">全平台免 Cookie 自动化解析 · 多级回退重试 · 并发竞速抢占</p>
       </div>
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 w-full min-w-0">
-        <div class="group p-5 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover min-w-0 relative overflow-hidden">
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
           <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-sky-500/10 text-sky-500">主核心</span></div>
           <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">GD Studio</div>
           <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">官方 API 端点，支持无损 320k / FLAC。</p>
         </div>
-        <div class="group p-5 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover min-w-0 relative overflow-hidden">
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
           <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-500/10 text-emerald-500">高保真</span></div>
           <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">Bodian 波点</div>
           <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">高保真流媒体，解析成功率超 99%。</p>
         </div>
-        <div class="group p-5 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover min-w-0 relative overflow-hidden">
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
           <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-500/10 text-indigo-500">海外音源</span></div>
           <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">JOOX</div>
           <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">港台与海外曲库覆盖，直链稳定。</p>
         </div>
-        <div class="group p-5 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover min-w-0 relative overflow-hidden">
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
           <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-500/10 text-slate-500 dark:text-slate-400">国内大库</span></div>
           <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">KuGou 酷狗</div>
           <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">庞大华语曲库，多品质毫秒匹配。</p>
         </div>
-        <div class="group p-5 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover min-w-0 relative overflow-hidden">
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
           <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/10 text-amber-500">无损 FLAC</span></div>
           <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">Kuwo 酷我</div>
           <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">高码率音源库，支持无损试听。</p>
         </div>
-        <div class="group p-5 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover min-w-0 relative overflow-hidden">
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
           <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-pink-500/10 text-pink-500">ACG / Live</span></div>
           <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">BiliVideo</div>
           <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">高质量现场翻唱与二次元音轨。</p>
         </div>
-        <div class="group p-5 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover min-w-0 relative overflow-hidden">
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
           <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-orange-500/10 text-orange-500">网易云官方</span></div>
           <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">PyNcmD</div>
           <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">官方 API 双通道，解决 syntax 兼容。</p>
         </div>
-        <div class="group p-5 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover min-w-0 relative overflow-hidden">
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
           <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-500/10 text-purple-500">全球热备</span></div>
           <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">QQ / Migu / YT</div>
           <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">QQ 音乐、咪咕、YouTube 容灾热备。</p>
@@ -610,7 +610,7 @@
     </section>
 
     <!-- Pro 生产级部署方案 -->
-    <section id="vip-subscription" class="reveal relative w-full min-w-0 overflow-hidden rounded-[2rem]">
+    <section id="vip-subscription" class="scroll-mt-24 md:scroll-mt-28 reveal relative w-full min-w-0 overflow-hidden rounded-[2rem]">
       <div class="absolute inset-0 bg-slate-950 dark:bg-black/70"></div>
       <div class="absolute inset-0 opacity-70" aria-hidden="true">
         <div class="aurora-blob w-[420px] h-[420px] top-[-120px] left-[10%] bg-gradient-to-b from-amber-500/25 via-orange-600/15 to-transparent"></div>
@@ -648,7 +648,7 @@
     </section>
 
     <!-- REST 契约规范表 -->
-    <section id="specs" class="reveal space-y-5 w-full min-w-0 overflow-hidden">
+    <section id="specs" class="scroll-mt-24 md:scroll-mt-28 reveal space-y-5 w-full min-w-0 overflow-hidden">
       <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div class="space-y-2">
           <div class="eyebrow"><span>API Contract</span></div>
@@ -686,7 +686,7 @@
   </main>
 
   <!-- 页脚 -->
-  <footer class="w-full border-t border-slate-200/70 dark:border-white/10 glass-panel bg-white/60 dark:bg-[#05070f]/70 relative z-10 transition-colors mt-16 sm:mt-24 top-glow">
+  <footer class="w-full border-t border-slate-200/70 dark:border-white/10 glass-panel bg-white/60 dark:bg-[#05070f]/70 relative z-10 transition-colors mt-16 sm:mt-24 top-glow pb-24 md:pb-0">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 space-y-12">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-12 w-full min-w-0">
         <div class="lg:col-span-5 space-y-5 min-w-0">
@@ -748,7 +748,8 @@
   <!-- 展开大视图播放面板 -->
   <div id="playerExpand" class="hidden fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-xl overflow-y-auto" onclick="if(event.target===this) closePlayerExpand()">
     <div class="min-h-full flex items-center justify-center p-4 sm:p-8">
-      <div class="w-full max-w-lg rounded-[2rem] grad-border top-glow shadow-2xl shadow-black/50 p-5 sm:p-8 space-y-6 relative my-auto backdrop-blur-2xl">
+      <div class="w-full max-w-lg rounded-t-[2rem] sm:rounded-[2rem] liquid-glass-strong shadow-2xl shadow-black/50 px-5 sm:px-8 pb-6 sm:pb-8 pt-2 space-y-6 relative my-auto">
+        <div class="ios-grabber"></div>
         <div class="flex items-center justify-between">
           <div class="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-sky-500 font-mono">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -811,8 +812,8 @@
   </button>
 
   <!-- 悬浮玻璃播放器 -->
-  <div id="playerBar" class="fixed bottom-3 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 sm:w-[380px] z-[90] translate-y-8 opacity-0 pointer-events-none transition-all duration-500 ease-out">
-    <div class="rounded-[1.75rem] grad-border top-glow shadow-2xl shadow-slate-900/25 dark:shadow-black/60 backdrop-blur-2xl overflow-hidden">
+  <div id="playerBar" class="fixed left-3 right-3 bottom-[5.75rem] md:left-auto md:right-6 md:bottom-6 md:w-[380px] z-[90] translate-y-8 opacity-0 pointer-events-none transition-all duration-500 ease-out">
+    <div class="rounded-[1.75rem] liquid-glass-strong shadow-2xl shadow-slate-900/25 dark:shadow-black/60 overflow-hidden">
       <div class="p-4 pb-3">
         <div class="flex items-start gap-3.5 min-w-0">
           <div onclick="openPlayerExpand()" title="展开大播放器" class="relative w-[68px] h-[68px] rounded-2xl flex-shrink-0 overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-slate-900 cursor-pointer hover:ring-sky-500/50 transition">
@@ -877,6 +878,18 @@
   </div>
 
   <!-- 前端应用逻辑 (ES6+ 零构建) -->
+
+  <!-- iOS 底部 TabBar（仅手机端） -->
+  <nav id="iosTabBar" class="md:hidden fixed bottom-3 inset-x-3 z-[85] ios-tabbar-safe" aria-label="主导航">
+    <div class="liquid-glass-strong rounded-full px-2 py-1.5 flex items-center justify-around">
+      <a href="#playlist-station" data-tabtarget="playlist-station" class="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-full text-slate-500 dark:text-slate-400 transition min-w-[3.25rem]"><i data-lucide="list-music" class="w-[22px] h-[22px]"></i><span class="text-[10px] font-semibold leading-none">歌单</span></a>
+      <a href="#artist-spotlight" data-tabtarget="artist-spotlight" class="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-full text-slate-500 dark:text-slate-400 transition min-w-[3.25rem]"><i data-lucide="mic-2" class="w-[22px] h-[22px]"></i><span class="text-[10px] font-semibold leading-none">艺人</span></a>
+      <a href="#workbench" data-tabtarget="workbench" class="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-full text-slate-500 dark:text-slate-400 transition min-w-[3.25rem]"><i data-lucide="terminal" class="w-[22px] h-[22px]"></i><span class="text-[10px] font-semibold leading-none">调试</span></a>
+      <a href="#providers" data-tabtarget="providers" class="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-full text-slate-500 dark:text-slate-400 transition min-w-[3.25rem]"><i data-lucide="radio" class="w-[22px] h-[22px]"></i><span class="text-[10px] font-semibold leading-none">音源</span></a>
+      <a href="#vip-subscription" data-tabtarget="vip-subscription" class="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-full text-slate-500 dark:text-slate-400 transition min-w-[3.25rem]"><i data-lucide="crown" class="w-[22px] h-[22px]"></i><span class="text-[10px] font-semibold leading-none">Pro</span></a>
+    </div>
+  </nav>
+
   <script src="/assets/js/core.js"></script>
   <script src="/assets/js/player.js"></script>
   <script src="/assets/js/catalog.js"></script>

@@ -254,12 +254,138 @@ html.theme-transitioning *::after {
 .custom-scroll::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 9999px; }
 .custom-scroll::-webkit-scrollbar-track { background: transparent; }
 
-/* 调试台激活标签页 */
+/* 调试台激活标签页（iOS 分段控件风格：白色药丸 + 阴影） */
 .tab-active {
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.25) 0%, rgba(99, 102, 241, 0.2) 100%) !important;
-  color: #38bdf8 !important;
-  border-color: rgba(56, 189, 248, 0.5) !important;
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+  border-color: transparent !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+  font-weight: 600;
+}
+.dark .tab-active {
+  background: rgba(99, 99, 102, 0.85) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ============================================================
+   iOS 27 Liquid Glass 设计系统
+   设计语言：Apple 最新一代 Liquid Glass —— 半透明磨砂材质、
+   高光边缘、大圆角、悬浮层级。深浅色双模式自适应。
+   ============================================================ */
+:root {
+  --ios-blue: #007aff;
+  --ios-blue-dark: #0a84ff;
+  --ios-radius: 1.375rem;      /* 22px 卡片 */
+  --ios-radius-lg: 1.75rem;    /* 28px 大卡片 */
+  --ios-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+body { font-family: var(--ios-font); -webkit-font-smoothing: antialiased; }
+
+/* —— Liquid Glass 基础材质 —— */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.6);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 16px 40px -16px rgba(15, 23, 42, 0.18);
+}
+.dark .liquid-glass {
+  background: rgba(28, 28, 32, 0.58);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 16px 40px -16px rgba(0, 0, 0, 0.55);
+}
+/* 更浓的玻璃（导航 / TabBar / 迷你播放器） */
+.liquid-glass-strong {
+  background: rgba(249, 249, 251, 0.78);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 12px 32px -12px rgba(15, 23, 42, 0.25);
+}
+.dark .liquid-glass-strong {
+  background: rgba(22, 22, 26, 0.72);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 12px 32px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* —— iOS 圆角 —— */
+.ios-rounded { border-radius: var(--ios-radius); }
+.ios-rounded-lg { border-radius: var(--ios-radius-lg); }
+
+/* —— iOS 按钮：最小 44px 触控目标 —— */
+.ios-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  min-height: 44px; padding: 0 1.4rem; border-radius: 999px;
+  font-weight: 600; font-size: 0.9375rem; line-height: 1;
+  transition: transform 0.15s ease, opacity 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+.ios-btn:active { transform: scale(0.96); opacity: 0.85; }
+.ios-btn-filled { background: var(--ios-blue); color: #fff; box-shadow: 0 6px 16px -4px rgba(0, 122, 255, 0.5); }
+.dark .ios-btn-filled { background: var(--ios-blue-dark); box-shadow: 0 6px 16px -4px rgba(10, 132, 255, 0.55); }
+.ios-btn-tinted { background: rgba(0, 122, 255, 0.12); color: var(--ios-blue); }
+.dark .ios-btn-tinted { background: rgba(10, 132, 255, 0.18); color: #5eb1ff; }
+.ios-btn-gray { background: rgba(120, 120, 128, 0.16); color: #1c1c1e; }
+.dark .ios-btn-gray { background: rgba(120, 120, 128, 0.24); color: #f2f2f7; }
+.ios-btn-sm { min-height: 36px; padding: 0 1rem; font-size: 0.8125rem; }
+
+/* —— iOS 分段控件 —— */
+.ios-segmented {
+  display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px;
+  background: rgba(120, 120, 128, 0.16);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  max-width: 100%; overflow-x: auto;
+}
+.dark .ios-segmented { background: rgba(120, 120, 128, 0.22); }
+.ios-segmented::-webkit-scrollbar { display: none; }
+
+/* —— iOS 大标题 —— */
+.ios-large-title { font-weight: 700; letter-spacing: -0.02em; }
+
+/* —— iOS 分组列表（设置式圆角分组） —— */
+.ios-group {
+  border-radius: 1rem; overflow: hidden;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+.dark .ios-group { background: rgba(28, 28, 32, 0.72); border-color: rgba(255, 255, 255, 0.08); }
+.ios-group-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.8rem 1rem; }
+.ios-group-row + .ios-group-row { border-top: 1px solid rgba(120, 120, 128, 0.18); }
+
+/* —— iOS sheet 抓手 —— */
+.ios-grabber {
+  width: 2.5rem; height: 0.3125rem; border-radius: 999px;
+  background: rgba(120, 120, 128, 0.45); margin: 0.6rem auto 0.25rem;
+}
+
+/* —— iOS 搜索框 —— */
+.ios-search-field {
+  background: rgba(120, 120, 128, 0.14); border-radius: 999px;
+  border: 1px solid transparent; transition: border-color 0.2s, background 0.2s;
+}
+.dark .ios-search-field { background: rgba(120, 120, 128, 0.2); }
+.ios-search-field:focus-within { border-color: rgba(0, 122, 255, 0.5); background: rgba(255,255,255,0.85); }
+.dark .ios-search-field:focus-within { background: rgba(28, 28, 32, 0.9); }
+
+/* —— 底部 TabBar 安全区 —— */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .ios-tabbar-safe { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* —— 减少动态效果（尊重系统设置） —— */
+@media (prefers-reduced-motion: reduce) {
+  .ios-btn { transition: none; }
+  .ios-btn:active { transform: none; }
 }
 
 /* 滑杆主题色 */

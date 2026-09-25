@@ -66,8 +66,8 @@ let lastRawResponseJson = '';
     function switchApiTab(tab) {
       currentSearchTab = tab;
       document.querySelectorAll('#apiTabs button').forEach(btn => {
-        if (btn.getAttribute('data-tab') === tab) btn.className = 'px-3 py-1.5 rounded-xl tab-active transition interactive-btn whitespace-nowrap';
-        else btn.className = 'px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap';
+        if (btn.getAttribute('data-tab') === tab) btn.className = 'px-4 py-2 rounded-full tab-active transition interactive-btn whitespace-nowrap min-h-[36px] inline-flex items-center';
+        else btn.className = 'px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 transition interactive-btn whitespace-nowrap min-h-[36px] inline-flex items-center';
       });
 
       const label = document.getElementById('inputLabel');

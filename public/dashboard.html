@@ -110,7 +110,7 @@
 
   <!-- 顶部主导航栏 -->
   <header class="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-white/10 glass-panel bg-white/75 dark:bg-slate-950/75 transition-colors">
-    <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-2">
       <div class="flex items-center space-x-4">
         <a href="/" class="flex items-center space-x-3.5 group interactive-btn">
           <div class="w-11 h-11 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2 transition-transform group-hover:scale-105">
@@ -118,8 +118,8 @@
           </div>
           <div>
             <div class="flex items-center space-x-2.5">
-              <span class="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
-              <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center space-x-1">
+              <span class="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white whitespace-nowrap">UNM-Server</span>
+              <span class="hidden sm:inline-flex text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 items-center space-x-1 whitespace-nowrap">
                 <i data-lucide="activity" class="w-3 h-3"></i>
                 <span>全链路遥测大盘</span>
               </span>
@@ -129,7 +129,7 @@
       </div>
 
       <!-- 右侧控制区 -->
-      <div class="flex items-center space-x-3">
+      <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
         <!-- 布局模式快捷切换 (Layout Views) -->
         <div class="hidden md:flex items-center space-x-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs font-semibold">
           <button onclick="switchLayoutPreset('all')" id="btnViewAll" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn">全景模式</button>
@@ -138,9 +138,9 @@
         </div>
 
         <!-- 自动轮询刷新频率控制器 -->
-        <div class="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 text-xs font-semibold shadow-sm">
+        <div class="flex items-center space-x-2 px-3 py-2 rounded-full bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 text-xs font-semibold shadow-sm min-w-0">
           <span id="refreshPulseDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <select id="pollIntervalSelect" onchange="changePollInterval(this.value)" class="bg-transparent text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer font-medium">
+          <select id="pollIntervalSelect" onchange="changePollInterval(this.value)" class="bg-transparent text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer font-medium max-w-[6.5rem] sm:max-w-none truncate">
             <option value="3000">实时轮询 (3s)</option>
             <option value="1000">极速刷新 (1s)</option>
             <option value="5000">常规模式 (5s)</option>
@@ -154,7 +154,7 @@
           <i data-lucide="key" class="w-5 h-5"></i>
         </button>
 
-        <button onclick="clearLogsData()" title="清空全部内存日志" class="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 text-slate-500 hover:text-rose-500 transition shadow-sm interactive-btn">
+        <button onclick="clearLogsData()" title="清空全部内存日志" class="hidden sm:inline-flex p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 text-slate-500 hover:text-rose-500 transition shadow-sm interactive-btn items-center justify-center">
           <i data-lucide="trash-2" class="w-5 h-5"></i>
         </button>
 
@@ -194,15 +194,15 @@
       <!-- KPI 4 宫格卡片与实时波形面积图 -->
       <div id="contentKpis" class="space-y-6 section-transition">
         <!-- 4 宫格卡片 -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div class="glass-panel top-glow card-hover bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+          <div class="glass-panel top-glow card-hover bg-white/70 dark:bg-slate-900/40 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2 min-w-0">
             <div class="flex items-center justify-between text-slate-400">
               <span class="text-xs font-bold uppercase tracking-wider">总请求调用量</span>
               <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
                 <i data-lucide="activity" class="w-4 h-4"></i>
               </div>
             </div>
-            <div id="statTotalRequests" class="text-4xl font-extrabold font-mono text-slate-900 dark:text-white">0</div>
+            <div id="statTotalRequests" class="text-3xl sm:text-4xl font-extrabold font-mono text-slate-900 dark:text-white truncate">0</div>
             <div class="flex items-center justify-between text-sm text-slate-500 pt-1">
               <span id="statSuccessPct" class="text-emerald-500 font-bold flex items-center space-x-1">
                 <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
@@ -212,42 +212,42 @@
             </div>
           </div>
 
-          <div class="glass-panel top-glow card-hover bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+          <div class="glass-panel top-glow card-hover bg-white/70 dark:bg-slate-900/40 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2 min-w-0">
             <div class="flex items-center justify-between text-slate-400">
               <span class="text-xs font-bold uppercase tracking-wider">平均处理延迟 (Latency)</span>
               <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
                 <i data-lucide="zap" class="w-4 h-4"></i>
               </div>
             </div>
-            <div id="statAvgLatency" class="text-4xl font-extrabold font-mono text-slate-900 dark:text-white">0 ms</div>
+            <div id="statAvgLatency" class="text-3xl sm:text-4xl font-extrabold font-mono text-slate-900 dark:text-white truncate">0 ms</div>
             <div class="text-sm text-slate-500 dark:text-slate-400 pt-1 flex items-center space-x-1">
               <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i>
               <span>流式直分发 · 零阻塞调度</span>
             </div>
           </div>
 
-          <div class="glass-panel top-glow card-hover bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+          <div class="glass-panel top-glow card-hover bg-white/70 dark:bg-slate-900/40 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2 min-w-0">
             <div class="flex items-center justify-between text-slate-400">
               <span class="text-xs font-bold uppercase tracking-wider">活跃调用方来源 (Who)</span>
               <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
                 <i data-lucide="globe" class="w-4 h-4"></i>
               </div>
             </div>
-            <div id="statCallerCount" class="text-4xl font-extrabold font-mono text-slate-900 dark:text-white">0</div>
+            <div id="statCallerCount" class="text-3xl sm:text-4xl font-extrabold font-mono text-slate-900 dark:text-white truncate">0</div>
             <div class="text-sm text-slate-500 dark:text-slate-400 pt-1 flex items-center space-x-1">
               <i data-lucide="shield-check" class="w-3.5 h-3.5 text-indigo-500"></i>
               <span>跨域 Referer / 客户端识别</span>
             </div>
           </div>
 
-          <div class="glass-panel top-glow card-hover bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+          <div class="glass-panel top-glow card-hover bg-white/70 dark:bg-slate-900/40 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2 min-w-0">
             <div class="flex items-center justify-between text-slate-400">
               <span class="text-xs font-bold uppercase tracking-wider">系统连续运行</span>
               <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
                 <i data-lucide="server" class="w-4 h-4"></i>
               </div>
             </div>
-            <div id="statDashboardUptime" class="text-4xl font-extrabold font-mono text-slate-900 dark:text-white">0s</div>
+            <div id="statDashboardUptime" class="text-3xl sm:text-4xl font-extrabold font-mono text-slate-900 dark:text-white truncate">0s</div>
             <div class="text-sm text-slate-500 dark:text-slate-400 pt-1 flex items-center space-x-1">
               <i data-lucide="cpu" class="w-3.5 h-3.5 text-emerald-500"></i>
               <span>生产守护集群节点</span>
@@ -337,9 +337,9 @@
             <div class="flex items-center justify-between">
               <h3 class="font-extrabold text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center space-x-2">
                 <i data-lucide="check-circle-2" class="w-4 h-4 text-amber-500"></i>
-                <span>状态码分布 (Status 环形图)</span>
+                <span class="whitespace-nowrap">状态码分布 (Status 环形图)</span>
               </h3>
-              <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-500">健康度</span>
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-500 whitespace-nowrap flex-shrink-0">健康度</span>
             </div>
             <div class="h-64 relative flex items-center justify-center">
               <canvas id="statusDonutChart"></canvas>
