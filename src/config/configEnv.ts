@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
 import dotenv from "dotenv";
 import { z } from "zod";
 import {
@@ -152,6 +151,9 @@ const envSchema = z.object({
   KUWO_COOKIE: z.string().default(""),
 
   // 8. 安全加固与速率限制配置
+  // 监控接口密钥：**必须显式配置且非空**，否则进程拒绝启动（见 parseEnv）。
+  // 不使用默认值、不自动生成、不打印到任何日志 —— 日志会被采集与归档，
+  // 把密钥写进日志等同于把它持久化到不受控的介质上。
   MONITOR_SECRET_KEY: z.string().default(""),
   ENABLE_RATE_LIMIT: z
     .string()
@@ -173,24 +175,17 @@ const envSchema = z.object({
   // 受信反向代理（逗号分隔，支持精确 IP 与 IPv4 CIDR，如 "127.0.0.1,::1,10.0.0.0/8"）。
   // 仅当直连对端属于受信代理时，才采信 X-Forwarded-For / X-Real-IP 取真实客户端 IP；
   // 否则一律使用直连对端 IP，防止客户端伪造请求头绕过限流。
-  // 默认包含 172.16.0.0/12：Docker bridge 下容器看到的对端是网关 IP（如 172.18.0.1），
-  // 不在名单内会导致全站请求塌缩为同一 IP、共享一份限流配额。该网段为 RFC1918 私网，公网不可路由。
-  TRUSTED_PROXIES: z.string().default("127.0.0.1,::1,172.16.0.0/12"),
+  //
+  // 默认**只含回环**。不要把整个私网段（如 172.16.0.0/12）列为默认：
+  // Docker bridge 下容器看到的对端是网关 IP（172.17.0.1/172.18.0.1），落在该网段内，
+  // 于是网关被判为受信代理、客户端自带的 X-Forwarded-For 被采信 ——
+  // 每请求换一个 XFF 就得到一份新的限流配额，正是本机制要防的绕过。
+  // 同时该网段内的其它主机也能直连本服务并伪造来源。
+  // 反向代理部署请在 .env 中按实际拓扑显式填写（如 "127.0.0.1,10.0.0.0/8"）。
+  TRUSTED_PROXIES: z.string().default("127.0.0.1,::1"),
 });
 
 export type Env = z.infer<typeof envSchema>;
-
-/** 监控接口生效密钥来源（用于启动日志与运维审计） */
-let monitorSecretSource: "configured" | "ephemeral" = "configured";
-
-/**
- * 进程级临时监控密钥。
- *
- * 必须声明在 parseEnv() 的调用点之前：parseEnv 在未配置 MONITOR_SECRET_KEY 时
- * 会对它赋值，若声明在其后（TDZ 区），把 parseEnv 提前调用就会抛
- * "Cannot access 'ephemeralMonitorSecret' before initialization"。
- */
-let ephemeralMonitorSecret = "";
 
 /**
  * 布尔开关写入 process.env。
@@ -220,6 +215,21 @@ function parseEnv(): Env {
 
   const parsed = result.data;
 
+  // 监控接口密钥必须显式配置：不自动生成、不打印、缺省即拒绝启动。
+  // 监控接口会返回调用方 IP、Referer、完整 URL 等审计数据，未受保护时等同公开。
+  // 此前实现为“未配置时生成本次进程临时密钥并打印到启动日志”，
+  // 但日志常被采集、转发与长期归档，把密钥写进日志等于把它持久化到不受控的介质；
+  // 且临时密钥每次重启都变，运维难以稳定使用。改为启动期强校验。
+  if (!parsed.MONITOR_SECRET_KEY?.trim()) {
+    console.error(
+      "❌ MONITOR_SECRET_KEY 未配置或为空，进程拒绝启动。\n" +
+        "   该密钥用于保护 /api/monitor/*（返回调用方 IP、Referer 与完整 URL 等审计数据）。\n" +
+        "   请在 .env 中设置 MONITOR_SECRET_KEY='<一段足够长的随机字符串>' 后重启。\n" +
+        "   生成示例：node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+    );
+    process.exit(1);
+  }
+
   // 将 UNM 特性开关同步到 process.env 供 @unblockneteasemusic/server 内部使用
   // 安全注意：Cookie 回写后全局可见（process.env），任何依赖包均可读取。
   // 仅在配置了对应 Cookie 时写入；/info 等端点已核验不暴露这些值。
@@ -232,41 +242,18 @@ function parseEnv(): Env {
   if (parsed.MIGU_COOKIE) process.env.MIGU_COOKIE = parsed.MIGU_COOKIE;
   if (parsed.KUWO_COOKIE) process.env.KUWO_COOKIE = parsed.KUWO_COOKIE;
 
-  // 监控接口密钥：未配置时生成 ephemeral 密钥，杜绝 fail-open。
-  // 原实现在密钥为空时直接 next() 放行，等同把审计日志（含调用方 IP、Referer、
-  // 完整 URL）对公网开放。改为生成进程级随机密钥并打印一次，由运维记录后写入 .env。
-  if (!parsed.MONITOR_SECRET_KEY?.trim()) {
-    monitorSecretSource = "ephemeral";
-    ephemeralMonitorSecret = crypto.randomBytes(32).toString("hex");
-    // 不回写 process.env：避免被依赖包或 /info 类端点意外读取
-    console.warn("====================================================");
-    console.warn("⚠️  MONITOR_SECRET_KEY 未配置，已自动生成本次进程临时密钥：");
-    console.warn(`    ${ephemeralMonitorSecret}`);
-    console.warn("    该密钥重启后失效。请将其写入 .env 的 MONITOR_SECRET_KEY 以持久化。");
-    console.warn("    未携带该密钥的 /api/monitor/* 请求将返回 401。");
-    console.warn("====================================================");
-  }
-
   return parsed;
 }
 
 /**
- * 生效的监控接口密钥。MONITOR_SECRET_KEY 未配置时回退到进程级临时密钥，
- * 不存在“未配置即放行”的分支。
+ * 生效的监控接口密钥。
+ *
+ * parseEnv 已在启动期强校验其存在且非空，因此这里的值必定有效；
+ * 不存在自动生成或回退分支，也不存在“未配置即放行”。
+ * 返回值仅供鉴权比较使用，**不得写入日志**。
  */
 export function getEffectiveMonitorSecret(): string {
-  return env.MONITOR_SECRET_KEY?.trim() || ephemeralMonitorSecret;
-}
-
-/** 密钥是否为本次进程自动生成（未持久化，重启即失效） */
-export function isMonitorSecretEphemeral(): boolean {
-  return monitorSecretSource === "ephemeral";
+  return env.MONITOR_SECRET_KEY.trim();
 }
 
 export const env = parseEnv();
-
-// 启动即校验密钥可用性：parseEnv 已保证非空，此处为防御性断言
-if (!getEffectiveMonitorSecret()) {
-  console.error("❌ 监控接口密钥初始化失败，进程退出");
-  process.exit(1);
-}

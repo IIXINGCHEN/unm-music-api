@@ -71,6 +71,33 @@ describe("sanitizeUrl", () => {
     assert.ok(!out.includes("SECRET"), `泄露明文: ${out}`);
   });
 
+  test("pathname 自由文本只用凭据键集，业务参数不被误脱敏", () => {
+    // `key` / `auth` / `pwd` 属 SENSITIVE_KEYS（用于 query 参数名精确匹配），
+    // 但它们可能是调用方的正常业务参数；在无 "?" 的 pathname 自由文本中
+    // 误命中会把审计日志里的真实值永久替换成 ******，属数据丢失。
+    assert.equal(sanitizeUrl("/;key=mykey"), "/;key=mykey");
+    assert.equal(sanitizeUrl("/;auth=1"), "/;auth=1");
+    assert.equal(sanitizeUrl("/;pwd=abc"), "/;pwd=abc");
+  });
+
+  test("pathname 中的真凭据仍被脱敏", () => {
+    for (const [input, secret] of [
+      ["/;token=SECRET", "SECRET"],
+      ["/;password=SECRET", "SECRET"],
+      ["/;api_key=SECRET", "SECRET"],
+      ["/;client_secret=SECRET", "SECRET"],
+    ] as const) {
+      const out = sanitizeUrl(input);
+      assert.ok(!out.includes(secret), `${input} 泄露明文: ${out}`);
+    }
+  });
+
+  test("query 参数名仍按完整敏感键集脱敏", () => {
+    // 与 pathname 不同：?key= 是作为 query 参数名出现的，沿用上游既有语义
+    const out = sanitizeUrl("https://h/p?key=mykey");
+    assert.ok(!out.includes("mykey"), `query 参数未脱敏: ${out}`);
+  });
+
   test("普通 URL 与空值不被破坏", () => {
     assert.equal(sanitizeUrl("https://music.example.com/player"), "https://music.example.com/player");
     assert.equal(sanitizeUrl(""), "");

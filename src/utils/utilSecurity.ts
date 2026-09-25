@@ -299,13 +299,40 @@ export function sanitizeQuery(query: Record<string, any>): Record<string, any> {
 }
 
 /**
+ * 自由文本脱敏**专用**的凭据键集。
+ *
+ * 与 SENSITIVE_KEYS 的区别：后者用于「query 参数名精确匹配」，
+ * 宁可过度覆盖（`key`/`auth`/`pwd` 都算敏感）；而本集合用于 pathname、
+ * referer、以及 URL 解析失败时的**自由文本**替换 —— 在那里误命中会永久
+ * 写坏审计日志里的业务参数值（例如 `?key=` 是某个调用方的正常参数），
+ * 属数据丢失而非保护。故这里只保留几乎不可能是业务参数的键。
+ */
+const CREDENTIAL_TEXT_KEYS = [
+  "token",
+  "access_token",
+  "refresh_token",
+  "id_token",
+  "secret",
+  "secret_key",
+  "client_secret",
+  "app_secret",
+  "api_key",
+  "apikey",
+  "api-key",
+  "password",
+  "passwd",
+  "authorization",
+  "cookie",
+] as const;
+
+/**
  * 敏感凭据模式（用于 pathname 与解析失败场景的兜底脱敏）。
  * 覆盖 "key=value" 形态，分隔符允许 ; & ? / 与字符串边界。
  */
 const SENSITIVE_PATTERN = new RegExp(
-  `(^|[;&?/\\s])((?:${Array.from(SENSITIVE_KEYS)
-    .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-    .join("|")}))=([^;&?\\s]*)`,
+  `(^|[;&?/\\s])((?:${CREDENTIAL_TEXT_KEYS.map((k) =>
+    k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  ).join("|")}))=([^;&?\\s]*)`,
   "gi"
 );
 
