@@ -5,6 +5,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    # 每次 up 都先按当前源码重新构建镜像，避免旧镜像导致前端与源码不一致
+    # （否则 docker compose up -d 会直接复用已存在的旧镜像）
+    pull_policy: build
     restart: unless-stopped
     ports:
       - "${HOST:-127.0.0.1}:${PORT:-5678}:5678"
