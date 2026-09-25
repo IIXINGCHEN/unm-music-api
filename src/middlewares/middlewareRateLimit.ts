@@ -53,7 +53,9 @@ export const rateLimitMiddleware: MiddlewareHandler = async (c, next) => {
     return await next();
   }
 
-  // 代理部署信任 XFF 首段；直连部署回退 socket 地址，避免全体用户共享单一限流键
+  // 仅受信代理才采信 XFF / x-real-ip，防止客户端伪造 IP 绕过限流。
+  // 无法归因的请求（Serverless 且无平台头）统一记为 "unknown" 并共用一个限流桶，
+  // 既不塌缩到 127.0.0.1 与真实回环请求混淆，也不因无法归因就放行。
   const ip = getClientIp(c);
 
   const now = Date.now();
