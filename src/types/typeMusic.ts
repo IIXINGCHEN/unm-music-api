@@ -84,4 +84,10 @@ export interface PlaylistDetail {
   trackCount: number;
   tracks: PlaylistTrack[];
   songIds: string[];
+  /**
+   * 部分曲目元数据拉取失败时，缺失的真实曲目数量。
+   * undefined 表示 tracks 已完整加载。消费端据此向用户提示降级，
+   * 而非依赖被伪造的占位条目。
+   */
+  partialLoaded?: number;
 }
