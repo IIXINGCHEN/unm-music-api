@@ -64,10 +64,21 @@ export const rateLimitMiddleware: MiddlewareHandler = async (c, next) => {
 
   let record = ipMap.get(ip);
   if (!record) {
-    // 容量上限保护（与 monitorService.bumpCount 同语义）：追踪表打满后新键不再建条目（放行），
-    // 已有键照常限流，防止伪造 XFF 海量新 IP 导致内存慢性膨胀
+    // 容量上限保护：追踪表打满时**淘汰最旧的键**腾出空间，而不是放行新键。
+    //
+    // 原实现选择放行（return next()），理由是防止伪造 IP 导致内存膨胀。
+    // 但这使容量打满后全站限流失效：攻击者只需制造 MAX_IP_KEYS 个不同键
+    // （受信代理部署下用单个连接伪造 XFF 即可，无需真实 IP 资源），
+    // 此后所有客户端都不再受限流保护 —— 防内存膨胀的代价是关掉了防护本身。
+    //
+    // Map 的迭代顺序即插入顺序，首个键是最久未新建的。淘汰它只让该键的
+    // 计数从零重新累积（等价于窗口重置），内存上界不变，而限流对每个请求
+    // 仍然生效。选择淘汰最旧而非最不活跃，是为了不引入额外的访问时间戳维护成本。
     if (ipMap.size >= RATE_LIMIT_CONFIG.MAX_IP_KEYS) {
-      return await next();
+      const oldestKey = ipMap.keys().next().value;
+      if (oldestKey !== undefined) {
+        ipMap.delete(oldestKey);
+      }
     }
     record = { timestamps: [] };
     ipMap.set(ip, record);

@@ -91,3 +91,10 @@ export const PLAYLIST_CONFIG = {
   DETAIL_CHUNK_SIZE: 200, // 网易云批量详情接口单批曲目数
   DETAIL_CHUNK_CONCURRENCY: 5, // 详情批量拉取的并发 chunk 数上限
 } as const;
+
+export const STREAM_CONFIG = {
+  /** /stream 跟随重定向的最大跳数（每跳都需通过直链白名单校验） */
+  MAX_REDIRECTS: 3,
+  /** /stream 建立连接（取得响应头）的独立超时，不含后续流式 body 传输 */
+  CONNECT_TIMEOUT_MS: 10000,
+} as const;
