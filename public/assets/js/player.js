@@ -25,6 +25,7 @@ const audio = document.getElementById('mainAudioPlayer');
         if (_seeking && id === 'playerProgress') continue;
         if (!progressEl) continue;
         progressEl.value = pct;
+        progressEl.style.setProperty('--fill', pct + '%');
         const curEl = document.getElementById(id === 'playerProgress' ? 'playerCurTime' : 'expandCurTime');
         if (curEl) curEl.textContent = time;
       }

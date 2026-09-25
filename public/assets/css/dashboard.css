@@ -36,3 +36,37 @@ body {
     .section-transition {
       transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
+/* ---------- Aurora Engine 设计系统（大盘子集，与 main.css 同源） ---------- */
+.aurora-field { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.aurora-blob { position: absolute; border-radius: 9999px; filter: blur(120px); opacity: 0.5; will-change: transform; animation: aurora-drift 28s ease-in-out infinite alternate; }
+.aurora-blob-b { animation-duration: 34s; animation-delay: -9s; }
+@keyframes aurora-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(6%, 10%, 0) scale(1.12); }
+  100% { transform: translate3d(-6%, -6%, 0) scale(0.94); }
+}
+.bg-grid { position: absolute; inset: 0;
+  background-image: linear-gradient(to right, rgba(148,163,184,0.055) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.055) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 75%); }
+.noise-overlay { position: absolute; inset: 0; opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.dark .noise-overlay { opacity: 0.05; }
+
+.text-gradient { background: linear-gradient(100deg, #38bdf8 0%, #818cf8 45%, #c084fc 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.eyebrow { display: inline-flex; align-items: center; gap: 0.6rem; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #0284c7; }
+.dark .eyebrow { color: #38bdf8; }
+.eyebrow::before { content: ""; width: 1.75rem; height: 2px; border-radius: 9999px; background: linear-gradient(90deg, #38bdf8, #818cf8); }
+
+.card-hover { transition: transform 0.28s cubic-bezier(0.16,1,0.3,1), box-shadow 0.3s ease, border-color 0.25s ease; }
+.card-hover:hover { transform: translateY(-4px); box-shadow: 0 22px 44px -16px rgba(2, 132, 199, 0.25); }
+.top-glow { position: relative; overflow: hidden; }
+.top-glow::before { content: ""; position: absolute; top: 0; left: 10%; right: 10%; height: 1px; background: linear-gradient(90deg, transparent, rgba(56,189,248,0.7), transparent); }
+
+section[id] { scroll-margin-top: 5.5rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob { animation: none !important; }
+}

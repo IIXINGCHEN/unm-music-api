@@ -122,3 +122,22 @@
       } catch (e) { /* 静态兜底文本保持不变 */ }
     }
     syncAppVersionBadge();
+// --- 滚动显现（Aurora Engine 视觉增强）：纯展示层，不触碰任何业务逻辑 ---
+function initRevealOnScroll() {
+  const els = document.querySelectorAll('.reveal');
+  if (!els.length) return;
+  if (!('IntersectionObserver' in window)) {
+    els.forEach(el => el.classList.add('reveal-visible'));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('reveal-visible');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  els.forEach(el => io.observe(el));
+}
+initRevealOnScroll();

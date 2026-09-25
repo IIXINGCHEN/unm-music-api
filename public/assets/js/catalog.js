@@ -218,3 +218,12 @@ let pageSize = 20;
       renderPlayerQueue();
       showToast({ type: 'success', title: '已批量添加', message: `已将 ${targetList.length} 首曲目加入队列` });
     }
+
+// --- 艺人专栏一键速搜：填入艺人名并触发跨源搜索，平滑滚动到视听工坊 ---
+function quickArtistSearch(name) {
+  const input = document.getElementById('searchKeywordInput');
+  if (input) input.value = name;
+  executeSearch(1);
+  const station = document.getElementById('playlist-station');
+  if (station) station.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}

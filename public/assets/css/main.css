@@ -1,5 +1,6 @@
 /* ============================================================
-   UNM-Server 主样式：全局基础 / 高级流光设计系统 / 品牌色 / JSON 高亮
+   UNM-Server · Aurora Engine 设计系统 v4.1
+   全局基础 / 极光氛围 / 渐变组件 / 动效 / JSON 高亮
    播放器专属样式见 player.css，遥测大盘样式见 dashboard.css
    ============================================================ */
 
@@ -16,8 +17,12 @@ body {
   -webkit-font-smoothing: antialiased;
   font-size: 15px;
   position: relative;
+  text-rendering: optimizeLegibility;
 }
 *, *::before, *::after { box-sizing: border-box; }
+
+/* 锚点跳转避让 sticky 导航 */
+section[id], div[id] { scroll-margin-top: 5.5rem; }
 
 /* 仅在用户手动切换主题时生效的丝滑过渡（防止刷新加载时白闪） */
 html.theme-transitioning,
@@ -27,7 +32,58 @@ html.theme-transitioning *::after {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, fill 0.3s ease, stroke 0.3s ease, box-shadow 0.3s ease !important;
 }
 
-/* 高级多层环境流光氛围光斑 (Ambient Aurora Glow) */
+/* ---------- 极光氛围场 ---------- */
+.aurora-field {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(110px);
+  opacity: 0.55;
+  will-change: transform;
+  animation: aurora-drift 26s ease-in-out infinite alternate;
+}
+@media (min-width: 640px) {
+  .aurora-blob { filter: blur(140px); opacity: 0.6; }
+}
+.aurora-blob-b { animation-duration: 32s; animation-delay: -8s; }
+.aurora-blob-c { animation-duration: 38s; animation-delay: -16s; }
+@keyframes aurora-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(6%, 10%, 0) scale(1.12); }
+  100% { transform: translate3d(-6%, -6%, 0) scale(0.94); }
+}
+/* 细网格底纹 */
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.055) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 75%);
+}
+.dark .bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
+}
+/* 噪点颗粒（提升质感） */
+.noise-overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0.032;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.dark .noise-overlay { opacity: 0.05; }
+
+/* 兼容旧类名（dashboard 沿用） */
 .ambient-glow {
   position: absolute;
   border-radius: 50%;
@@ -36,9 +92,114 @@ html.theme-transitioning *::after {
   filter: blur(120px);
 }
 @media (min-width: 640px) {
-  .ambient-glow {
-    filter: blur(150px);
-  }
+  .ambient-glow { filter: blur(150px); }
+}
+
+/* 巨型描边水印字 */
+.watermark {
+  font-weight: 900;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(100, 116, 139, 0.10);
+  user-select: none;
+  letter-spacing: -0.04em;
+}
+.dark .watermark { -webkit-text-stroke: 1.5px rgba(148, 163, 184, 0.09); }
+
+/* ---------- 排版 ---------- */
+.text-gradient {
+  background: linear-gradient(100deg, #38bdf8 0%, #818cf8 45%, #c084fc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.text-gradient-warm {
+  background: linear-gradient(100deg, #fbbf24 0%, #fb923c 50%, #f472b6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* 分区眉题：等宽英文 + 渐变线 */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #0284c7;
+}
+.dark .eyebrow { color: #38bdf8; }
+.eyebrow::before {
+  content: "";
+  width: 1.75rem;
+  height: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+}
+.eyebrow-center::after {
+  content: "";
+  width: 1.75rem;
+  height: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #818cf8, #c084fc);
+}
+
+/* ---------- 按钮 ---------- */
+.btn-aurora {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(100deg, #0ea5e9 0%, #6366f1 60%, #8b5cf6 100%);
+  box-shadow: 0 12px 32px -8px rgba(14, 165, 233, 0.55), inset 0 1px 0 rgba(255,255,255,0.25);
+  transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.25s ease, filter 0.2s ease;
+}
+.btn-aurora:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+  box-shadow: 0 18px 44px -8px rgba(99, 102, 241, 0.6), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.btn-aurora:active { transform: translateY(0) scale(0.98); }
+.btn-aurora::after {
+  content: "";
+  position: absolute;
+  top: 0; left: -80%;
+  width: 55%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+}
+.btn-aurora:hover::after { left: 130%; }
+
+.btn-ghost {
+  transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), border-color 0.2s ease, box-shadow 0.25s ease, background-color 0.2s ease;
+}
+.btn-ghost:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px -10px rgba(14, 165, 233, 0.35);
+}
+
+/* ---------- 卡片 ---------- */
+.card-hover {
+  transition: transform 0.28s cubic-bezier(0.16,1,0.3,1), box-shadow 0.3s ease, border-color 0.25s ease;
+}
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 24px 48px -16px rgba(2, 132, 199, 0.28);
+}
+/* 渐变描边卡片 */
+.grad-border {
+  position: relative;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--card-bg, #ffffff), var(--card-bg, #ffffff)) padding-box,
+    linear-gradient(135deg, rgba(56,189,248,0.55), rgba(129,140,248,0.25) 40%, rgba(192,132,252,0.45)) border-box;
+}
+.dark .grad-border {
+  background:
+    linear-gradient(#0b1120, #0b1120) padding-box,
+    linear-gradient(135deg, rgba(56,189,248,0.5), rgba(129,140,248,0.18) 40%, rgba(192,132,252,0.4)) border-box;
 }
 
 /* 玻璃拟态面板与高光边框 */
@@ -51,13 +212,42 @@ html.theme-transitioning *::after {
   -webkit-backdrop-filter: blur(16px);
 }
 
-/* 交互按钮微动效与发光 */
+/* 顶部高光线（KPI / 面板点睛） */
+.top-glow { position: relative; overflow: hidden; }
+.top-glow::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.7), transparent);
+}
+
+/* ---------- 动效 ---------- */
+/* 滚动显现 */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal-visible { opacity: 1; transform: translateY(0); }
+
+/* 呼吸光晕（状态徽标） */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.animate-pulse-glow { animation: pulse-glow 4.5s ease-in-out infinite; }
+
+/* 播放器封面旋转 */
+@keyframes vinyl-spin { to { transform: rotate(360deg); } }
+.vinyl-spinning { animation: vinyl-spin 14s linear infinite; }
+
+/* 交互按钮微动效 */
 .interactive-btn {
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.interactive-btn:active {
-  transform: scale(0.97);
-}
+.interactive-btn:active { transform: scale(0.97); }
 
 /* 细滚动条定制 */
 .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
@@ -91,3 +281,20 @@ input[type=range] { accent-color: #0ea5e9; }
 .json-number { color: #f59e0b; font-weight: 600; }
 .json-boolean { color: #a855f7; font-weight: 700; }
 .json-null { color: #f43f5e; font-weight: 700; }
+
+/* 艺人头像渐变 */
+.avatar-grad-1 { background: linear-gradient(135deg, #f43f5e, #fb923c); }
+.avatar-grad-2 { background: linear-gradient(135deg, #8b5cf6, #38bdf8); }
+.avatar-grad-3 { background: linear-gradient(135deg, #10b981, #84cc16); }
+.avatar-grad-4 { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+.avatar-grad-5 { background: linear-gradient(135deg, #06b6d4, #6366f1); }
+.avatar-grad-6 { background: linear-gradient(135deg, #ec4899, #8b5cf6); }
+.avatar-grad-7 { background: linear-gradient(135deg, #14b8a6, #0ea5e9); }
+.avatar-grad-8 { background: linear-gradient(135deg, #f97316, #eab308); }
+
+/* 减少动态偏好：关闭装饰动画 */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob, .animate-pulse-glow, .vinyl-spinning { animation: none !important; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .btn-aurora::after { display: none; }
+}

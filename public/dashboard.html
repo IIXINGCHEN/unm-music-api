@@ -100,9 +100,13 @@
     </div>
   </div>
 
-  <!-- 背景流光氛围 (Ambient Lights) -->
-  <div class="ambient-glow top-[-100px] right-[-100px] bg-gradient-to-br from-indigo-500/15 via-sky-500/15 to-transparent dark:from-indigo-900/20 dark:via-sky-950/20"></div>
-  <div class="ambient-glow bottom-[-100px] left-[-100px] bg-gradient-to-tr from-purple-500/15 via-pink-500/10 to-transparent dark:from-purple-950/20 dark:via-indigo-950/15"></div>
+  <!-- Aurora Engine 氛围场：极光漂移 + 网格 + 噪点 -->
+  <div class="aurora-field" aria-hidden="true">
+    <div class="bg-grid"></div>
+    <div class="aurora-blob w-[620px] h-[620px] top-[-180px] right-[-120px] bg-gradient-to-br from-indigo-500/20 via-sky-500/15 to-transparent dark:from-indigo-700/20 dark:via-sky-900/20"></div>
+    <div class="aurora-blob aurora-blob-b w-[520px] h-[520px] bottom-[-160px] left-[-120px] bg-gradient-to-tr from-purple-500/18 via-pink-500/10 to-transparent dark:from-purple-900/20 dark:via-indigo-950/15"></div>
+    <div class="noise-overlay"></div>
+  </div>
 
   <!-- 顶部主导航栏 -->
   <header class="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-white/10 glass-panel bg-white/75 dark:bg-slate-950/75 transition-colors">
@@ -191,7 +195,7 @@
       <div id="contentKpis" class="space-y-6 section-transition">
         <!-- 4 宫格卡片 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div class="glass-panel bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+          <div class="glass-panel top-glow card-hover bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
             <div class="flex items-center justify-between text-slate-400">
               <span class="text-xs font-bold uppercase tracking-wider">总请求调用量</span>
               <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
@@ -208,7 +212,7 @@
             </div>
           </div>
 
-          <div class="glass-panel bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+          <div class="glass-panel top-glow card-hover bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
             <div class="flex items-center justify-between text-slate-400">
               <span class="text-xs font-bold uppercase tracking-wider">平均处理延迟 (Latency)</span>
               <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
@@ -222,7 +226,7 @@
             </div>
           </div>
 
-          <div class="glass-panel bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+          <div class="glass-panel top-glow card-hover bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
             <div class="flex items-center justify-between text-slate-400">
               <span class="text-xs font-bold uppercase tracking-wider">活跃调用方来源 (Who)</span>
               <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
@@ -236,7 +240,7 @@
             </div>
           </div>
 
-          <div class="glass-panel bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
+          <div class="glass-panel top-glow card-hover bg-white/70 dark:bg-slate-900/40 p-6 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-2">
             <div class="flex items-center justify-between text-slate-400">
               <span class="text-xs font-bold uppercase tracking-wider">系统连续运行</span>
               <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
@@ -252,7 +256,7 @@
         </div>
 
         <!-- 实时时延与吞吐波形渐变折线面积图 (Waveform Area Chart) -->
-        <div class="glass-panel bg-white/75 dark:bg-slate-900/50 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+        <div class="glass-panel top-glow bg-white/75 dark:bg-slate-900/50 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div class="flex items-center space-x-2">
               <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
@@ -301,7 +305,7 @@
         <!-- 图表网格 (柱状图 + 圆形环形图) -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <!-- 1. 热门接口请求分布柱状图 (Chart.js 柱状图) -->
-          <div class="lg:col-span-5 glass-panel bg-white/75 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+          <div class="lg:col-span-5 glass-panel top-glow card-hover bg-white/75 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
             <div class="flex items-center justify-between">
               <h3 class="font-extrabold text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center space-x-2">
                 <i data-lucide="bar-chart" class="w-4 h-4 text-sky-500"></i>
@@ -315,7 +319,7 @@
           </div>
 
           <!-- 2. 音源命中分布圆形环形图 (Chart.js 圆形环形图 Donut) -->
-          <div class="lg:col-span-4 glass-panel bg-white/75 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+          <div class="lg:col-span-4 glass-panel top-glow card-hover bg-white/75 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
             <div class="flex items-center justify-between">
               <h3 class="font-extrabold text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center space-x-2">
                 <i data-lucide="disc" class="w-4 h-4 text-emerald-500"></i>
@@ -329,7 +333,7 @@
           </div>
 
           <!-- 3. HTTP 响应状态码圆形环形图 (Chart.js 状态码环图) -->
-          <div class="lg:col-span-3 glass-panel bg-white/75 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+          <div class="lg:col-span-3 glass-panel top-glow card-hover bg-white/75 dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
             <div class="flex items-center justify-between">
               <h3 class="font-extrabold text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center space-x-2">
                 <i data-lucide="check-circle-2" class="w-4 h-4 text-amber-500"></i>
@@ -344,7 +348,7 @@
         </div>
 
         <!-- 调用来源排行列表 (Who Called List) -->
-        <div class="glass-panel bg-white/75 dark:bg-slate-900/50 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+        <div class="glass-panel top-glow bg-white/75 dark:bg-slate-900/50 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
           <div class="flex items-center justify-between">
             <h3 class="font-extrabold text-sm uppercase tracking-wider text-slate-900 dark:text-white flex items-center space-x-2">
               <i data-lucide="users" class="w-4 h-4 text-indigo-500"></i>
@@ -360,7 +364,7 @@
     </section>
 
     <!-- 3. 企业级调用日志流表格 (Live Telemetry Table) (Section 3: 可折叠) -->
-    <section id="sectionLogs" class="glass-panel bg-white/80 dark:bg-slate-900/60 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl space-y-6 section-transition">
+    <section id="sectionLogs" class="glass-panel top-glow bg-white/80 dark:bg-slate-900/60 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl space-y-6 section-transition">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/60 dark:border-white/10 pb-4">
         <div>
           <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center space-x-2.5">
