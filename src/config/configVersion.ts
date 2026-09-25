@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 declare const __APP_VERSION__: string | undefined;
 
 /** 兜底版本号（由 scripts/sync-version.mjs 从 VERSION 文件自动同步，请勿手改） */
-const FALLBACK_VERSION = "4.1.0";
+const FALLBACK_VERSION = "4.2.0";
 
 /** 按候选路径尝试读取 VERSION 文件，同时覆盖 src/config（开发态）与 dist（构建产物）两种运行位置 */
 function loadVersionFromFile(): string | null {
