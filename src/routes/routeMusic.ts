@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { env, PROVIDER_CONFIG, HTTP_CONFIG } from "../config/index.js";
+import { env, PROVIDER_CONFIG, HTTP_CONFIG, STREAM_CONFIG } from "../config/index.js";
 import {
   matchSong,
   getNeteaseSong,
@@ -15,6 +15,10 @@ import type { ApiResponse } from "../types/typeApi.js";
 import type { MatchedAudio, NcmAudioResult } from "../types/typeMusic.js";
 
 const musicRoute = new Hono();
+
+// /stream 中转的重定向与超时约束（见 STREAM_CONFIG）
+const STREAM_MAX_REDIRECTS = STREAM_CONFIG.MAX_REDIRECTS;
+const STREAM_CONNECT_TIMEOUT_MS = STREAM_CONFIG.CONNECT_TIMEOUT_MS;
 
 // 已知 provider 白名单（UNM 引擎初始化完成后快照）：过滤 /match?server= 中的未知项，
 // 防止任意字符串进入缓存键导致 LRU 缓存抖动，以及无效 server 触发多源降级检索放大上游调用
@@ -152,11 +156,72 @@ musicRoute.get("/stream", async (c) => {
   let lastError = "";
   for (const channel of channelUrls) {
     try {
-      const upstream = await fetch(channel.url, {
-        headers: upstreamHeaders,
-        redirect: "follow",
-        signal: c.req.raw.signal,
-      });
+      // 手动处理重定向：白名单校验必须覆盖**每一跳**。
+      // 原实现用 redirect: "follow"，只校验了初始 URL，上游若返回 302 指向
+      // 内网地址即可绕过白名单（SSRF）。改用 manual 并在跳转前重新校验。
+      let currentUrl = channel.url;
+      let upstream: Response | null = null;
+
+      for (let hop = 0; hop <= STREAM_MAX_REDIRECTS; hop++) {
+        // 连接阶段独立超时：signal 只随客户端断开触发，若客户端保持连接而上游
+        // 迟迟不响应，请求会无限期占用连接与事件循环资源。此处超时仅覆盖
+        // 「拿到响应头」这一段，拿到后即清除，不影响后续流式 body 的传输。
+        const connectAbort = new AbortController();
+        const onClientAbort = () => connectAbort.abort();
+        c.req.raw.signal.addEventListener("abort", onClientAbort, { once: true });
+        const connectTimer = setTimeout(
+          () => connectAbort.abort(),
+          STREAM_CONNECT_TIMEOUT_MS
+        );
+
+        let res: Response;
+        try {
+          res = await fetch(currentUrl, {
+            headers: upstreamHeaders,
+            redirect: "manual",
+            signal: connectAbort.signal,
+          });
+        } finally {
+          clearTimeout(connectTimer);
+          c.req.raw.signal.removeEventListener("abort", onClientAbort);
+        }
+
+        // 3xx：校验跳转目标仍属于可信白名单，再决定是否跟随
+        if (res.status >= 300 && res.status < 400) {
+          const location = res.headers.get("location");
+          if (!location) {
+            lastError = `通道[${channel.name}] 上游返回 ${res.status} 但缺少 Location`;
+            break;
+          }
+          let nextUrl: string;
+          try {
+            nextUrl = new URL(location, currentUrl).toString();
+          } catch {
+            lastError = `通道[${channel.name}] 上游 Location 无法解析`;
+            break;
+          }
+          // 关键：跳转目标同样要过白名单，否则白名单形同虚设
+          if (!isRegisteredStreamUrl(nextUrl, env.CACHE_TTL_AUDIO)) {
+            lastError = `通道[${channel.name}] 上游重定向到未授权地址，已拒绝跟随`;
+            console.warn(`[Stream] ${lastError}: ${currentUrl} -> ${nextUrl}`);
+            break;
+          }
+          currentUrl = nextUrl;
+          continue;
+        }
+
+        upstream = res;
+        break;
+      }
+
+      if (!upstream) {
+        // 未取得终态响应（重定向超限、缺 Location、跳转被拒或连接超时）
+        if (!lastError) {
+          lastError = `通道[${channel.name}] 上游重定向次数超过 ${STREAM_MAX_REDIRECTS} 次`;
+        }
+        console.warn(`[Stream] ${lastError}: ${targetUrl}`);
+        continue; // 切换下一通道
+      }
 
       if (!upstream.ok && upstream.status !== 206) {
         lastError = `通道[${channel.name}] 上游响应异常 (HTTP ${upstream.status})`;

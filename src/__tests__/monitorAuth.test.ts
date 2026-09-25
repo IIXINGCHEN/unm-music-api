@@ -66,11 +66,17 @@ describe("monitorAuthMiddleware", () => {
       headers: { authorization: `Bearer ${secret}` },
     });
     assert.equal(viaBearer.status, 200, "Bearer 正确时应放行");
+  });
 
+  test("不接受 query 形式的密钥（即使值正确）", async () => {
+    // 查询串会进入反代访问日志、浏览器历史与 Referer 头，
+    // 把凭据暴露到请求本身之外。前端在页面加载时即消费该参数并剥离 URL，
+    // 后续请求走 x-api-key 头，故移除服务端通道不损失功能。
+    const secret = getEffectiveMonitorSecret();
     const viaQuery = await buildApp().request(
       `/api/monitor/data?api_key=${encodeURIComponent(secret)}`
     );
-    assert.equal(viaQuery.status, 200, "query api_key 正确时应放行");
+    assert.equal(viaQuery.status, 401, "query 形式的密钥不应被接受");
   });
 
   test("生效密钥非空（configEnv 启动期已强校验，不存在自动生成的回退值）", () => {

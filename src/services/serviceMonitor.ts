@@ -105,13 +105,22 @@ class MonitorService {
    * 记录一次请求日志 (自动执行敏感数据脱敏)
    */
   record(logData: RecordLogParams): void {
-    // 忽略监控自身与静态文件的高频打点（/monitor 为 Serverless 双平台兼容别名路径，同样跳过）
-    if (
-      logData.path.startsWith("/api/monitor") ||
-      logData.path.startsWith("/monitor") ||
-      logData.path.endsWith(".png") ||
-      logData.path.endsWith(".ico")
-    ) {
+    // 忽略监控自身与静态文件的高频打点。
+    //
+    // 监控路径必须**按段边界**匹配：原实现用 path.startsWith("/monitor")，
+    // 而 startsWith 不锚定段边界，会连带吞掉 /monitor-anything、/monitordata
+    // 等同前缀的兄弟路径 —— 对它们的探测不会留下任何审计记录，
+    // 且 totalRequests 与实际服务量静默偏离。而「探测 /monitor* 的流量」
+    // 恰恰是审计日志最该捕获的对象。
+    // 真实路由只有 /monitor 与 /api/monitor 两个（app.ts 注册），
+    // 故只精确匹配这两个路径本身及其子路径。
+    const p = logData.path;
+    const isMonitorOwnPath =
+      p === "/monitor" ||
+      p.startsWith("/monitor/") ||
+      p === "/api/monitor" ||
+      p.startsWith("/api/monitor/");
+    if (isMonitorOwnPath || p.endsWith(".png") || p.endsWith(".ico")) {
       return;
     }
 
