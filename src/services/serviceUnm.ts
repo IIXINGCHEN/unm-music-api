@@ -364,7 +364,19 @@ export async function matchSong(
     ? servers
     : env.DEFAULT_MATCH_SERVERS.split(",").map((s) => s.trim()).filter(Boolean);
 
-  const cacheKey = `match:${cleanId}:${serverList.join(",")}:${cleanBr}`;
+  // 缓存键的音源列表部分按顺序语义条件化。
+  //
+  // UNM 引擎（provider/match.js）按 process.env 选择调度模式：
+  //   SELECT_MAX_BR        -> allSettled 后取最高码率，**与顺序无关**
+  //   FOLLOW_SOURCE_ORDER  -> for 顺序尝试取首个成功，**顺序即语义**
+  //   两者皆假              -> Promise.any 并发竞速，**与顺序无关**
+  //
+  // 不归一时，`?server=a,b,c` 与 `?server=c,b,a` 各占一个 key，
+  // N 个音源产生 N! 个 key（5 个即 120 个，全在参数长度上限内），
+  // 每个 key 各自触发一整套 UNM 级联，同时击穿 LRU 与 single-flight。
+  const orderMatters = Boolean(process.env.FOLLOW_SOURCE_ORDER);
+  const cacheKeySourcePart = orderMatters ? serverList.join(",") : [...serverList].sort().join(",");
+  const cacheKey = `match:${cleanId}:${cacheKeySourcePart}:${cleanBr}`;
   if (!opts.refresh) {
     const cached = globalCache.get(cacheKey) as MatchedAudio | null;
     if (cached) {

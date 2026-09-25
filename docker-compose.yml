@@ -7,7 +7,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "${HOST:-127.0.0.1}:${PORT:-5678}:5678"
+      # 端口发布地址使用独立变量 BIND_HOST，**不复用 HOST**。
+      # HOST 在 .env.example 里被文档化为「服务监听地址」（如需暴露公网可设为 0.0.0.0），
+      # 且下方 environment 又把它强制为 0.0.0.0；若此处再用 ${HOST}，任何按文档设置
+      # HOST=0.0.0.0 的部署都会把端口静默发布到全部网络接口（而非仅回环），
+      # 与「默认不对外暴露」的意图相反。
+      - "${BIND_HOST:-127.0.0.1}:${PORT:-5678}:5678"
     env_file:
       - .env
     environment:
