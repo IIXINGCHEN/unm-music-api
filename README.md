@@ -136,6 +136,33 @@ pnpm start
 pnpm prd
 ```
 
+### 方式 5: 一键管理控制台（跨平台脚本，推荐本地/测试机）
+
+项目根目录提供 `unm-console.sh`（Linux/macOS）与 `unm-console.ps1`（Windows，功能对齐），
+覆盖生产/开发双环境的启动（前/后台）、停止、重启、状态、9 项配置检测与日志查看：
+
+```bash
+# Linux / macOS：交互菜单
+./unm-console.sh
+# 常用命令
+./unm-console.sh check --env all      # 启动前先检测配置
+./unm-console.sh start --env prod     # 后台启动生产环境
+./unm-console.sh start --env dev      # 后台启动开发环境（tsx 热重载）
+./unm-console.sh status               # 双环境状态
+./unm-console.sh logs --env prod -f   # 实时跟踪日志
+./unm-console.sh stop --env prod
+```
+
+```powershell
+# Windows（先 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned）
+.\unm-console.ps1                     # 交互菜单
+.\unm-console.ps1 check -Env all
+.\unm-console.ps1 start -Env prod
+```
+
+> 端口优先级：`-Port/--port` 参数 > `.env` 中 `DEV_PORT`（仅 dev）> `PORT` > `5678`；
+> 运行状态（PID/端口/日志）保存在项目内 `.unm-console/` 目录。
+
 ---
 
 ## ⚙️ 环境变量配置字典 (`.env`)
