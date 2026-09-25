@@ -41,20 +41,26 @@ cfg = cfg.replace(/const FALLBACK_VERSION = "[^"]+";/, `const FALLBACK_VERSION =
 writeFileSync(cfgPath, cfg, "utf-8");
 console.log(`[sync-version] configVersion.ts FALLBACK_VERSION -> ${version}`);
 
-// 3) 静态资源版本戳：给 public/*.html 里本地 CSS/JS/vendor 引用加 ?v=版本号。
-//    发版后浏览器与 CDN 按新 URL 拉取，根治"代码已更新、页面仍用旧缓存"的问题。
-//    幂等：已有的 ?v=xxx 会被替换为当前版本，不会叠加。
+// 3) 静态资源版本戳：给 public/*.html 里本地 CSS/JS/vendor 引用加 ?v=版本号-构建时间戳。
+//    每次构建时间戳都不同（精确到秒），发版后浏览器与 CDN 按新 URL 拉取，
+//    根治"代码已更新、页面仍用旧缓存"的问题。幂等替换：已有的 ?v=xxx 会被整体替换，不叠加。
+const now = new Date();
+const pad2 = (n) => String(n).padStart(2, "0");
+const buildTs =
+  `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}` +
+  `${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}`;
+const stamp = `${version}-${buildTs}`;
 const htmlFiles = ["public/index.html", "public/dashboard.html"];
 const stampRe = /((?:src|href)="\.?\/(?:assets|vendor)\/[^"?]+)(\?v=[^"]*)?(")/g;
 for (const f of htmlFiles) {
   const p = `${root}${f}`;
   const html = readFileSync(p, "utf-8");
-  const stamped = html.replace(stampRe, `$1?v=${version}$3`);
+  const stamped = html.replace(stampRe, `$1?v=${stamp}$3`);
   if (stamped !== html) {
     writeFileSync(p, stamped, "utf-8");
-    console.log(`[sync-version] ${f} 静态资源已加版本戳 ?v=${version}`);
+    console.log(`[sync-version] ${f} 静态资源已加版本戳 ?v=${stamp}`);
   } else {
-    console.log(`[sync-version] ${f} 版本戳已对齐: ?v=${version}`);
+    console.log(`[sync-version] ${f} 版本戳已是最新: ?v=${stamp}`);
   }
 }
 
