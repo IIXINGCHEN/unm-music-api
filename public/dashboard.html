@@ -174,6 +174,12 @@
 
   <!-- 大盘主体内容 (专业级可折叠模块体系) -->
   <main class="w-full max-w-7xl mx-auto px-6 py-8 flex-1 space-y-8 relative z-10">
+    <!-- 手机端视图模式切换（全宽分段控件，桌面端用顶栏） -->
+    <div class="md:hidden grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 text-xs font-semibold" role="group" aria-label="视图模式">
+      <button onclick="switchLayoutPreset('all')" id="btnViewAllM" class="px-2 py-2 rounded-xl bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition min-h-[40px]">全景模式</button>
+      <button onclick="switchLayoutPreset('charts')" id="btnViewChartsM" class="px-2 py-2 rounded-xl text-slate-600 dark:text-slate-400 transition min-h-[40px]">图表矩阵</button>
+      <button onclick="switchLayoutPreset('logs')" id="btnViewLogsM" class="px-2 py-2 rounded-xl text-slate-600 dark:text-slate-400 transition min-h-[40px]">日志排查</button>
+    </div>
 
     <!-- 1. 核心 KPI 遥测与实时波形监控区 (Section 1: 可折叠) -->
     <section id="sectionKpis" class="space-y-6 section-transition">
@@ -203,8 +209,8 @@
               </div>
             </div>
             <div id="statTotalRequests" class="text-3xl sm:text-4xl font-extrabold font-mono text-slate-900 dark:text-white truncate">0</div>
-            <div class="flex items-center justify-between text-sm text-slate-500 pt-1">
-              <span id="statSuccessPct" class="text-emerald-500 font-bold flex items-center space-x-1">
+            <div class="flex items-center justify-between flex-wrap gap-x-2 gap-y-1 text-sm text-slate-500 pt-1">
+              <span id="statSuccessPct" class="text-emerald-500 font-bold flex items-center space-x-1 whitespace-nowrap">
                 <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
                 <span>100% 成功率</span>
               </span>
@@ -247,7 +253,7 @@
                 <i data-lucide="server" class="w-4 h-4"></i>
               </div>
             </div>
-            <div id="statDashboardUptime" class="text-3xl sm:text-4xl font-extrabold font-mono text-slate-900 dark:text-white truncate">0s</div>
+            <div id="statDashboardUptime" class="text-2xl sm:text-4xl font-extrabold font-mono text-slate-900 dark:text-white truncate">0s</div>
             <div class="text-sm text-slate-500 dark:text-slate-400 pt-1 flex items-center space-x-1">
               <i data-lucide="cpu" class="w-3.5 h-3.5 text-emerald-500"></i>
               <span>生产守护集群节点</span>
@@ -279,7 +285,7 @@
             </div>
           </div>
           <div class="h-60 sm:h-64 relative">
-            <canvas id="waveformChart"></canvas>
+            <canvas id="waveformChart" role="img" aria-label="实时请求时延与吞吐波形图：横轴为最近 60 秒，纵轴左侧为时延毫秒、右侧为吞吐 RPS"></canvas>
           </div>
         </div>
       </div>
@@ -314,7 +320,7 @@
               <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-sky-500/10 text-sky-500">请求量</span>
             </div>
             <div class="h-64 relative">
-              <canvas id="endpointsChart"></canvas>
+              <canvas id="endpointsChart" role="img" aria-label="热门接口请求频次柱状图"></canvas>
             </div>
           </div>
 
@@ -328,7 +334,7 @@
               <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-500">占比</span>
             </div>
             <div class="h-64 relative flex items-center justify-center">
-              <canvas id="sourcesDonutChart"></canvas>
+              <canvas id="sourcesDonutChart" role="img" aria-label="音源命中比例环形图"></canvas>
             </div>
           </div>
 
@@ -342,7 +348,7 @@
               <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-500 whitespace-nowrap flex-shrink-0">健康度</span>
             </div>
             <div class="h-64 relative flex items-center justify-center">
-              <canvas id="statusDonutChart"></canvas>
+              <canvas id="statusDonutChart" role="img" aria-label="状态码分布环形图"></canvas>
             </div>
           </div>
         </div>

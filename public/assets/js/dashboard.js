@@ -138,26 +138,31 @@ document.getElementById('year').textContent = new Date().getFullYear();
     }
 
     function switchLayoutPreset(preset) {
-      const btnAll = document.getElementById('btnViewAll');
-      const btnCharts = document.getElementById('btnViewCharts');
-      const btnLogs = document.getElementById('btnViewLogs');
+      const idleD = "px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition interactive-btn";
+      const activeD = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
+      const idleM = "px-2 py-2 rounded-xl text-slate-600 dark:text-slate-400 transition min-h-[40px]";
+      const activeM = "px-2 py-2 rounded-xl bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition min-h-[40px]";
 
-      [btnAll, btnCharts, btnLogs].forEach(b => {
-        b.className = "px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition interactive-btn";
+      const groups = {
+        all: [document.getElementById('btnViewAll'), document.getElementById('btnViewAllM')],
+        charts: [document.getElementById('btnViewCharts'), document.getElementById('btnViewChartsM')],
+        logs: [document.getElementById('btnViewLogs'), document.getElementById('btnViewLogsM')],
+      };
+      Object.entries(groups).forEach(([key, [d, m]]) => {
+        const on = key === preset;
+        if (d) d.className = on ? activeD : idleD;
+        if (m) m.className = on ? activeM : idleM;
       });
 
       if (preset === 'all') {
-        btnAll.className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
         setSectionVisibility('kpis', true);
         setSectionVisibility('charts', true);
         setSectionVisibility('logs', true);
       } else if (preset === 'charts') {
-        btnCharts.className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
         setSectionVisibility('kpis', true);
         setSectionVisibility('charts', true);
         setSectionVisibility('logs', false);
       } else if (preset === 'logs') {
-        btnLogs.className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
         setSectionVisibility('kpis', false);
         setSectionVisibility('charts', false);
         setSectionVisibility('logs', true);

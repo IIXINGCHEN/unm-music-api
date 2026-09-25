@@ -424,3 +424,10 @@ input[type=range] { accent-color: #0ea5e9; }
   .reveal { opacity: 1; transform: none; transition: none; }
   .btn-aurora::after { display: none; }
 }
+
+/* 键盘焦点可见性（无障碍）：深浅色通用高对比描边 */
+:focus-visible {
+  outline: 2px solid rgb(14 165 233 / 0.9);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
