@@ -17,7 +17,7 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
-    "test": "tsx --test \"src/**/*.test.ts\""
+    "test": "tsx --import ./src/__tests__/setupTestEnv.ts --test \"src/**/*.test.ts\""
   },
   "author": "imsyy",
   "license": "MIT",

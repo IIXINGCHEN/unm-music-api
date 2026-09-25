@@ -21,11 +21,28 @@ describe("getClientIp 受信代理链", () => {
     assert.equal(normalizeIp("  203.0.113.9  "), "203.0.113.9");
   });
 
-  test("受信名单：精确 IP 与 CIDR", () => {
+  test("受信名单：默认仅回环", () => {
     assert.equal(isTrustedProxy("127.0.0.1"), true);
     assert.equal(isTrustedProxy("::ffff:127.0.0.1"), true);
-    assert.equal(isTrustedProxy("172.18.0.1"), true, "Docker bridge 网关应受信");
+    assert.equal(isTrustedProxy("::1"), true);
+    // Docker bridge 网关**不得**默认受信：容器看到的对端是该网关，
+    // 若受信则客户端自带的 X-Forwarded-For 会被采信，每请求换一个值
+    // 即可获得新的限流配额 —— 正是本机制要防的绕过。
+    assert.equal(isTrustedProxy("172.18.0.1"), false, "Docker bridge 网关不应默认受信");
+    assert.equal(isTrustedProxy("172.17.0.1"), false, "Docker bridge 网关不应默认受信");
+    assert.equal(isTrustedProxy("10.0.0.1"), false, "私网地址不应默认受信");
     assert.equal(isTrustedProxy("203.0.113.9"), false, "公网 IP 不受信");
+  });
+
+  test("网关上收到伪造 XFF 时不被采信", () => {
+    // 回归点：默认值含 172.16.0.0/12 时，此处会按 XFF 返回不同桶，
+    // 使限流在默认配置下失效。
+    const ctx = (xff: string) => ({
+      env: { incoming: { socket: { remoteAddress: "172.18.0.1" } } },
+      req: { header: (k: string) => (k.toLowerCase() === "x-forwarded-for" ? xff : null) },
+    });
+    assert.equal(getClientIp(ctx("1.1.1.1") as any), "172.18.0.1");
+    assert.equal(getClientIp(ctx("2.2.2.2") as any), "172.18.0.1");
   });
 
   test("直连公网时忽略伪造的 XFF 与 x-real-ip", () => {
