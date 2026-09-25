@@ -41,3 +41,4 @@ coverage
 .agents/validation/
 .agents/worktrees/
 .dsh-vision-toolkit/
+.unm-console
