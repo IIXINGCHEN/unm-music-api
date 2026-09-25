@@ -3,6 +3,19 @@
  * 依赖：core.js（showToast）。对外暴露 playSongItem/playTrackAt/playQueue 等供其他模块调用。
  */
 
+// HTML 转义：播放队列渲染曲名/艺人（外部 API 数据）前必须转义，阻断存储型 XSS
+// （与 core.js 的全局 escapeHtml 实现一致，本地兜底以防加载顺序变化）
+if (typeof escapeHtml === 'undefined') {
+  var escapeHtml = function (value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+}
+
 // --- 播放器域共享状态 ---
 let currentTrack = null;
 let playQueue = [];
@@ -214,8 +227,8 @@ const audio = document.getElementById('mainAudioPlayer');
         return `<div onclick="playQueueIndex(${i})" class="group flex items-center gap-2.5 px-2.5 py-2 rounded-xl cursor-pointer transition interactive-btn ${active ? 'bg-sky-500/10 border border-sky-500/30' : 'border border-transparent hover:bg-slate-100 dark:hover:bg-white/5'}">
           <span class="w-5 flex-shrink-0 text-center font-mono text-[10px] ${active ? 'text-sky-500 dark:text-sky-400' : 'text-slate-400'}">${active && isPlaying ? '<span class=\'inline-flex items-end h-3 gap-[2px]\'><span class=\'w-[3px] bg-sky-400 animate-wave-1\'></span><span class=\'w-[3px] bg-sky-400 animate-wave-3\'></span><span class=\'w-[3px] bg-sky-400 animate-wave-4\'></span></span>' : (i + 1)}</span>
           <div class="flex-1 min-w-0">
-            <div class="text-xs font-bold truncate ${active ? 'text-sky-600 dark:text-sky-300' : 'text-slate-700 dark:text-slate-300'}">${t.name}</div>
-            <div class="text-[10px] text-slate-400 truncate">${t.artist || ''}</div>
+            <div class="text-xs font-bold truncate ${active ? 'text-sky-600 dark:text-sky-300' : 'text-slate-700 dark:text-slate-300'}">${escapeHtml(t.name)}</div>
+            <div class="text-[10px] text-slate-400 truncate">${escapeHtml(t.artist || '')}</div>
           </div>
           <button onclick="event.stopPropagation();removeFromQueue(${i})" aria-label="从队列移除" class="p-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-white/5 transition opacity-0 group-hover:opacity-100"><i data-lucide="x" class="w-3 h-3"></i></button>
         </div>`;
