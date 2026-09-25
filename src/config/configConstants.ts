@@ -23,7 +23,7 @@ export const AUDIO_CONFIG = {
   DEFAULT_SEARCH_PAGE: 1,
   DEFAULT_SEARCH_SOURCE: "netease",
   DEFAULT_AUDIO_SOURCE: "joox",
-  DEFAULT_TEST_SONG_ID: "1962165898", // 周杰伦 - 最伟大的作品
+  DEFAULT_TEST_SONG_ID: "158616",
 } as const;
 
 export const CACHE_POLICY = {
