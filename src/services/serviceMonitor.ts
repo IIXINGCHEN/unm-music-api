@@ -122,12 +122,15 @@ class MonitorService {
     if (logData.referer) {
       try {
         const refUrl = new URL(logData.referer.includes("://") ? logData.referer : `http://${logData.referer}`);
+        // 只取 protocol//host：path/query 里的凭据不会进入 topCallers
         callerName = `${refUrl.protocol}//${refUrl.host}`;
       } catch {
-        callerName = logData.referer.slice(0, 40);
+        // 无法解析为 URL 时按文本兜底，必须脱敏 —— 直接截断原串会让
+        // /;token=SECRET 这类形态的原样凭据进入 topCallers
+        callerName = sanitizeUrl(logData.referer).slice(0, 40);
       }
     } else if (logData.origin) {
-      callerName = logData.origin;
+      callerName = sanitizeUrl(logData.origin);
     } else if (logData.ip) {
       callerName = `IP: ${logData.ip}`;
     }
@@ -137,20 +140,25 @@ class MonitorService {
 
     const cleanedQuery = sanitizeQuery(logData.query);
     const cleanedUrl = sanitizeUrl(logData.fullUrl);
+    // referer 与 origin 同样是客户端可控的完整 URL，可能携带 ?token= 类凭据；
+    // 只脱敏 fullUrl/query 而放过它们，等于把同一份凭据从另一个字段原样回显到大盘。
+    const cleanedReferer = logData.referer ? sanitizeUrl(logData.referer) : "-";
+    const cleanedOrigin = logData.origin ? sanitizeUrl(logData.origin) : "-";
+    const cleanedPath = sanitizeUrl(logData.path);
 
     const logItem: RequestLog = {
       id: `req_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       timestamp: now.toISOString(),
       timeStr,
       method: logData.method,
-      path: logData.path,
+      path: cleanedPath,
       fullUrl: cleanedUrl,
       query: cleanedQuery,
       status: logData.status,
       duration: logData.duration,
       ip: logData.ip || "127.0.0.1",
-      referer: logData.referer || "-",
-      origin: logData.origin || "-",
+      referer: cleanedReferer,
+      origin: cleanedOrigin,
       userAgent: logData.userAgent || "-",
       clientType,
       source: audioSource,
@@ -172,7 +180,9 @@ class MonitorService {
     }
 
     // 统计端点分布
-    this.bumpCount(this.endpointMap, logData.path);
+    // 必须用 cleanedPath：原始 path 会经 topEndpoints 原样回显到大盘，
+    // 绕过 logItem 的脱敏（/;token=SECRET 形态的凭据由此泄露）
+    this.bumpCount(this.endpointMap, cleanedPath);
 
     // 统计调用方分布
     this.bumpCount(this.callerMap, callerName);
