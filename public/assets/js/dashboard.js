@@ -542,7 +542,7 @@
                 </div>
                 <div>
                   <h4 class="font-extrabold text-base text-slate-900 dark:text-white">监控接口安全鉴权保护</h4>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">服务端已配置 MONITOR_SECRET_KEY。请输入正确的访问凭证以加载实时遥测与请求明细。</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">请输入正确的访问凭证以加载实时遥测与请求明细。若服务端未持久化 MONITOR_SECRET_KEY，请使用启动日志中打印的临时密钥（每次重启都会变化）。</p>
                 </div>
                 <button onclick="openApiKeyModal()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md shadow-amber-500/20 transition interactive-btn inline-flex items-center space-x-1.5">
                   <i data-lucide="key" class="w-4 h-4"></i>
