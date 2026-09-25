@@ -143,3 +143,59 @@ describe("/stream 中转约束", () => {
     assert.ok(RATE_LIMIT_CONFIG.MAX_IP_KEYS > 0);
   });
 });
+
+/**
+ * 回归：监控自身的路径跳过必须锚定段边界。
+ *
+ * 原实现用 path.startsWith("/monitor")，而 startsWith 不锚定段边界，
+ * 会连带吞掉 /monitor-anything、/monitordata 等同前缀的兄弟路径 ——
+ * 对它们的探测不留任何审计记录，totalRequests 与实际服务量静默偏离。
+ * 而「探测 /monitor* 的流量」正是审计日志最该捕获的对象。
+ */
+describe("监控路径跳过的段边界", () => {
+  /** 复现实现中的跳过判定 */
+  const isSkipped = (p: string) => {
+    const isMonitorOwnPath =
+      p === "/monitor" ||
+      p.startsWith("/monitor/") ||
+      p === "/api/monitor" ||
+      p.startsWith("/api/monitor/");
+    return isMonitorOwnPath || p.endsWith(".png") || p.endsWith(".ico");
+  };
+
+  test("监控自身路径被跳过", () => {
+    for (const p of ["/monitor", "/monitor/", "/api/monitor", "/api/monitor/data", "/api/monitor/clear"]) {
+      assert.equal(isSkipped(p), true, `${p} 应被跳过`);
+    }
+  });
+
+  test("同前缀的兄弟路径不被跳过（必须留下审计记录）", () => {
+    for (const p of [
+      "/monitor-anything",
+      "/monitordata",
+      "/monitorXYZ",
+      "/api/monitorx",
+      "/monitoring",
+    ]) {
+      assert.equal(isSkipped(p), false, `${p} 不应被跳过`);
+    }
+  });
+
+  test("实现中不得使用未锚定的 startsWith 前缀", () => {
+    const src = read("src/services/serviceMonitor.ts");
+    // 只检查实际代码行：注释里会引用旧实现（`// 原实现用 path.startsWith("/monitor")`），
+    // 一刀切的正则会被注释误判。
+    const code = src
+      .split("\n")
+      .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+      .join("\n");
+    assert.ok(
+      !/\.startsWith\("\/monitor"\)/.test(code),
+      '实际代码仍使用未锚定的 startsWith("/monitor")'
+    );
+    assert.ok(
+      /p\.startsWith\("\/monitor\/"\)/.test(code),
+      "未改为按段边界匹配 /monitor/"
+    );
+  });
+});

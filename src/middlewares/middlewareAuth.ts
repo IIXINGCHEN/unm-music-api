@@ -29,10 +29,12 @@ export const monitorAuthMiddleware: MiddlewareHandler = async (c, next) => {
     ? authHeader.slice(7).trim()
     : undefined;
 
-  // 3. Query 参数 ?api_key=xxx
-  const queryKey = c.req.query("api_key")?.trim();
-
-  const clientKey = headerKey || bearerKey || queryKey;
+  // 不再接受 ?api_key= 形式。
+  // 查询串会进入反向代理访问日志、浏览器历史与 Referer 头，把凭据暴露到
+  // 请求本身之外的地方。前端本就在页面加载时读取该参数、存入 localStorage
+  // 并立即从地址栏剥离（dashboard.js 的 initUrlApiKey），
+  // 后续请求一律走 x-api-key 头，故移除服务端通道不影响任何功能。
+  const clientKey = headerKey || bearerKey;
 
   if (clientKey && timingSafeCompare(clientKey, secretKey)) {
     return await next();

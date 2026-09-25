@@ -145,10 +145,12 @@ pnpm prd
 | 环境变量名 | 类型 | 默认值 | 描述说明 |
 |:---|:---|:---|:---|
 | `PORT` | Number | `5678` | 服务监听端口 |
-| `HOST` | String | `0.0.0.0` | 监听主机地址 |
+| `HOST` | String | `127.0.0.1` | 服务监听主机地址（容器内） |
+| `BIND_HOST` | String | `127.0.0.1` | Docker 端口发布地址（`docker compose` 专用；仅影响宿主侧端口绑定） |
 | `NODE_ENV` | String | `production` | 运行环境 (`development` / `production`) |
 | `ALLOWED_DOMAIN` | String | `*` | 跨域允许来源 (`*` 或 `https://domain.com,https://app.com`) |
-| `MONITOR_SECRET_KEY` | String | `""` | 监控大盘与管理接口鉴权秘钥（留空则不开启鉴权） |
+| `MONITOR_SECRET_KEY` | String | 无（**必填**） | 监控大盘与管理接口鉴权密钥；未配置或为空时服务拒绝启动，密钥不会写入任何日志 |
+| `TRUSTED_PROXIES` | String | `127.0.0.1,::1` | 受信反向代理地址（精确 IP 或 IPv4 CIDR）；仅当直连对端在此名单内才采信 `X-Forwarded-For` / `X-Real-IP` |
 | `ENABLE_RATE_LIMIT` | Boolean | `true` | 是否启用 API 滑动窗口速率限制防护 |
 | `RATE_LIMIT_WINDOW_MS`| Number | `60000` | 限流滑动时间窗口大小 (毫秒，默认 1分钟) |
 | `RATE_LIMIT_MAX_REQUESTS`| Number | `120` | 单 IP 在时间窗口内的最大允许请求次数 |
