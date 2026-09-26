@@ -6,12 +6,37 @@ import { timingSafeCompare } from "../utils/utilSecurity.js";
 import type { ApiResponse } from "../types/typeApi.js";
 
 /**
+ * 监控密钥校验（可复用）：支持 x-api-key 头 / Authorization: Bearer / ?api_key=
+ * fail-closed：密钥未配置或比对失败一律返回 false
+ */
+export function isMonitorAuthorized(c: { req: { header: (n: string) => string | undefined; query: (n: string) => string | undefined } }): boolean {
+  const secretKey = getEffectiveMonitorSecret();
+  if (!secretKey) return false;
+
+  const headerKey = c.req.header("x-api-key")?.trim();
+
+  const authHeader = c.req.header("authorization")?.trim();
+  const bearerKey = authHeader?.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : undefined;
+
+  const queryKey = c.req.query("api_key")?.trim();
+
+  const clientKey = headerKey || bearerKey || queryKey;
+  return !!clientKey && timingSafeCompare(clientKey, secretKey);
+}
+
+/**
  * 监控大盘与管理接口鉴权中间件（fail-closed）
  */
 export const monitorAuthMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
   // 生效密钥：configEnv 已在启动期强校验非空（空密钥时进程拒绝启动），
   // 因此此处不再存在“未配置即放行”的分支 —— 原实现在密钥为空时直接 next()，
   // 等于把审计日志（调用方 IP、Referer、完整 URL）对公网开放。
+  if (isMonitorAuthorized(c)) {
+    return await next();
+  }
+
   const secretKey = getEffectiveMonitorSecret();
   if (!secretKey) {
     // 理论上不可达（configEnv 已保证非空），fail-closed 兜底
@@ -19,24 +44,6 @@ export const monitorAuthMiddleware: MiddlewareHandler<AppEnv> = async (c, next) 
       errorResponse(503, "监控接口鉴权密钥不可用，已拒绝访问"),
       503
     );
-  }
-
-  // 1. 请求头 x-api-key
-  const headerKey = c.req.header("x-api-key")?.trim();
-
-  // 2. 请求头 Authorization: Bearer <token>
-  const authHeader = c.req.header("authorization")?.trim();
-  const bearerKey = authHeader?.toLowerCase().startsWith("bearer ")
-    ? authHeader.slice(7).trim()
-    : undefined;
-
-  // 3. Query 参数 ?api_key=xxx
-  const queryKey = c.req.query("api_key")?.trim();
-
-  const clientKey = headerKey || bearerKey || queryKey;
-
-  if (clientKey && timingSafeCompare(clientKey, secretKey)) {
-    return await next();
   }
 
   return c.json<ApiResponse>(
