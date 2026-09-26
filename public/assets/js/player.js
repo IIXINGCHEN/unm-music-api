@@ -30,6 +30,8 @@ const audio = document.getElementById('mainAudioPlayer');
 const FALLBACK_PROVIDERS = ['gdstudio', 'pyncmd', 'bodian', 'joox'];
 let lastAudioSource = '';
 let fallbackAttempt = 0;
+// R1：当前直链已尝试过服务端中转的 URL（每首歌重置），避免中转失败后重复试中转
+let relayTriedUrl = '';
 
 // 播放代际：每次 playSongItem 递增；异步回调（匹配/换源/歌词）写入前必须校验代际，
 // 阻断快速切歌时旧请求覆盖新播放的竞态（M1）
@@ -85,8 +87,35 @@ let playGeneration = 0;
       const gen = playGeneration;
       const trackAtEntry = currentTrack;
       if (fallbackInFlight && fallbackGen === gen) return;
+
+      // R1：当前直链尚未走过服务端中转 → 先中转再换源。
+      // 用户网络整段阻断 CDN 域名时直连注定失败，中转是唯一出路；
+      // 放 provider 轮换之前，避免 3 次注定失败的直连等待
+      const curSrc = audio.currentSrc || audio.src;
+      if (trackAtEntry && curSrc && !curSrc.includes('/relay?') && relayTriedUrl !== curSrc) {
+        relayTriedUrl = curSrc;
+        fallbackInFlight = true;
+        fallbackGen = gen;
+        try {
+          showToast({ type: 'info', title: '正在尝试中转', message: '直连被阻断，尝试经由服务端中转播放…' });
+          stopStallWatchdog();
+          audio.src = '/relay?url=' + encodeURIComponent(curSrc);
+          await audio.play();
+          // 代际校验：play() 期间用户已切歌则不再报"中转播放中"
+          if (gen !== playGeneration || trackAtEntry !== currentTrack) return;
+          showToast({ type: 'success', title: '中转播放中', message: '已切换到服务端中转链路' });
+          return;
+        } catch (e) {
+          // 被新 load 中断或已有更新的播放流程接管：静默返回，不误报
+          if ((e && e.name === 'AbortError') || gen !== playGeneration || trackAtEntry !== currentTrack) return;
+          // 中转也失败 → 继续走下面的 provider 轮换
+        } finally {
+          if (fallbackGen === gen) { fallbackInFlight = false; fallbackGen = -1; }
+        }
+      }
+
       if (!trackAtEntry || !trackAtEntry.id || fallbackAttempt >= FALLBACK_PROVIDERS.length) {
-        showToast({ type: 'error', title: '音频播放失败', message: '直链已失效、HTTPS 升级后音源不可达，或跨域受限（可在服务端配置 PROXY_URL 中转）' });
+        showToast({ type: 'error', title: '音频播放失败', message: '直连与服务端中转均不可用（可在服务端配置 PROXY_URL 使用外部代理）' });
         return;
       }
       fallbackInFlight = true;
@@ -127,7 +156,7 @@ let playGeneration = 0;
         // 只有同一代际的请求才能释放锁，防止旧请求吞掉新请求的换源
         if (fallbackGen === gen) { fallbackInFlight = false; fallbackGen = -1; }
       }
-      showToast({ type: 'error', title: '音频播放失败', message: '直链已失效、HTTPS 升级后音源不可达，或跨域受限（可在服务端配置 PROXY_URL 中转）' });
+      showToast({ type: 'error', title: '音频播放失败', message: '直连与服务端中转均不可用（可在服务端配置 PROXY_URL 使用外部代理）' });
     }
 
     audio.addEventListener('error', () => tryFallbackSource(''));
@@ -202,18 +231,25 @@ let playGeneration = 0;
     function setCoverArt(imgEl, vinylEl, picUrl) {
       if (picUrl) {
         imgEl.onerror = () => {
-          // 网易云 p1 CDN 偶发拒绝连接（ERR_CONNECTION_CLOSED）：先试一次 p2 镜像 host，
-          // 仍失败才降级为黑胶占位
           const cur = imgEl.src || '';
-          if (cur.includes('://p1.music.126.net/') && !imgEl.dataset.p2retried) {
-            imgEl.dataset.p2retried = '1';
+          // 网易云 p1 CDN 偶发拒绝连接：先试一次 p2 镜像 host
+          if (cur.includes('://p1.music.126.net/') && !imgEl.dataset.fbk) {
+            imgEl.dataset.fbk = 'p2';
             imgEl.src = cur.replace('://p1.music.126.net/', '://p2.music.126.net/');
             return;
           }
-          delete imgEl.dataset.p2retried;
+          // R1：整段 CDN 被阻断时走服务端中转（与音频同一链路）
+          if (!cur.includes('/relay?') && !imgEl.dataset.relayed) {
+            imgEl.dataset.relayed = '1';
+            imgEl.src = '/relay?url=' + encodeURIComponent(cur);
+            return;
+          }
+          delete imgEl.dataset.fbk;
+          delete imgEl.dataset.relayed;
           imgEl.classList.add('hidden'); vinylEl.classList.remove('hidden');
         };
-        delete imgEl.dataset.p2retried;
+        delete imgEl.dataset.fbk;
+        delete imgEl.dataset.relayed;
         imgEl.src = picUrl;
         imgEl.classList.remove('hidden');
         vinylEl.classList.add('hidden');
@@ -425,6 +461,7 @@ let playGeneration = 0;
       try {
         let audioUrl = track.url;
         fallbackAttempt = 0;
+        relayTriedUrl = '';
         lastAudioSource = track.source || '';
         if (!audioUrl && track.id) {
           const matchRes = await fetch(`/match?id=${encodeURIComponent(track.id)}&br=999`);

@@ -136,4 +136,41 @@ console.log("[5] 版本号三处对齐（以根目录 VERSION 为准）");
   ok(`FALLBACK_VERSION=${version}`, cfg.includes(`const FALLBACK_VERSION = "${version}";`));
 }
 
+// ---------- 6. /relay 服务端中转（SSRF 防护 + 前端接入） ----------
+console.log("[6] /relay 中转端点与前端接入");
+{
+  const src = readFileSync(`${root}src/routes/routeResource.ts`, "utf-8");
+  for (const h of ["music.126.net", "joox.com", "qqmusic.qq.com"]) {
+    ok(`白名单含 ${h}`, src.includes(`"${h}"`));
+  }
+  ok("仅允许 http/https", src.includes('u.protocol !== "http:"') && src.includes('u.protocol !== "https:"'));
+  ok("禁止 URL 内嵌凭证", src.includes("u.username || u.password"));
+  ok("后缀匹配防 evil-music.126.net 绕过", src.includes("h.endsWith(`.${s}`)"));
+  ok("重定向手动跟随", src.includes('redirect: "manual"'));
+  ok("重定向逐跳重校验白名单", src.includes("parseRelayTarget(next.toString())"));
+  ok("重定向跳数上限", src.includes("RELAY_MAX_REDIRECTS = 3"));
+  ok("单跳超时", src.includes("RELAY_TIMEOUT_MS = 20000"));
+  ok("总大小上限 150MB", src.includes("RELAY_MAX_BYTES = 150 * 1024 * 1024"));
+  ok("Range 透传（audio 拖拽）", src.includes('upstreamHeaders["Range"]'));
+  ok("不转发 Referer/Origin", src.includes("不发送 Referer/Origin"));
+  ok("响应头白名单透传", src.includes("RELAY_PASS_HEADERS"));
+  ok("206 状态码透传", src.includes("status: upstream.status"));
+
+  const player = readFileSync(`${root}public/assets/js/player.js`, "utf-8");
+  ok("音频中转优先于换源", player.includes("'/relay?url=' + encodeURIComponent(curSrc)"));
+  ok("中转只试一次/首歌", player.includes("relayTriedUrl = ''"));
+  ok("封面链含中转", player.includes("'/relay?url=' + encodeURIComponent(cur)"));
+  ok("AbortError 防误报保留", player.includes("err.name === 'AbortError'"));
+
+  const html = readFileSync(`${root}public/index.html`, "utf-8");
+  ok("index.html 无 Google Fonts 外链", !html.includes("fonts.googleapis.com"));
+  ok("index.html 引用自托管 fonts.css", html.includes("assets/css/fonts.css"));
+  const fontsCss = readFileSync(`${root}public/assets/css/fonts.css`, "utf-8");
+  ok("fonts.css 含 Plus Jakarta Sans", fontsCss.includes("font-family: 'Plus Jakarta Sans'"));
+  ok("fonts.css 含 JetBrains Mono", fontsCss.includes("font-family: 'JetBrains Mono'"));
+  for (const f of ["plus-jakarta-sans.woff2", "jetbrains-mono-normal.woff2", "jetbrains-mono-italic.woff2"]) {
+    ok(`字体文件存在 ${f}`, existsSync(`${root}public/assets/fonts/${f}`));
+  }
+}
+
 console.log(`\n全部通过：${pass} 项断言`);

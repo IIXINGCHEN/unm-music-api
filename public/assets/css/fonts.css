@@ -1,0 +1,28 @@
+/* 自托管字体：原 Google Fonts（fonts.googleapis.com）在部分用户网络被阻断
+ * （ERR_CONNECTION_CLOSED），导致控制台报错且字体回退。本文件 + ../fonts/*.woff2
+ * 将 Plus Jakarta Sans 与 JetBrains Mono 打包到本站，同源加载、零外部依赖。
+ * 字体为 variable font（字重范围声明），覆盖原 css2 请求的全部字重。 */
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('../fonts/plus-jakarta-sans.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('../fonts/jetbrains-mono-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: italic;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('../fonts/jetbrains-mono-italic.woff2') format('woff2');
+}
