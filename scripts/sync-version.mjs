@@ -6,7 +6,7 @@
  *   2) src/config/configVersion.ts 的 FALLBACK_VERSION 兜底常量
  *   3) public/*.html 静态资源的 ?v= 版本戳
  *   4) public/*.html 里 .app-version-badge 徽标文字（v<major>.<minor> PRO，不再硬编码）
- *   5) docker-compose.yml 的本地镜像标签（image: unm-server:<version>），与 VERSION 同源，
+ *   5) docker-compose.yml 的本地镜像标签（image: hoolhub/unm-server:<version>），与 VERSION 同源，
  *      避免引用上游远程镜像名、确保每次都是本地源码构建
  * 由 pnpm build 前的 prebuild 钩子自动触发，也可手动执行 pnpm sync:version。
  */
@@ -85,20 +85,20 @@ for (const f of htmlFiles) {
   }
 }
 
-// 5) docker-compose.yml 本地镜像标签：image: unm-server:<version>
+// 5) docker-compose.yml 本地镜像标签：image: hoolhub/unm-server:<version>
 //    本地构建、本地命名，不再引用上游远程镜像，确保部署用的永远是当前源码构建的镜像。
 //    幂等替换：兼容旧的 ghcr.io 远端名，首次运行即迁移为本地名。
 const composePath = `${root}docker-compose.yml`;
 let compose = readFileSync(composePath, "utf-8");
 const composeUpdated = compose.replace(
   /^[ \t]*image:[ \t]*\S+[ \t]*$/m,
-  `    image: unm-server:${version}`
+  `    image: hoolhub/unm-server:${version}`
 );
 if (composeUpdated !== compose) {
   writeFileSync(composePath, composeUpdated, "utf-8");
-  console.log(`[sync-version] docker-compose.yml 镜像标签 -> unm-server:${version}`);
+  console.log(`[sync-version] docker-compose.yml 镜像标签 -> hoolhub/unm-server:${version}`);
 } else {
-  console.log(`[sync-version] docker-compose.yml 镜像标签已对齐: unm-server:${version}`);
+  console.log(`[sync-version] docker-compose.yml 镜像标签已对齐: hoolhub/unm-server:${version}`);
 }
 
 console.log(`[sync-version] 全部版本号已与根目录 VERSION 文件对齐: v${version}`);
