@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { env, APP_INFO } from "../config/index.js";
 import { globalCache } from "../services/serviceCache.js";
 import { getAvailableProviders } from "../services/serviceUnm.js";
-import { successResponse } from "../utils/utilResponse.js";
+import { successResponse, errorResponse } from "../utils/utilResponse.js";
+import { isMonitorAuthorized } from "../middlewares/middlewareAuth.js";
 import type { ApiResponse, ServerInfoData, HealthData, AppEnv } from "../types/typeApi.js";
 
 const infoRoute = new Hono<AppEnv>();
@@ -36,6 +37,13 @@ infoRoute.get("/health", (c) => {
   };
 
   if (verbose) {
+    // verbose 暴露内存与缓存内部指标，需要监控密钥（与 /api/monitor/* 同等鉴权）
+    if (!isMonitorAuthorized(c)) {
+      return c.json<ApiResponse>(
+        errorResponse(401, "Unauthorized: verbose 健康指标需要正确的 API 访问密钥 (x-api-key)"),
+        401
+      );
+    }
     data.memory = process.memoryUsage();
     data.cache = globalCache.stats();
   }
