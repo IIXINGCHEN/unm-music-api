@@ -213,9 +213,27 @@ const envSchema = z.object({
     .transform((val) => parseInt(val, 10))
     .pipe(z.number().min(1).max(10000)),
   // 受信反向代理（逗号分隔，支持精确 IP 与 IPv4 CIDR，如 "127.0.0.1,::1,10.0.0.0/8"）。
-  // 仅当直连对端属于受信代理时，才采信 X-Forwarded-For / X-Real-IP 取真实客户端 IP，
+  // 仅当直连对端属于受信代理时，才按 X-Forwarded-For 链（最右非受信）解析真实客户端 IP；
+  // 平台边缘头（cf-connecting-ip 等）仅在 Serverless 无 socket 时采信，
+  // 自托管反代场景不再采信（普通反代不会覆盖它们，可被客户端伪造）。
   // 否则一律使用直连对端 IP，防止客户端伪造请求头绕过限流。
   TRUSTED_PROXIES: z.string().default("127.0.0.1,::1"),
+  // Cloudflare 边缘 IP 自动更新：开启后，进程首次解析受信表时从官方 URL 拉取
+  // IPv4 段并按间隔定时刷新，内存合并进受信代理表（不写 .env）。
+  // 下发列表经过严格校验（非空、逐行合法 IPv4 CIDR、拒绝 /8 更粗网段防投毒），
+  // 校验失败或拉取失败时沿用上次有效列表，永不清空。默认关闭（显式 opt-in）。
+  CF_AUTO_TRUSTED_IPS: z
+    .string()
+    .optional()
+    .default("false")
+    .transform((val) => val === "true" || val === "1"),
+  CF_TRUSTED_IPS_URL: z.string().default("https://www.cloudflare.com/ips-v4"),
+  CF_TRUSTED_IPS_INTERVAL_MS: z
+    .string()
+    .optional()
+    .default("86400000")
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().min(3600000).max(604800000)),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -143,9 +143,31 @@ console.log("[4b] 渗透测试 findings 回归");
 {
   const utilStringJs = `${testDist}/src/utils/utilString.js`;
   const utilSecurityJs = `${testDist}/src/utils/utilSecurity.js`;
+  const utilNetJs = `${testDist}/src/utils/utilNet.js`;
   const mwRateLimitJs = `${testDist}/src/middlewares/middlewareRateLimit.js`;
   const { sanitizeParam } = await import(utilStringJs);
   const { isAllowedDomain } = await import(utilSecurityJs);
+  const { parseCloudflareIpList } = await import(utilNetJs);
+
+  // Cloudflare 下发列表校验（防投毒门）：合法才接受，否则整体丢弃
+  {
+    const good = "173.245.48.0/20\n103.21.244.0/22\n104.16.0.0/13\n";
+    const parsed = parseCloudflareIpList(good);
+    ok("CF 列表：合法文本通过", Array.isArray(parsed) && parsed.length === 3);
+    ok("CF 列表：空文本拒绝", parseCloudflareIpList("") === null);
+    ok("CF 列表：空白文本拒绝", parseCloudflareIpList("  \n \n") === null);
+    ok("CF 列表：垃圾行拒绝", parseCloudflareIpList("173.245.48.0/20\ngarbage\n") === null);
+    ok("CF 列表：0.0.0.0/0 拒绝", parseCloudflareIpList("0.0.0.0/0\n") === null);
+    ok("CF 列表：/7 超粗网段拒绝", parseCloudflareIpList("10.0.0.0/7\n") === null);
+    ok("CF 列表：非法 octet 拒绝", parseCloudflareIpList("999.1.1.0/24\n") === null);
+    ok("CF 列表：IPv6 行拒绝（仅支持 IPv4）", parseCloudflareIpList("2400:cb00::/32\n") === null);
+    ok(
+      "CF 列表：超 128 条拒绝",
+      parseCloudflareIpList(Array.from({ length: 129 }, (_, i) => `10.${i >> 8}.${i & 255}.0/24`).join("\n")) === null
+    );
+    ok("CF 列表：/8 边界通过", (parseCloudflareIpList("10.0.0.0/8\n") ?? []).length === 1);
+    ok("CF 列表：/32 通过", (parseCloudflareIpList("1.2.3.4/32\n") ?? []).length === 1);
+  }
 
   // F-003：sanitizeParam 剥离换行符，service 层日志不再被劈行伪造
   ok("F-003: 剥离 \\n", sanitizeParam("a\n[FAKE] forged") === "a [FAKE] forged");

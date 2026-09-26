@@ -53,10 +53,79 @@ function parseTrustedProxies(raw: string): TrustedEntry[] {
 let cachedRaw = "";
 let cachedEntries: TrustedEntry[] = [];
 
+// ---- Cloudflare 边缘 IP 自动更新（CF_AUTO_TRUSTED_IPS） ----
+// 进程首次解析受信表时触发：立即拉取一次，之后按 CF_TRUSTED_IPS_INTERVAL_MS
+// 定时刷新。结果只做内存合并（不写 .env），拉取/校验失败时沿用上次有效列表。
+let cfRefreshStarted = false;
+let cfCidrs = ""; // 上次成功下发的 CIDR（逗号分隔），合并进受信表
+let cfGeneration = 0; // 成功刷新次数，计入受信表缓存键
+
+/**
+ * 校验 Cloudflare 下发的 IP 段文本：合法时返回 IPv4 CIDR 数组，
+ * 否则返回 null（调用方保留旧表，永不接受可疑列表）。
+ * 校验规则：非空、条数上限 128、逐行严格 IPv4 CIDR、拒绝 /8 更粗网段
+ * （防投毒：Cloudflare 官方当前最粗为 /13）。
+ */
+export function parseCloudflareIpList(text: string): string[] | null {
+  const lines = text
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (lines.length === 0 || lines.length > 128) return null;
+  const out: string[] = [];
+  for (const line of lines) {
+    const m = /^([0-9]{1,3}(?:\.[0-9]{1,3}){3})\/([0-9]{1,2})$/.exec(line);
+    const ipPart = m?.[1];
+    const bitsPart = m?.[2];
+    if (!m || !ipPart || !bitsPart) return null;
+    if (parseIPv4(ipPart) === null) return null;
+    const bits = parseInt(bitsPart, 10);
+    if (!Number.isInteger(bits) || bits < 8 || bits > 32) return null;
+    out.push(`${ipPart}/${bits}`);
+  }
+  return out;
+}
+
+async function refreshCloudflareRanges(): Promise<void> {
+  const url = env.CF_TRUSTED_IPS_URL ?? "";
+  try {
+    // 只允许 HTTPS：明文拉取可被中间人投毒，等于直接改写受信表
+    if (!url.startsWith("https://")) {
+      throw new Error("CF_TRUSTED_IPS_URL 必须为 https:// 前缀");
+    }
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const list = parseCloudflareIpList(await res.text());
+    if (!list) throw new Error("下发列表校验未通过（空/格式非法/含超粗网段）");
+    cfCidrs = list.join(",");
+    cfGeneration++;
+    console.log(
+      `[TRUSTED_PROXIES] Cloudflare 边缘 IP 段已刷新：${list.length} 条 IPv4 CIDR（第 ${cfGeneration} 次）`
+    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn(`[TRUSTED_PROXIES] Cloudflare 边缘 IP 段刷新失败，沿用旧表：${msg}`);
+  }
+}
+
+function ensureCfRefreshStarted(): void {
+  if (cfRefreshStarted || !env.CF_AUTO_TRUSTED_IPS) return;
+  cfRefreshStarted = true;
+  // 启动时立即拉一次，之后定时刷新；unref 避免阻塞 Serverless 事件循环
+  void refreshCloudflareRanges();
+  const timer = setInterval(() => {
+    void refreshCloudflareRanges();
+  }, env.CF_TRUSTED_IPS_INTERVAL_MS);
+  if (typeof timer.unref === "function") timer.unref();
+}
+
 function getTrustedEntries(): TrustedEntry[] {
-  const raw = env.TRUSTED_PROXIES ?? "";
-  if (raw !== cachedRaw) {
-    cachedRaw = raw;
+  ensureCfRefreshStarted();
+  const raw = `${env.TRUSTED_PROXIES ?? ""},${cfCidrs}`;
+  // 缓存键带上 CF 刷新代际：列表更新后旧缓存即失效
+  const key = `${cfGeneration}#${raw}`;
+  if (key !== cachedRaw) {
+    cachedRaw = key;
     cachedEntries = parseTrustedProxies(raw);
   }
   return cachedEntries;
