@@ -190,7 +190,14 @@ const relaySchema = z.object({
 });
 
 /** 允许中转的媒体 CDN 主机后缀（精确匹配或子域后缀匹配） */
-const RELAY_HOST_SUFFIXES = ["music.126.net", "joox.com", "qqmusic.qq.com"] as const;
+const RELAY_HOST_SUFFIXES = [
+  "music.126.net",
+  "joox.com",
+  "qqmusic.qq.com",
+  // F-005：bilibili / bilivideo 音源返回的媒体 URL  host 为 upos-*.bilivideo.com，
+  // 不加会导致 /relay 对这批用户静默失效（功能缺口，非安全弱点）
+  "bilivideo.com",
+] as const;
 const RELAY_TIMEOUT_MS = 20000;
 const RELAY_MAX_BYTES = 150 * 1024 * 1024;
 const RELAY_MAX_REDIRECTS = 3;

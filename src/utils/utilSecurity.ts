@@ -62,11 +62,13 @@ export function isAllowedDomain(incoming: string | undefined | null, allowedConf
   let incomingHost = "";
   let incomingOrigin = "";
   let incomingPort = "";
+  let incomingProtocol = "";
 
   try {
     const url = new URL(incoming.includes("://") ? incoming : `https://${incoming}`);
     incomingHost = url.hostname.toLowerCase();
     incomingOrigin = `${url.protocol}//${url.host}`.toLowerCase();
+    incomingProtocol = url.protocol;
     // 显式端口优先；未显式指定时按协议默认端口归一，
     // 这样 "https://a.example.com" 与白名单 "*.example.com:443" 能正确匹配。
     incomingPort = url.port || (url.protocol === "https:" ? "443" : url.protocol === "http:" ? "80" : "");
@@ -81,7 +83,8 @@ export function isAllowedDomain(incoming: string | undefined | null, allowedConf
     }
 
     try {
-      const allowedUrl = new URL(allowed.includes("://") ? allowed : `https://${allowed}`);
+      const allowedHasScheme = allowed.includes("://");
+      const allowedUrl = new URL(allowedHasScheme ? allowed : `https://${allowed}`);
       const allowedHost = allowedUrl.hostname.toLowerCase();
 
       // 端口约束对**所有** host 匹配分支生效：白名单条目显式指定端口时必须精确相等，
@@ -93,8 +96,12 @@ export function isAllowedDomain(incoming: string | undefined | null, allowedConf
       // 2. 泛域名匹配 (例如 *.example.com)
       if (allowedHost.startsWith("*.")) {
         const rootDomain = allowedHost.slice(2);
+        // F-004：条目携带 scheme 时要求协议一致，
+        // "https://*.example.com" 不再放行 http:// 子域。
+        const schemeOk = !allowedHasScheme || incomingProtocol === allowedUrl.protocol;
         if (
           portOk &&
+          schemeOk &&
           (incomingHost === rootDomain || incomingHost.endsWith(`.${rootDomain}`))
         ) {
           return true;
@@ -103,7 +110,17 @@ export function isAllowedDomain(incoming: string | undefined | null, allowedConf
 
       // 3. 精确 Host 匹配
       if (incomingHost === allowedHost && portOk) {
-        return true;
+        // F-004：条目携带 scheme 时必须完整 Origin 一致（协议 + 主机 + 有效端口），
+        // "https://music.example.com" 不再放行 http:///ftp:// 同主机。
+        // 用归一化 Origin 比较（默认端口已剥离），保留旧行为：
+        // 条目 "https://music.example.com:443" 仍放行 "https://music.example.com"。
+        // 无 scheme 条目保持原有"任意协议"语义（显式文档约定）。
+        if (allowedHasScheme) {
+          const allowedOrigin = `${allowedUrl.protocol}//${allowedUrl.host}`.toLowerCase();
+          if (incomingOrigin === allowedOrigin) return true;
+        } else {
+          return true;
+        }
       }
     } catch {
       // 容错匹配纯域名格式

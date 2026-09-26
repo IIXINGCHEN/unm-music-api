@@ -101,9 +101,10 @@ export function getPeerIp(c: Context): string | null {
 
 /**
  * 平台边缘网关注入的客户端 IP 头（按优先级）。
- * 采信前提见 getClientIp：只有"拿不到直连对端（Serverless）"或"直连对端受信"
- * 时才采信——边缘网关会覆盖写入这些头；直连暴露部署下对端不受信时，
- * 攻击者可自带 X-Real-IP 等头伪造身份，此时必须忽略。
+ * 采信前提见 getClientIp：只有"拿不到直连对端（Serverless / 边缘运行时）"
+ * 时才采信——此时只有平台能写这些头。直连对端受信（自托管反代）时**不**
+ * 再采信：普通反代不会覆盖 cf-connecting-ip 等头，客户端可伪造，
+ * 旧逻辑优先采信它们等于把 XFF 伪造从另一扇门 reopen（F-001）。
  */
 const EDGE_CLIENT_IP_HEADERS = [
   "x-vercel-forwarded-for",
@@ -150,7 +151,10 @@ function rightmostUntrustedIp(c: Context, peer: string): string {
     peer,
   ]
     .map(normalizeIp)
-    .filter((s) => s.length > 0);
+    // F-002：丢弃非 IP 字面量。XFF 链此前没有 isPlausibleIp 守卫，
+    // 任意字符串都会原样进入审计日志的 ip 字段（可污染归因与检索）；
+    // 丢弃后自然回退到直连对端，不再回显攻击者文本。
+    .filter((s) => s.length > 0 && isPlausibleIp(s));
   for (let i = chain.length - 1; i >= 0; i--) {
     const ip = chain[i];
     if (ip && !isTrustedProxy(ip)) return ip;
@@ -160,31 +164,33 @@ function rightmostUntrustedIp(c: Context, peer: string): string {
 
 /**
  * 真实客户端 IP（限流与遥测共用）：
- * - 平台边缘头（Vercel / Cloudflare / Netlify 等边缘网关注入）**仅在两种情形采信**：
- *   (1) 拿不到直连对端（Serverless / 边缘运行时无 socket，此时只有平台能写这些头）；
- *   (2) 直连对端是受信代理（TRUSTED_PROXIES）——网关覆盖写入，客户端伪造会被覆盖。
- *   直连暴露部署下对端不受信时一律忽略边缘头：攻击者可自带 X-Real-IP 等头
- *   自选限流身份键，采信即等于把 XFF 伪造从另一扇门 reopen；
- * - 仅当直连对端是受信代理时，才按 XFF 链解析（最右非受信）；
- * - 否则一律使用直连对端 IP，防止客户端伪造请求头绕过限流；
+ * - 拿不到直连对端（Serverless / 边缘运行时无 socket）：只能采信平台边缘头。
+ *   前提是平台会覆盖写入这些头（Vercel / Cloudflare / Netlify 均如此）。
+ *   若把 serverless 适配器部署在"不覆盖这些头"的平台上，客户端可伪造身份，
+ *   此时应在平台层 strip 相关头，或改用自托管 Node 部署；
+ * - 直连对端是受信代理（TRUSTED_PROXIES）：**只走 XFF 链**（最右非受信），
+ *   不再优先采信平台边缘头。普通反代（nginx/Caddy 默认配置）不会覆盖
+ *   cf-connecting-ip / true-client-ip 等头，客户端自带会被旧逻辑优先采信，
+ *   等于限流身份自选（F-001）；XFF 由代理附加写入，伪造段被最右非受信规则排除。
+ *   注意：Cloudflare 等 CDN 回源场景请把 CDN 边缘 IP 段加入 TRUSTED_PROXIES，
+ *   否则归因坍缩到 CDN 边缘 IP（限流变粗，但不可伪造）；
+ * - 对端不受信（直连暴露）：忽略一切请求头，直接用对端 IP；
  * - 拿不到任何来源时返回 "unknown" 而非回环地址：诚实表达缺失归因，
  *   避免把不同客户端坍缩到同一个 127.0.0.1 限流键上。
  */
 export function getClientIp(c: Context): string {
   const peer = getPeerIp(c);
 
-  // 边缘头采信门：serverless（peer === null）或对端受信才可信
-  const edgeTrustworthy = peer === null || isTrustedProxy(peer);
-  if (edgeTrustworthy) {
-    const edgeIp = edgeClientIp(c);
-    if (edgeIp) return edgeIp;
+  // Serverless / 边缘运行时：无 socket，只能信任平台边缘头
+  if (peer === null) {
+    return edgeClientIp(c) ?? "unknown";
   }
 
-  if (peer) {
-    if (isTrustedProxy(peer)) {
-      return rightmostUntrustedIp(c, peer);
-    }
-    return peer;
+  // 受信代理：只走 XFF 链，不再采信平台边缘头（F-001）
+  if (isTrustedProxy(peer)) {
+    return rightmostUntrustedIp(c, peer);
   }
-  return "unknown";
+
+  // 直连暴露：对端不受信，忽略一切客户端可控头
+  return peer;
 }

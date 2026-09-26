@@ -89,16 +89,29 @@ console.log("[4] utilNet.getClientIp / isTrustedProxy");
     "直连时忽略伪造 XFF",
     getClientIp(ctx("203.0.113.9", { "x-forwarded-for": "1.1.1.1" })) === "203.0.113.9"
   );
-  // 边缘头采信门（M15 修正）：仅"拿不到直连对端（Serverless）"或"对端受信"时采信。
-  // 直连暴露部署下对端不受信，攻击者可自带 X-Real-IP 伪造限流身份——必须忽略，用对端 IP。
+  // 边缘头采信门（F-001 修正）：仅"拿不到直连对端（Serverless）"时采信平台边缘头。
+  // 受信代理场景不再优先采信边缘头——普通反代不会覆盖 cf-connecting-ip 等头，
+  // 客户端自带会被旧逻辑采信 = 限流身份自选；只走 XFF 链（最右非受信）。
   ok(
-    "直连不受信时忽略伪造 x-real-ip",
-    getClientIp(ctx("203.0.113.9", { "x-real-ip": "2.2.2.2" })) === "203.0.113.9"
+    "受信代理时忽略伪造 x-real-ip",
+    getClientIp(ctx("127.0.0.1", { "x-real-ip": "2.2.2.2" })) === "127.0.0.1"
   );
-  // 受信代理场景下边缘头仍可信（网关覆盖写入）
   ok(
-    "受信代理时采信 x-real-ip",
-    getClientIp(ctx("127.0.0.1", { "x-real-ip": "2.2.2.2" })) === "2.2.2.2"
+    "F-001: 受信代理时忽略伪造 cf-connecting-ip",
+    getClientIp(ctx("127.0.0.1", { "cf-connecting-ip": "198.51.100.9" })) === "127.0.0.1"
+  );
+  ok(
+    "F-001: 边缘头伪造不压倒合法 XFF",
+    getClientIp(ctx("127.0.0.1", { "cf-connecting-ip": "198.51.100.9", "x-forwarded-for": "203.0.113.5" })) === "203.0.113.5"
+  );
+  // F-002：XFF 非 IP 字面量被丢弃，不再进入审计日志 ip 字段
+  ok(
+    "F-002: 垃圾 XFF 回退到对端",
+    getClientIp(ctx("127.0.0.1", { "x-forwarded-for": "<img src=x onerror=alert(1)>" })) === "127.0.0.1"
+  );
+  ok(
+    "F-002: 混合垃圾段中仍解析出真实 IP",
+    getClientIp(ctx("127.0.0.1", { "x-forwarded-for": "garbage, 203.0.113.5" })) === "203.0.113.5"
   );
   // 受信代理 + 附加型 XFF：取最右非受信段（客户端伪造的最左段不再被采信）
   ok(
@@ -123,6 +136,77 @@ console.log("[4] utilNet.getClientIp / isTrustedProxy");
     "无 socket 时不采信 XFF",
     getClientIp(ctx(null, { "x-forwarded-for": "198.51.100.7" })) === "unknown"
   );
+}
+
+// ---------- 4b. 渗透测试 findings 回归（F-003 ~ F-006） ----------
+console.log("[4b] 渗透测试 findings 回归");
+{
+  const utilStringJs = `${testDist}/src/utils/utilString.js`;
+  const utilSecurityJs = `${testDist}/src/utils/utilSecurity.js`;
+  const mwRateLimitJs = `${testDist}/src/middlewares/middlewareRateLimit.js`;
+  const { sanitizeParam } = await import(utilStringJs);
+  const { isAllowedDomain } = await import(utilSecurityJs);
+
+  // F-003：sanitizeParam 剥离换行符，service 层日志不再被劈行伪造
+  ok("F-003: 剥离 \\n", sanitizeParam("a\n[FAKE] forged") === "a [FAKE] forged");
+  ok("F-003: 剥离 \\r\\n", sanitizeParam("x\r\n[SECURITY] forged") === "x [SECURITY] forged");
+  ok("F-003: 正常值不受影响", sanitizeParam("  hello world  ") === "hello world");
+  ok("F-003: 长度截断仍生效", sanitizeParam("abcdefgh", 4) === "abcd");
+
+  // F-004：ALLOWED_DOMAIN scheme 感知
+  ok(
+    "F-004: https 条目不放行 http",
+    isAllowedDomain("http://music.example.com", "https://music.example.com") === false
+  );
+  ok(
+    "F-004: https 条目放行 https",
+    isAllowedDomain("https://music.example.com", "https://music.example.com") === true
+  );
+  ok(
+    "F-004: ftp 不被放行",
+    isAllowedDomain("ftp://music.example.com", "https://music.example.com") === false
+  );
+  ok(
+    "F-004: 默认端口归一保留（:443 条目放行无端口 https）",
+    isAllowedDomain("https://music.example.com", "https://music.example.com:443") === true
+  );
+  ok(
+    "F-004: 泛域名 https 条目不放行 http 子域",
+    isAllowedDomain("http://a.example.com", "https://*.example.com") === false
+  );
+  ok(
+    "F-004: 泛域名 https 条目放行 https 子域",
+    isAllowedDomain("https://a.example.com", "https://*.example.com") === true
+  );
+  ok(
+    "F-004: 无 scheme 条目保持任意协议语义",
+    isAllowedDomain("http://a.example.com", "*.example.com") === true
+  );
+
+  // F-005：relay 白名单包含 bilivideo CDN（结构断言）
+  {
+    const src = readFileSync(`${root}src/routes/routeResource.ts`, "utf-8");
+    ok("F-005: RELAY_HOST_SUFFIXES 含 bilivideo.com", src.includes('"bilivideo.com"'));
+  }
+
+  // F-006：限流表键数上限存在且有界
+  {
+    const { RATE_LIMIT_MAX_KEYS } = await import(mwRateLimitJs);
+    ok(
+      "F-006: 全局限流表键上限存在且有界",
+      Number.isInteger(RATE_LIMIT_MAX_KEYS) && RATE_LIMIT_MAX_KEYS > 0 && RATE_LIMIT_MAX_KEYS <= 100000
+    );
+    const src = readFileSync(`${root}src/routes/routeMusic.ts`, "utf-8");
+    ok(
+      "F-006: /test 限流表有键上限与淘汰逻辑",
+      src.includes("TEST_RATE_MAX_KEYS") && src.includes("testRateMap.keys().next()")
+    );
+    const mwSrc = readFileSync(`${root}src/middlewares/middlewareRateLimit.ts`, "utf-8");
+    ok(
+      "F-006: 全局限流表有淘汰逻辑",
+      mwSrc.includes("ipMap.size >= RATE_LIMIT_MAX_KEYS") && mwSrc.includes("ipMap.keys().next()")
+    );
+  }
 }
 
 // ---------- 5. 版本号 ----------

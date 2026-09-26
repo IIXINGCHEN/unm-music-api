@@ -172,10 +172,10 @@ pnpm prd
 | 环境变量名 | 类型 | 默认值 | 描述说明 |
 |:---|:---|:---|:---|
 | `PORT` | Number | `5678` | 服务监听端口 |
-| `HOST` | String | `0.0.0.0` | 监听主机地址 |
+| `HOST` | String | `127.0.0.1` | 监听主机地址 |
 | `NODE_ENV` | String | `production` | 运行环境 (`development` / `production`) |
 | `ALLOWED_DOMAIN` | String | `*` | 跨域允许来源 (`*` 或 `https://domain.com,https://app.com`) |
-| `MONITOR_SECRET_KEY` | String | `""` | 监控大盘与管理接口鉴权秘钥（留空则不开启鉴权） |
+| `MONITOR_SECRET_KEY` | String | `""` | 监控大盘与管理接口鉴权秘钥（启动时 fail-closed：缺失则拒绝启动） |
 | `ENABLE_RATE_LIMIT` | Boolean | `true` | 是否启用 API 滑动窗口速率限制防护 |
 | `RATE_LIMIT_WINDOW_MS`| Number | `60000` | 限流滑动时间窗口大小 (毫秒，默认 1分钟) |
 | `RATE_LIMIT_MAX_REQUESTS`| Number | `120` | 单 IP 在时间窗口内的最大允许请求次数 |

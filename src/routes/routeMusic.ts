@@ -18,6 +18,8 @@ const musicRoute = new Hono<AppEnv>();
 const testRateMap = new Map<string, number[]>();
 const TEST_RATE_WINDOW_MS = 60 * 1000;
 const TEST_RATE_MAX = 10;
+/** F-006：/test 限流表同样加键数上限（近似 LRU），与全局限流表同理 */
+export const TEST_RATE_MAX_KEYS = 1000;
 const testRateCleanup = setInterval(() => {
   const now = Date.now();
   for (const [ip, ts] of testRateMap.entries()) {
@@ -31,7 +33,8 @@ if (typeof testRateCleanup.unref === "function") testRateCleanup.unref();
 async function testRateLimit(c: Context<AppEnv>, next: Next) {
   const ip = getClientIp(c);
   const now = Date.now();
-  const ts = (testRateMap.get(ip) ?? []).filter((t) => now - t < TEST_RATE_WINDOW_MS);
+  const hit = testRateMap.get(ip);
+  const ts = (hit ?? []).filter((t) => now - t < TEST_RATE_WINDOW_MS);
   if (ts.length >= TEST_RATE_MAX) {
     return c.json<ApiResponse>(
       errorResponse(429, "Too Many Requests: /test 调用过于频繁，请稍后再试"),
@@ -39,6 +42,13 @@ async function testRateLimit(c: Context<AppEnv>, next: Next) {
     );
   }
   ts.push(now);
+  // F-006：键数上限（近似 LRU）；命中键刷新 recency，新键超限时淘汰最老键
+  if (hit) {
+    testRateMap.delete(ip);
+  } else if (testRateMap.size >= TEST_RATE_MAX_KEYS) {
+    const oldest = testRateMap.keys().next();
+    if (!oldest.done) testRateMap.delete(oldest.value);
+  }
   testRateMap.set(ip, ts);
   await next();
 }

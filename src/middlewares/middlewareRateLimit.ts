@@ -11,6 +11,12 @@ interface IpRecord {
 
 const ipMap = new Map<string, IpRecord>();
 
+/**
+ * F-006：限流表键数上限（近似 LRU）。此前无界——结合身份伪造可制造无限键，
+ * 常驻至清理周期。与 serviceMonitor 的 stat 上限同类防护。
+ */
+export const RATE_LIMIT_MAX_KEYS = 5000;
+
 // 定期清理过期的 IP 记录，防止内存泄漏 (unref 避免阻塞 Serverless 事件循环)
 const cleanupTimer = setInterval(() => {
   const now = Date.now();
@@ -55,7 +61,16 @@ export const rateLimitMiddleware: MiddlewareHandler<AppEnv> = async (c, next) =>
   const maxRequests = env.RATE_LIMIT_MAX_REQUESTS;
 
   let record = ipMap.get(ip);
-  if (!record) {
+  if (record) {
+    // 命中键刷新为最新，保持近似 LRU 语义：热点键不被冷键挤出
+    ipMap.delete(ip);
+    ipMap.set(ip, record);
+  } else {
+    // 新键：超上限时淘汰最久未访问键（Map 保持插入顺序，首键即最老）
+    if (ipMap.size >= RATE_LIMIT_MAX_KEYS) {
+      const oldest = ipMap.keys().next();
+      if (!oldest.done) ipMap.delete(oldest.value);
+    }
     record = { timestamps: [] };
     ipMap.set(ip, record);
   }
