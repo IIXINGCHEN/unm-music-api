@@ -48,7 +48,8 @@ app.use("*", async (c, next) => {
 });
 
 // 2. 基础安全响应头增强（含 CSP：因页面存在内联主题引导脚本与内联事件处理器，
-//    script-src 需 'unsafe-inline'；媒体与封面来自各音源 CDN，故 img/media 放开）
+//    script-src 需 'unsafe-inline'；媒体与封面来自各音源 CDN，故 img/media 放开；
+//    Cloudflare Web Analytics 探针（beacon.min.js）按需放行其官方域名）
 app.use(
   "*",
   secureHeaders({
@@ -57,12 +58,12 @@ app.use(
     referrerPolicy: "strict-origin-when-cross-origin",
     contentSecurityPolicy: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
       imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
       mediaSrc: ["'self'", "blob:", "https:", "http:"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", "https://cloudflareinsights.com"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
