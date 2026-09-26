@@ -111,11 +111,18 @@ let playGeneration = 0;
             stopStallWatchdog();
             audio.src = url;
             await audio.play();
+            // 代际校验：play() 期间用户已切歌则不再报"换源成功"，新流程自己会报
+            if (gen !== playGeneration || trackAtEntry !== currentTrack) return;
             showToast({ type: 'success', title: '换源成功', message: `已切换到 ${lastAudioSource} 音源` });
             return;
           }
         }
-      } catch (e) { /* 继续走下面的失败提示 */ }
+      } catch (e) {
+        // play() 被新的 load 中断（AbortError）或已有更新的播放流程（换源/切歌）接管：
+        // 接管方会自己报告结果，这里再报"音频播放失败"是误报，静默返回
+        if ((e && e.name === 'AbortError') || gen !== playGeneration || trackAtEntry !== currentTrack) return;
+        /* 继续走下面的失败提示 */
+      }
       finally {
         // 只有同一代际的请求才能释放锁，防止旧请求吞掉新请求的换源
         if (fallbackGen === gen) { fallbackInFlight = false; fallbackGen = -1; }
@@ -194,7 +201,19 @@ let playGeneration = 0;
     }
     function setCoverArt(imgEl, vinylEl, picUrl) {
       if (picUrl) {
-        imgEl.onerror = () => { imgEl.classList.add('hidden'); vinylEl.classList.remove('hidden'); };
+        imgEl.onerror = () => {
+          // 网易云 p1 CDN 偶发拒绝连接（ERR_CONNECTION_CLOSED）：先试一次 p2 镜像 host，
+          // 仍失败才降级为黑胶占位
+          const cur = imgEl.src || '';
+          if (cur.includes('://p1.music.126.net/') && !imgEl.dataset.p2retried) {
+            imgEl.dataset.p2retried = '1';
+            imgEl.src = cur.replace('://p1.music.126.net/', '://p2.music.126.net/');
+            return;
+          }
+          delete imgEl.dataset.p2retried;
+          imgEl.classList.add('hidden'); vinylEl.classList.remove('hidden');
+        };
+        delete imgEl.dataset.p2retried;
         imgEl.src = picUrl;
         imgEl.classList.remove('hidden');
         vinylEl.classList.add('hidden');
@@ -430,6 +449,9 @@ let playGeneration = 0;
         showToast({ type: 'success', title: '开始播放', message: `《${track.name}》- ${track.artist}` });
         loadLyrics(track.id, track.source || 'netease');
       } catch (err) {
+        // play() 被新的 load 中断（AbortError）说明换源/切歌的新流程已接管，
+        // 它会自己报告结果；这里再报"匹配失败"是误报（常见于 CDN 掐连接触发换源时）
+        if ((err && err.name === 'AbortError') || myGen !== playGeneration) return;
         showToast({ type: 'error', title: '匹配失败', message: err.message || '未能成功获取直链' });
       }
     }
