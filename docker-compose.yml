@@ -1,7 +1,7 @@
 services:
   unm-server:
     container_name: unm-server
-    image: hoolhub/unm-server:4.2.0
+    image: hoolhub/unm-server:4.5.0
     build:
       context: .
       dockerfile: Dockerfile

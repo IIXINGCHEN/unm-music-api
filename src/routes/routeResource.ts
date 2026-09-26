@@ -8,6 +8,15 @@ import type { GDTrack, GDPicResponse, LyricResult, PlaylistDetail } from "../typ
 
 const resourceRoute = new Hono<AppEnv>();
 
+/** 上游明确拒绝的 source 属客户端参数错误，返回 400 而非 500 */
+function unsupportedSourceResponse(c: Context, error: any) {
+  if (error?.message?.startsWith("不支持的上游音源")) {
+    return c.json<ApiResponse>(errorResponse(400, error.message), 400);
+  }
+  return null;
+}
+
+
 const searchSchema = z.object({
   name: z.string().min(1, "缺少 name 参数").max(100),
   source: z.string().max(30).optional(),
@@ -37,6 +46,11 @@ const picSchema = z.object({
 const lyricSchema = z.object({
   id: z.string().min(1, "缺少 id 参数").max(100),
   source: z.string().max(30).optional(),
+  // 歌词兜底用元数据（可选）：上游无歌词时走 lrclib.net 按曲名/歌手/时长匹配
+  name: z.string().max(100).optional(),
+  artist: z.string().max(100).optional(),
+  album: z.string().max(100).optional(),
+  duration: z.string().max(20).optional(),
 });
 
 // 跨平台歌曲搜索 (/search)
@@ -57,6 +71,8 @@ resourceRoute.get("/search", async (c) => {
     const results = await gdStudio.search(name, source || env.DEFAULT_SEARCH_SOURCE, count, pageNum);
     return c.json<ApiResponse<GDTrack[]>>(successResponse(results, "搜索成功"));
   } catch (error: any) {
+    const bad = unsupportedSourceResponse(c, error);
+    if (bad) return bad;
     console.error(`[Search Error] name=${name}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `搜索失败: ${error.message}`), 500);
   }
@@ -82,6 +98,8 @@ const handlePicture = async (c: Context) => {
 
     return c.json<ApiResponse<GDPicResponse>>(successResponse(data));
   } catch (error: any) {
+    const bad = unsupportedSourceResponse(c, error);
+    if (bad) return bad;
     console.error(`[Picture Error] id=${id}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `获取封面失败: ${error.message}`), 500);
   }
@@ -101,11 +119,18 @@ resourceRoute.get("/lyric", async (c) => {
     );
   }
 
-  const { id, source } = parsed.data;
+  const { id, source, name, artist, album, duration } = parsed.data;
   try {
-    const data = await gdStudio.getLyric(id, source || env.DEFAULT_SEARCH_SOURCE);
+    const data = await gdStudio.getLyric(id, source || env.DEFAULT_SEARCH_SOURCE, {
+      track_name: name,
+      artist_name: artist,
+      album_name: album,
+      duration: duration ? Number(duration) : undefined,
+    });
     return c.json<ApiResponse<LyricResult>>(successResponse(data));
   } catch (error: any) {
+    const bad = unsupportedSourceResponse(c, error);
+    if (bad) return bad;
     console.error(`[Lyric Error] id=${id}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `获取歌词失败: ${error.message}`), 500);
   }

@@ -5,6 +5,7 @@ import { sanitizeParam } from "../utils/utilString.js";
 import type {
   GDTrack,
   GDUrlResponse,
+  GDUrlStatus,
   GDPicResponse,
   GDLyricResponse,
   LyricResult,
@@ -12,9 +13,67 @@ import type {
   PlaylistTrack,
 } from "../types/typeMusic.js";
 
+/**
+ * CRC32 (IEEE 802.3, 多项式 0xEDB88320)。
+ * GD Studio 官方站同源 api.php 强制签名 s=crc32(urlEncode(name或id))，
+ * 缺/错 s 返回 {"detail":"Invalid request."}；公共 music-api.gdstudio.xyz
+ * 目前无签也能调通，但为与官方实现对齐、防范未来收紧，统一加签。
+ */
+const CRC32_TABLE: number[] = (() => {
+  const table = new Array<number>(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(str: string): number {
+  let crc = 0xffffffff;
+  for (let i = 0; i < str.length; i++) {
+    crc = CRC32_TABLE[(crc ^ str.charCodeAt(i)) & 0xff]! ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+/** GD 官方 urlEncode：encodeURIComponent 后再转义 ()*'! */
+function gdUrlEncode(value: string): string {
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+}
+
 class GDStudioService {
   private client: AxiosInstance;
   private baseUrl: string;
+
+  /**
+   * 上游 GD Studio api.php 实测拒绝的 source（HTTP 400 "Value of `source` is not supported."）。
+   * 实测支持：search→netease/joox/bilibili/netease_album；url→netease/joox/bilibili；
+   * lyric/pic→netease/joox。被拒绝的 source 提前抛错，让路由返回 400 而非 500。
+   */
+  private static readonly REJECTED_SOURCES = new Set([
+    "kuwo",
+    "qq",
+    "kugou",
+    "migu",
+    "bodian",
+    "bilivideo",
+    "ytdlp",
+    "youtube",
+    "youtubedl",
+    "pyncmd",
+  ]);
+
+  private assertSourceSupported(source: string): void {
+    if (GDStudioService.REJECTED_SOURCES.has(source)) {
+      throw new Error(`不支持的上游音源: ${source}（GD Studio api.php 会拒绝该 source）`);
+    }
+  }
 
   constructor() {
     this.baseUrl = env.GDSTUDIO_API_URL;
@@ -46,6 +105,18 @@ class GDStudioService {
       ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])),
     });
 
+    // GD 官方签名：search 签 name，url/lyric/pic 签 id，其他 types 若带 id 则签 id。
+    // s=crc32(urlEncode(签名对象))，十进制字符串形式加入 query。
+    const signTarget =
+      types === "search"
+        ? params["name"]
+        : params["id"] !== undefined
+          ? params["id"]
+          : undefined;
+    if (signTarget !== undefined && signTarget !== "") {
+      query.set("s", String(crc32(gdUrlEncode(String(signTarget)))));
+    }
+
     const requestUrl = `${this.baseUrl}?${query.toString()}`;
     try {
       const response = await this.client.get<T>(requestUrl);
@@ -76,6 +147,7 @@ class GDStudioService {
     const cleanCount = Math.min(Math.max(count || env.DEFAULT_SEARCH_COUNT, 1), AUDIO_CONFIG.MAX_SEARCH_COUNT);
     const cleanPages = Math.max(pages || AUDIO_CONFIG.DEFAULT_SEARCH_PAGE, 1);
     const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
+    this.assertSourceSupported(cleanSource);
 
     const data = await this.callApi<GDTrack[]>(
       "search",
@@ -103,6 +175,7 @@ class GDStudioService {
     if (!cleanId) return null;
 
     const cleanSource = sanitizeParam(source, 30, env.DEFAULT_AUDIO_SOURCE).toLowerCase();
+    this.assertSourceSupported(cleanSource);
     const cleanBr = (AUDIO_CONFIG.SUPPORTED_BITRATES as readonly number[]).includes(Number(br))
       ? Number(br)
       : env.DEFAULT_BITRATE;
@@ -117,16 +190,29 @@ class GDStudioService {
       env.CACHE_TTL_AUDIO
     );
 
-    if (data && typeof data === "object" && data.url) {
-      return {
-        url: data.url,
-        br: Number(data.br) || cleanBr,
-        size: Number(data.size) || 0,
-        source: cleanSource,
-        from: data.from || "music.gdstudio.xyz",
-      };
-    }
-    return null;
+    // 上游 br 负值语义：-1 获取失败 / -2 无版权 / -3 试听版。
+    // 软失败时保持返回对象（含空 url）而非 null，由调用方按 status 决定是否换源。
+    const rawBr = Number((data as any)?.br);
+    const hasUrl = Boolean(data && typeof data === "object" && (data as any).url);
+    const status: GDUrlStatus =
+      hasUrl
+        ? "ok"
+        : rawBr === -2
+          ? "no_copyright"
+          : rawBr === -3
+            ? "trial"
+            : "unavailable";
+    // 上游 api.php 返回的 br 单位是 kbps（如 320）；本项目与
+    // @unblockneteasemusic/server 0.28.0 对齐，对外统一使用 bps（如 320000）
+    const brKbps = rawBr > 0 ? rawBr : cleanBr;
+    return {
+      url: hasUrl ? String((data as any).url) : "",
+      br: brKbps * 1000,
+      size: Number((data as any)?.size) || 0,
+      source: cleanSource,
+      from: (data as any)?.from || "music.gdstudio.xyz",
+      status,
+    };
   }
 
   /**
@@ -141,6 +227,7 @@ class GDStudioService {
     if (!cleanId) return null;
 
     const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
+    this.assertSourceSupported(cleanSource);
     const cleanSize = (AUDIO_CONFIG.SUPPORTED_PICTURE_SIZES as readonly number[]).includes(Number(size))
       ? Number(size)
       : env.DEFAULT_PICTURE_SIZE;
@@ -164,15 +251,25 @@ class GDStudioService {
   /**
    * 获取歌词（尽力而为：上游失败自动重试一次，仍失败则返回空歌词而非抛错，
    * 歌词属可选增强数据，不应让播放主链路出现 500 噪音）
+   *
+   * 兜底链：GD 上游 lyric → lrclib.net（需 meta.track_name）。
+   * lrclib 超时 8s，失败静默降级为空，不阻断主链路。
    */
   async getLyric(
     id: string | number,
-    source: string = env.DEFAULT_SEARCH_SOURCE
+    source: string = env.DEFAULT_SEARCH_SOURCE,
+    meta?: {
+      artist_name?: string;
+      track_name?: string;
+      album_name?: string;
+      duration?: number;
+    }
   ): Promise<LyricResult> {
     const cleanId = sanitizeParam(id, 100);
     if (!cleanId) return { lyric: "", tlyric: "" };
 
     const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
+    this.assertSourceSupported(cleanSource);
 
     const fetchOnce = () =>
       this.callApi<GDLyricResponse>(
@@ -198,12 +295,41 @@ class GDStudioService {
       }
     }
 
-    if (data && typeof data === "object") {
+    if (data && typeof data === "object" && (data.lyric || data.tlyric)) {
       return {
         lyric: data.lyric || "",
         tlyric: data.tlyric || "",
       };
     }
+
+    // 上游无歌词时走 lrclib.net 兜底（与 GD 官方站行为对齐）
+    const trackName = meta?.track_name?.trim();
+    if (trackName) {
+      try {
+        const lrclib = axios.create({ timeout: 8000 });
+        // lrclib duration 单位为秒；NCM 系 duration 多为毫秒，>10000 时换算
+        const rawDur = Number(meta?.duration) || 0;
+        const durSec = rawDur > 10000 ? Math.round(rawDur / 1000) : Math.round(rawDur);
+        const q = new URLSearchParams();
+        if (meta?.artist_name?.trim()) q.set("artist_name", meta.artist_name.trim());
+        q.set("track_name", trackName);
+        if (meta?.album_name?.trim()) q.set("album_name", meta.album_name.trim());
+        if (durSec > 0) q.set("duration", String(durSec));
+        const res = await lrclib.get<{
+          syncedLyrics?: string;
+          plainLyrics?: string;
+        }>(`https://lrclib.net/api/get?${q.toString()}`, {
+          headers: { "User-Agent": HTTP_CONFIG.USER_AGENT },
+        });
+        const synced = res.data?.syncedLyrics?.trim();
+        if (synced) {
+          return { lyric: synced, tlyric: "" };
+        }
+      } catch (err: any) {
+        console.warn(`[GDStudio] lrclib 兜底失败 (track=${trackName}): ${err.message}`);
+      }
+    }
+
     return { lyric: "", tlyric: "" };
   }
 

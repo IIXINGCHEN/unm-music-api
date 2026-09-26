@@ -60,7 +60,8 @@ export function setupUnmProviders(): void {
         if (audio && audio.url) {
           return audio.url;
         }
-        return await unmConsts.PROVIDERS.gdStudio.check(info);
+        // 注意：注入的 key 是全小写 "gdstudio"，此处必须同名（曾误写为 gdStudio 导致降级永不生效）
+        return await unmConsts.PROVIDERS.gdstudio.check(info);
       } catch {
         return null;
       }
@@ -215,7 +216,8 @@ export async function matchSong(
       if (Array.isArray(gdList) && gdList.length > 0) {
         const topTrack = gdList.find((t) => t.name === detail.name) || gdList[0];
         const audio = await gdStudio.getUrl(topTrack.id, env.DEFAULT_AUDIO_SOURCE, cleanBr);
-        if (audio && audio.url) {
+        // 非 ok 状态（unavailable/no_copyright/trial）继续尝试下一个源，而非当成普通失败直接抛错
+        if (audio && audio.status === "ok" && audio.url) {
           matchResult = {
             url: audio.url,
             br: audio.br || cleanBr * 1000,
@@ -223,6 +225,8 @@ export async function matchSong(
             source: env.DEFAULT_AUDIO_SOURCE,
             md5: null,
           };
+        } else if (audio) {
+          console.warn(`[UNM Match] GD 检索源不可用 (status=${audio.status})，继续降级`);
         }
       }
     }
@@ -231,7 +235,7 @@ export async function matchSong(
   // 4. 再次降级：直接尝试 GD Studio 的 netease 源
   if (!matchResult || !matchResult.url) {
     const directNetease = await gdStudio.getUrl(cleanId, env.DEFAULT_SEARCH_SOURCE, cleanBr);
-    if (directNetease && directNetease.url) {
+    if (directNetease && directNetease.status === "ok" && directNetease.url) {
       matchResult = {
         url: directNetease.url,
         br: directNetease.br || cleanBr * 1000,
@@ -239,6 +243,8 @@ export async function matchSong(
         source: env.DEFAULT_SEARCH_SOURCE,
         md5: null,
       };
+    } else if (directNetease) {
+      console.warn(`[UNM Match] netease 直连源不可用 (status=${directNetease.status})`);
     }
   }
 
@@ -285,7 +291,7 @@ export async function getNeteaseSong(
     const proxyUrl = formatProxyUrl(direct.url, env.PROXY_URL);
     return {
       id: cleanId,
-      br: direct.br || cleanBr,
+      br: direct.br || cleanBr * 1000,
       url: direct.url,
       size: direct.size || 0,
       source: env.DEFAULT_SEARCH_SOURCE,
@@ -297,7 +303,7 @@ export async function getNeteaseSong(
   const matched = await matchSong(cleanId, [...PROVIDER_CONFIG.PRIMARY_DECRYPT_PROVIDERS], cleanBr);
   return {
     id: cleanId,
-    br: matched.br || cleanBr,
+    br: matched.br || cleanBr * 1000,
     url: matched.url,
     size: matched.size || 0,
     source: matched.source || env.DEFAULT_AUDIO_SOURCE,
@@ -321,9 +327,23 @@ export async function getOtherSourceSong(name: string): Promise<{ url: string; s
   let searchRes = await gdStudio.search(cleanName, env.DEFAULT_AUDIO_SOURCE, 1, 1);
   let targetSource: string = env.DEFAULT_AUDIO_SOURCE;
 
+  // 降级源必须取上游实际支持的 search 源。实测 GD Studio 仅支持
+  // netease / joox / bilibili / netease_album 的 search；
+  // kuwo、qq、kugou、migu 等会被上游 HTTP 400 拒绝（"Value of `source` is not supported."），
+  // 原 "kuwo" 降级永远抛错，改走受支持源并逐个 try/catch。
   if (!searchRes || searchRes.length === 0) {
-    searchRes = await gdStudio.search(cleanName, "kuwo", 1, 1);
-    targetSource = "kuwo";
+    for (const fb of ["netease", "bilibili"]) {
+      try {
+        const fbRes = await gdStudio.search(cleanName, fb, 1, 1);
+        if (fbRes && fbRes.length > 0) {
+          searchRes = fbRes;
+          targetSource = fb;
+          break;
+        }
+      } catch {
+        // 该降级源不可用，继续下一个
+      }
+    }
   }
 
   if (!searchRes || searchRes.length === 0) {
