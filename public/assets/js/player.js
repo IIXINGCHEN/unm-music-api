@@ -72,35 +72,63 @@ let fallbackAttempt = 0;
       }
     });
 
-    audio.addEventListener('error', async () => {
+    // 播放失败/卡死自动换源：排除已失败的音源，按优先级重试其他 provider
+    let fallbackInFlight = false;
+    async function tryFallbackSource(reason) {
+      if (fallbackInFlight) return;
       const track = currentTrack;
-      // 自动换源：排除已失败的音源，按优先级重试其他 provider
-      if (track && track.id && fallbackAttempt < FALLBACK_PROVIDERS.length) {
+      if (!track || !track.id || fallbackAttempt >= FALLBACK_PROVIDERS.length) {
+        showToast({ type: 'error', title: '音频播放失败', message: '直链已失效、HTTPS 升级后音源不可达，或跨域受限（可在服务端配置 PROXY_URL 中转）' });
+        return;
+      }
+      fallbackInFlight = true;
+      try {
         const failedSource = lastAudioSource;
         const candidates = FALLBACK_PROVIDERS.filter(s => s !== failedSource);
         const nextServer = candidates[fallbackAttempt % Math.max(candidates.length, 1)];
         fallbackAttempt++;
         if (nextServer) {
-          showToast({ type: 'info', title: '正在换源', message: `${failedSource || '当前'}音源不可用，尝试 ${nextServer}…` });
-          try {
-            const r = await fetch(`/match?id=${encodeURIComponent(track.id)}&server=${nextServer}&br=999`);
-            const d = await r.json();
-            if (d.code === 200 && d.data && d.data.url) {
-              lastAudioSource = d.data.source || nextServer;
-              let url = d.data.url;
-              if (location.protocol === 'https:' && url.startsWith('http://')) {
-                url = url.replace(/^http:\/\//, 'https://');
-              }
-              audio.src = url;
-              await audio.play();
-              showToast({ type: 'success', title: '换源成功', message: `已切换到 ${lastAudioSource} 音源` });
-              return;
+          showToast({ type: 'info', title: '正在换源', message: `${failedSource || '当前'}音源不可用${reason ? `（${reason}）` : ''}，尝试 ${nextServer}…` });
+          const r = await fetch(`/match?id=${encodeURIComponent(track.id)}&server=${nextServer}&br=999`);
+          const d = await r.json();
+          if (d.code === 200 && d.data && d.data.url) {
+            lastAudioSource = d.data.source || nextServer;
+            let url = d.data.url;
+            if (location.protocol === 'https:' && url.startsWith('http://')) {
+              url = url.replace(/^http:\/\//, 'https://');
             }
-          } catch (e) { /* 继续走下面的失败提示 */ }
+            stopStallWatchdog();
+            audio.src = url;
+            await audio.play();
+            showToast({ type: 'success', title: '换源成功', message: `已切换到 ${lastAudioSource} 音源` });
+            return;
+          }
         }
-      }
+      } catch (e) { /* 继续走下面的失败提示 */ }
+      finally { fallbackInFlight = false; }
       showToast({ type: 'error', title: '音频播放失败', message: '直链已失效、HTTPS 升级后音源不可达，或跨域受限（可在服务端配置 PROXY_URL 中转）' });
-    });
+    }
+
+    audio.addEventListener('error', () => tryFallbackSource(''));
+
+    // 卡死看门狗：Joox 等 CDN 偶发 206 分片长度异常（ERR_CONTENT_LENGTH_MISMATCH），
+    // 此时不触发 error 事件、只会假死（waiting），8 秒无进展则走换源拿新的 vkey 直链
+    let stallCheckTimer = null;
+    function stopStallWatchdog() {
+      if (stallCheckTimer) { clearTimeout(stallCheckTimer); stallCheckTimer = null; }
+    }
+    function startStallWatchdog() {
+      stopStallWatchdog();
+      const posAtStart = audio.currentTime;
+      stallCheckTimer = setTimeout(() => {
+        if (!audio.paused && !audio.ended && audio.readyState < 3 && Math.abs(audio.currentTime - posAtStart) < 0.5) {
+          tryFallbackSource('音频流卡死');
+        }
+      }, 8000);
+    }
+    audio.addEventListener('waiting', startStallWatchdog);
+    audio.addEventListener('playing', stopStallWatchdog);
+    audio.addEventListener('pause', stopStallWatchdog);
 
     function formatTime(seconds) {
       if (isNaN(seconds) || seconds < 0) return '00:00';
