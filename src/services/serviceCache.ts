@@ -17,6 +17,9 @@ export class LRUCache<T = unknown> {
   private max: number;
   private defaultTTL: number;
   private cache: Map<string, CacheEntry<T>>;
+  // single-flight：在途请求去重。同一 key 的并发请求共享同一个 promise，
+  // 避免缓存击穿时 N 个请求各自触发一整套上游级联（雷鸣群）。
+  private inflight: Map<string, Promise<unknown>> = new Map();
   private hits: number = 0;
   private misses: number = 0;
 
@@ -74,6 +77,28 @@ export class LRUCache<T = unknown> {
 
   delete(key: string): boolean {
     return this.cache.delete(key);
+  }
+
+  /**
+   * single-flight 取值：若同一 key 已有在途请求，直接复用其 promise；
+   * 否则执行 fn，settled 后从在途表删除。
+   * 约定：缓存写入仍由调用方在 fn 内完成（成功才 set）；
+   * fn 抛错时不写入缓存，但必须删除在途记录以便后续重试。
+   */
+  async getOrFetch<R>(key: string, fn: () => Promise<R>): Promise<R> {
+    const existing = this.inflight.get(key);
+    if (existing) {
+      return existing as Promise<R>;
+    }
+    const pending = (async (): Promise<R> => {
+      try {
+        return await fn();
+      } finally {
+        this.inflight.delete(key);
+      }
+    })();
+    this.inflight.set(key, pending);
+    return pending;
   }
 
   clear(): void {

@@ -12,21 +12,19 @@ import {
 import { getModuleDir } from "../utils/utilPath.js";
 
 const moduleDir = getModuleDir();
-const possibleEnvPaths: string[] = [
-  path.resolve(process.cwd(), ".env"),
-  ...(moduleDir
-    ? [
-        path.resolve(moduleDir, "..", ".env"),
-        path.resolve(moduleDir, "../..", ".env"),
-        path.resolve(moduleDir, "../../..", ".env"),
-      ]
-    : []),
-];
+// 仅加载项目根目录的 .env（以本模块所在 src/config 目录为基准向上两级；
+// 构建产物运行时为 dist/config，向上两级同样是项目根）。
+// 不再探测进程 cwd 与其他上级目录：非常规 cwd 启动（如 /tmp）时，
+// 攻击者预置的 .env 会被优先加载并劫持 MONITOR_SECRET_KEY 等配置。
+// 找不到则跳过（fail-soft），后续 zod 校验与密钥强校验会兜底。
+const possibleEnvPaths: string[] = moduleDir
+  ? [path.resolve(moduleDir, "..", "..", ".env")]
+  : [];
 
 for (const envPath of possibleEnvPaths) {
   if (fs.existsSync(envPath)) {
     dotenv.config({ path: envPath });
-    // 记录实际加载的 .env 来源，便于审计（上级目录探测可能命中非预期的文件）
+    // 记录实际加载的 .env 来源，便于审计
     console.log(`[Config] 已加载环境变量文件: ${envPath}`);
     break;
   }
@@ -60,6 +58,7 @@ const envSchema = z.object({
   PROXY_URL: z.string().default(""),
 
   // 4. 内存 LRU 缓存策略与 TTL（毫秒）
+  // 数值范围校验：TTL 取 1 分钟 ~ 7 天（毫秒），防止误配极大/负值导致缓存语义退化
   CACHE_MAX_SIZE: z
     .string()
     .optional()
@@ -70,49 +69,71 @@ const envSchema = z.object({
     .string()
     .optional()
     .default(String(CACHE_POLICY.TTL_AUDIO_STREAM))
-    .transform((val) => parseInt(val, 10)),
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().min(60000).max(604800000)),
   CACHE_TTL_SEARCH: z
     .string()
     .optional()
     .default(String(CACHE_POLICY.TTL_SEARCH_RESULT))
-    .transform((val) => parseInt(val, 10)),
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().min(60000).max(604800000)),
   CACHE_TTL_LYRIC: z
     .string()
     .optional()
     .default(String(CACHE_POLICY.TTL_LYRIC))
-    .transform((val) => parseInt(val, 10)),
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().min(60000).max(604800000)),
   CACHE_TTL_PICTURE: z
     .string()
     .optional()
     .default(String(CACHE_POLICY.TTL_PICTURE))
-    .transform((val) => parseInt(val, 10)),
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().min(60000).max(604800000)),
   CACHE_TTL_PLAYLIST: z
     .string()
     .optional()
     .default(String(CACHE_POLICY.TTL_PLAYLIST))
-    .transform((val) => parseInt(val, 10)),
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().min(60000).max(604800000)),
   CACHE_TTL_SONG_DETAIL: z
     .string()
     .optional()
     .default(String(CACHE_POLICY.TTL_SONG_DETAIL))
-    .transform((val) => parseInt(val, 10)),
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().min(60000).max(604800000)),
 
   // 5. 音频与业务默认行为配置
+  // 码率/图片尺寸必须落在上游实际支持的档位内，否则穿透档位回退逻辑
   DEFAULT_BITRATE: z
     .string()
     .optional()
     .default(String(AUDIO_CONFIG.DEFAULT_BITRATE))
-    .transform((val) => parseInt(val, 10)),
+    .transform((val) => parseInt(val, 10))
+    .pipe(
+      z
+        .number()
+        .refine((v) => (AUDIO_CONFIG.SUPPORTED_BITRATES as readonly number[]).includes(v), {
+          message: `DEFAULT_BITRATE 必须是支持的档位之一: ${AUDIO_CONFIG.SUPPORTED_BITRATES.join(",")}`,
+        })
+    ),
   DEFAULT_PICTURE_SIZE: z
     .string()
     .optional()
     .default(String(AUDIO_CONFIG.DEFAULT_PICTURE_SIZE))
-    .transform((val) => parseInt(val, 10)),
+    .transform((val) => parseInt(val, 10))
+    .pipe(
+      z
+        .number()
+        .refine((v) => (AUDIO_CONFIG.SUPPORTED_PICTURE_SIZES as readonly number[]).includes(v), {
+          message: `DEFAULT_PICTURE_SIZE 必须是支持的尺寸之一: ${AUDIO_CONFIG.SUPPORTED_PICTURE_SIZES.join(",")}`,
+        })
+    ),
   DEFAULT_SEARCH_COUNT: z
     .string()
     .optional()
     .default(String(AUDIO_CONFIG.DEFAULT_SEARCH_COUNT))
-    .transform((val) => parseInt(val, 10)),
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().min(1).max(AUDIO_CONFIG.MAX_SEARCH_COUNT)),
   DEFAULT_SEARCH_SOURCE: z.string().default(AUDIO_CONFIG.DEFAULT_SEARCH_SOURCE),
   DEFAULT_AUDIO_SOURCE: z.string().default(AUDIO_CONFIG.DEFAULT_AUDIO_SOURCE),
   DEFAULT_TEST_SONG_ID: z.string().default(AUDIO_CONFIG.DEFAULT_TEST_SONG_ID),
@@ -179,6 +200,30 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
+/** 第三方平台 Cookie 的 env 键名（@unblockneteasemusic/server 内部读取） */
+const PLATFORM_COOKIE_KEYS = ["QQ_COOKIE", "JOOX_COOKIE", "MIGU_COOKIE", "KUWO_COOKIE"] as const;
+
+// 解析得到的 Cookie 值（trim 后），仅供 withPlatformCookies 限时注入使用，不常驻 process.env
+const platformCookies: Partial<Record<(typeof PLATFORM_COOKIE_KEYS)[number], string>> = {};
+
+/**
+ * 在回调执行期间限时注入第三方平台 Cookie 到 process.env，
+ * 供 @unblockneteasemusic/server 内部读取；finally 中删除，
+ * 避免 Cookie 常驻进程全局环境、被所有依赖包读取。
+ */
+export async function withPlatformCookies<T>(fn: () => Promise<T>): Promise<T> {
+  for (const [key, value] of Object.entries(platformCookies)) {
+    if (value) process.env[key] = value;
+  }
+  try {
+    return await fn();
+  } finally {
+    for (const key of Object.keys(platformCookies)) {
+      delete process.env[key];
+    }
+  }
+}
+
 function parseEnv(): Env {
   const result = envSchema.safeParse(process.env);
   if (!result.success) {
@@ -203,17 +248,20 @@ function parseEnv(): Env {
     process.exit(1);
   }
 
-  // 将 UNM 特性开关同步到 process.env 供 @unblockneteasemusic/server 内部使用
-  // 安全注意：Cookie 回写后全局可见（process.env），任何依赖包均可读取。
-  // 仅在配置了对应 Cookie 时写入；/info 等端点已核验不暴露这些值。
+  // 将 UNM 特性开关同步到 process.env 供 @unblockneteasemusic/server 内部使用。
+  // 开关为布尔语义的非敏感配置，保留原有行为。
   if (parsed.ENABLE_FLAC) process.env.ENABLE_FLAC = "true";
   if (parsed.SELECT_MAX_BR) process.env.SELECT_MAX_BR = "true";
   if (parsed.FOLLOW_SOURCE_ORDER) process.env.FOLLOW_SOURCE_ORDER = "true";
   if (parsed.SEARCH_ALBUM) process.env.SEARCH_ALBUM = "true";
-  if (parsed.QQ_COOKIE) process.env.QQ_COOKIE = parsed.QQ_COOKIE;
-  if (parsed.JOOX_COOKIE) process.env.JOOX_COOKIE = parsed.JOOX_COOKIE;
-  if (parsed.MIGU_COOKIE) process.env.MIGU_COOKIE = parsed.MIGU_COOKIE;
-  if (parsed.KUWO_COOKIE) process.env.KUWO_COOKIE = parsed.KUWO_COOKIE;
+
+  // 第三方平台 Cookie 不再常驻 process.env（原实现在此全局写回，任何依赖包均可读取）。
+  // 改为 withPlatformCookies() 的限时注入：仅在调用 UNM 引擎期间写入，
+  // finally 中删除，缩小供应链维度的暴露窗口。
+  for (const key of PLATFORM_COOKIE_KEYS) {
+    const value = parsed[key]?.trim();
+    if (value) platformCookies[key] = value;
+  }
 
   return parsed;
 }

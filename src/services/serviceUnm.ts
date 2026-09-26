@@ -5,6 +5,7 @@ import {
   PROVIDER_CONFIG,
   UPSTREAM_APIS,
   HTTP_CONFIG,
+  withPlatformCookies,
 } from "../config/index.js";
 import { globalCache } from "./serviceCache.js";
 import { gdStudio } from "./serviceGdStudio.js";
@@ -18,6 +19,19 @@ import * as unmConstsNS from "@unblockneteasemusic/server/src/consts.js";
 import * as unmMatchNS from "@unblockneteasemusic/server";
 
 const unmConsts = unmConstsNS as any;
+
+// UNM 引擎匹配结果
+type UnmMatchResult = {
+  url?: string;
+  br?: number;
+  size?: number;
+  source?: string;
+  md5?: string | null;
+} | null;
+
+// UNM 引擎匹配超时（毫秒）：第三方引擎内部无统一超时，DNS 挂起/慢连接会无限期
+// 拖住请求；超时后抛错走降级链，不阻塞 /match 主链路
+const UNM_MATCH_TIMEOUT_MS = 15000;
 
 /**
  * 获取所有支持的音源列表（与 @unblockneteasemusic/server 最新版 0.28.0 完全对齐）
@@ -186,12 +200,15 @@ export async function matchSong(
     return cached;
   }
 
+  // single-flight：同一 key 的并发请求共享一次完整 UNM 级联，避免缓存击穿时的雷鸣群。
+  // 缓存写入仍由内部逻辑完成（成功才 set），失败不缓存且在途记录自动清除以便重试。
+  return globalCache.getOrFetch(cacheKey, async (): Promise<MatchedAudio> => {
   // 1. 获取网易云元数据
   const detail = await getNeteaseSongDetail(cleanId);
 
   // 2. 尝试使用 UNM 引擎进行多源匹配（ESM 命名空间下取 default 导出）
   const unmMatchFn: any = (unmMatchNS as any).default ?? unmMatchNS;
-  let matchResult: { url?: string; br?: number; size?: number; source?: string; md5?: string | null } | null = null;
+  let matchResult: UnmMatchResult = null;
   try {
     const songData = detail
       ? {
@@ -203,7 +220,21 @@ export async function matchSong(
           br: cleanBr,
         }
       : undefined;
-    matchResult = await unmMatchFn(cleanId, serverList, songData);
+    // 平台 Cookie 限时注入（finally 中删除，不常驻 process.env）+ 超时保护：
+    // 第三方引擎内部无统一超时，DNS 挂起会无限期拖住请求；15s 超时后抛错走降级链。
+    const matchPromise: Promise<UnmMatchResult> = withPlatformCookies(() =>
+      unmMatchFn(cleanId, serverList, songData)
+    );
+    // 防未处理拒绝：超时胜出后，引擎 promise 后续的 reject 不应触发 unhandledRejection
+    matchPromise.catch(() => {});
+    matchResult = await Promise.race([
+      matchPromise,
+      new Promise<never>((_, reject) => {
+        const timer = setTimeout(() => reject(new Error("UNM 匹配超时")), UNM_MATCH_TIMEOUT_MS);
+        // 定时器不应阻止进程退出
+        (timer as unknown as { unref?: () => void }).unref?.();
+      }),
+    ]);
   } catch {
     console.warn(`[UNM Match] UNM 引擎直接匹配未命中 (${cleanId})，启动备选智能降级...`);
   }
@@ -272,6 +303,7 @@ export async function matchSong(
 
   globalCache.set(cacheKey, responseData, env.CACHE_TTL_AUDIO);
   return responseData;
+  });
 }
 
 /**

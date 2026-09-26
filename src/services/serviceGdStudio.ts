@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance } from "axios";
-import { env, HTTP_CONFIG, AUDIO_CONFIG, UPSTREAM_APIS } from "../config/index.js";
+import { env, HTTP_CONFIG, AUDIO_CONFIG, UPSTREAM_APIS, CACHE_POLICY } from "../config/index.js";
 import { globalCache } from "./serviceCache.js";
 import { sanitizeParam } from "../utils/utilString.js";
 import type {
@@ -100,6 +100,8 @@ class GDStudioService {
       return cached;
     }
 
+    // single-flight：同一参数的并发上游请求共享一次，避免缓存击穿时的雷鸣群
+    return globalCache.getOrFetch(cacheKey, async (): Promise<T> => {
     const query = new URLSearchParams({
       types,
       ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])),
@@ -130,6 +132,7 @@ class GDStudioService {
       console.error(`[GDStudio] 请求失败 (${types}): ${msg} - URL: ${requestUrl}`);
       throw new Error(`GD Studio API 请求失败: ${msg}`);
     }
+    });
   }
 
   /**
@@ -145,7 +148,8 @@ class GDStudioService {
     if (!cleanName) return [];
 
     const cleanCount = Math.min(Math.max(count || env.DEFAULT_SEARCH_COUNT, 1), AUDIO_CONFIG.MAX_SEARCH_COUNT);
-    const cleanPages = Math.max(pages || AUDIO_CONFIG.DEFAULT_SEARCH_PAGE, 1);
+    // pages 必须有上界：无上界时会原样透传上游，且每个不同值独占缓存键，可被用来 churn LRU
+    const cleanPages = Math.min(Math.max(pages || AUDIO_CONFIG.DEFAULT_SEARCH_PAGE, 1), AUDIO_CONFIG.MAX_SEARCH_PAGES);
     const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
     this.assertSourceSupported(cleanSource);
 
@@ -271,6 +275,16 @@ class GDStudioService {
     const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
     this.assertSourceSupported(cleanSource);
 
+    // 歌词结果级缓存（含负缓存）：上游无歌词的歌曲每次请求会打满 2 次 GD + 1 次 lrclib，
+    // 空结果与兜底结果只缓存短 TTL，既抑制重复上游消耗又避免长期锁定
+    const resultKey = `lyric:result:${cleanSource}:${cleanId}`;
+    const cachedResult = globalCache.get(resultKey) as LyricResult | null;
+    if (cachedResult) return cachedResult;
+    const cacheResult = (result: LyricResult, ttl: number): LyricResult => {
+      globalCache.set(resultKey, result, ttl);
+      return result;
+    };
+
     const fetchOnce = () =>
       this.callApi<GDLyricResponse>(
         "lyric",
@@ -296,10 +310,13 @@ class GDStudioService {
     }
 
     if (data && typeof data === "object" && (data.lyric || data.tlyric)) {
-      return {
-        lyric: data.lyric || "",
-        tlyric: data.tlyric || "",
-      };
+      return cacheResult(
+        {
+          lyric: data.lyric || "",
+          tlyric: data.tlyric || "",
+        },
+        env.CACHE_TTL_LYRIC
+      );
     }
 
     // 上游无歌词时走 lrclib.net 兜底（与 GD 官方站行为对齐）
@@ -323,14 +340,14 @@ class GDStudioService {
         });
         const synced = res.data?.syncedLyrics?.trim();
         if (synced) {
-          return { lyric: synced, tlyric: "" };
+          return cacheResult({ lyric: synced, tlyric: "" }, CACHE_POLICY.TTL_LYRIC_NEGATIVE);
         }
       } catch (err: any) {
         console.warn(`[GDStudio] lrclib 兜底失败 (track=${trackName}): ${err.message}`);
       }
     }
 
-    return { lyric: "", tlyric: "" };
+    return cacheResult({ lyric: "", tlyric: "" }, CACHE_POLICY.TTL_LYRIC_NEGATIVE);
   }
 
   /**

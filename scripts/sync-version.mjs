@@ -11,6 +11,7 @@
  * 由 pnpm build 前的 prebuild 钩子自动触发，也可手动执行 pnpm sync:version。
  */
 import { readFileSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -45,15 +46,16 @@ cfg = cfg.replace(/const FALLBACK_VERSION = "[^"]+";/, `const FALLBACK_VERSION =
 writeFileSync(cfgPath, cfg, "utf-8");
 console.log(`[sync-version] configVersion.ts FALLBACK_VERSION -> ${version}`);
 
-// 3) 静态资源版本戳：给 public/*.html 里本地 CSS/JS/vendor 引用加 ?v=版本号-构建时间戳。
-//    每次构建时间戳都不同（精确到秒），发版后浏览器与 CDN 按新 URL 拉取，
+// 3) 静态资源版本戳：给 public/*.html 里本地 CSS/JS/vendor 引用加 ?v=版本号-构建戳。
+//    每次构建戳都全局唯一（毫秒时间戳 + 6 位随机 hex），发版后浏览器与 CDN 按新 URL 拉取，
 //    根治"代码已更新、页面仍用旧缓存"的问题。幂等替换：已有的 ?v=xxx 会被整体替换，不叠加。
 const now = new Date();
 const pad2 = (n) => String(n).padStart(2, "0");
+const pad3 = (n) => String(n).padStart(3, "0");
 const buildTs =
   `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}` +
-  `${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}`;
-const stamp = `${version}-${buildTs}`;
+  `${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}${pad3(now.getMilliseconds())}`;
+const stamp = `${version}-${buildTs}-${randomBytes(3).toString("hex")}`;
 const htmlFiles = ["public/index.html", "public/dashboard.html"];
 const stampRe = /((?:src|href)="\.?\/(?:assets|vendor)\/[^"?]+)(\?v=[^"]*)?(")/g;
 for (const f of htmlFiles) {

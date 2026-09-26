@@ -59,7 +59,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
-            --verify-tag \
             --generate-notes \
             --title "UNM-Server ${GITHUB_REF_NAME}" \
             ./artifacts/unm-server-dist-${GITHUB_REF_NAME}.tar.gz

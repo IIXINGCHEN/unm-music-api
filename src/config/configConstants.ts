@@ -21,6 +21,8 @@ export const AUDIO_CONFIG = {
   DEFAULT_SEARCH_COUNT: 20,
   MAX_SEARCH_COUNT: 100,
   DEFAULT_SEARCH_PAGE: 1,
+  // 搜索深分页上限：防止 pages 参数无上界透传上游并污染缓存键空间
+  MAX_SEARCH_PAGES: 20,
   DEFAULT_SEARCH_SOURCE: "netease",
   DEFAULT_AUDIO_SOURCE: "joox",
   DEFAULT_TEST_SONG_ID: "158616",
@@ -34,6 +36,8 @@ export const CACHE_POLICY = {
   TTL_AUDIO_STREAM: 2 * 3600 * 1000, // 2 小时
   TTL_SEARCH_RESULT: 30 * 60 * 1000, // 30 分钟
   TTL_LYRIC: 12 * 3600 * 1000, // 12 小时
+  // 歌词负缓存 TTL：无歌词 / lrclib 兜底结果只缓存短时间，避免频繁打上游又不至于长期锁定
+  TTL_LYRIC_NEGATIVE: 10 * 60 * 1000, // 10 分钟
   TTL_PICTURE: 24 * 3600 * 1000, // 24 小时
   TTL_PLAYLIST: 2 * 3600 * 1000, // 2 小时
   TTL_SONG_DETAIL: 24 * 3600 * 1000, // 24 小时

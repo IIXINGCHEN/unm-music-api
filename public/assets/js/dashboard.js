@@ -73,8 +73,12 @@ document.getElementById('year').textContent = new Date().getFullYear();
     }
 
     // 0. API Key 管理逻辑
+    // M2：监控 Key 只保存在内存变量中，不再写入 localStorage（同源 XSS 可窃取落盘密钥）；
+    // 鉴权一律走 x-api-key 请求头，绝不拼 URL 参数（后端已移除 ?api_key= 传参支持）。
+    let monitorApiKey = '';
+
     function getStoredApiKey() {
-      return localStorage.getItem('unm_monitor_api_key') || '';
+      return monitorApiKey;
     }
 
     function openApiKeyModal() {
@@ -90,17 +94,17 @@ document.getElementById('year').textContent = new Date().getFullYear();
 
     function saveApiKey() {
       const val = document.getElementById('inputApiKeyModal').value.trim();
-      localStorage.setItem('unm_monitor_api_key', val);
+      monitorApiKey = val;   // 纯内存保存，刷新页面即失效
       closeApiKeyModal();
-      showToast({ type: 'success', title: '凭证已保存', message: 'API Key 已更新，正在重新加载数据...' });
+      showToast({ type: 'success', title: '凭证已保存', message: 'API Key 已更新（仅本次会话有效），正在重新加载数据...' });
       loadDashboardData(1);
     }
 
     function clearSavedApiKey() {
-      localStorage.removeItem('unm_monitor_api_key');
+      monitorApiKey = '';
       document.getElementById('inputApiKeyModal').value = '';
       closeApiKeyModal();
-      showToast({ type: 'info', title: '凭证已清除', message: '已移除本地保存的 API Key' });
+      showToast({ type: 'info', title: '凭证已清除', message: '已移除内存中的 API Key' });
       loadDashboardData(1);
     }
 

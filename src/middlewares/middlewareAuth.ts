@@ -6,8 +6,10 @@ import { timingSafeCompare } from "../utils/utilSecurity.js";
 import type { ApiResponse } from "../types/typeApi.js";
 
 /**
- * 监控密钥校验（可复用）：支持 x-api-key 头 / Authorization: Bearer / ?api_key=
- * fail-closed：密钥未配置或比对失败一律返回 false
+ * 监控密钥校验（可复用）：仅支持 x-api-key 头 / Authorization: Bearer。
+ * fail-closed：密钥未配置或比对失败一律返回 false。
+ * 注意：曾支持 ?api_key= 查询参数，已移除 —— 密钥进入 URL 会留存在浏览器历史、
+ * 书签、反向代理/CDN 访问日志中，并可能经 Referer 外泄。
  */
 export function isMonitorAuthorized(c: { req: { header: (n: string) => string | undefined; query: (n: string) => string | undefined } }): boolean {
   const secretKey = getEffectiveMonitorSecret();
@@ -20,9 +22,7 @@ export function isMonitorAuthorized(c: { req: { header: (n: string) => string | 
     ? authHeader.slice(7).trim()
     : undefined;
 
-  const queryKey = c.req.query("api_key")?.trim();
-
-  const clientKey = headerKey || bearerKey || queryKey;
+  const clientKey = headerKey || bearerKey;
   return !!clientKey && timingSafeCompare(clientKey, secretKey);
 }
 

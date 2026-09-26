@@ -14,7 +14,7 @@
  *   1) 前置校验（main 分支 / 工作区干净 / 与远端同步 / 提交签名已开启）
  *   2) 计算新版本并写入 VERSION，执行 sync:version 对齐 package.json 与 configVersion.ts
  *   3) 以 chore(release): vX.Y.Z 提交（遵循仓库级 commit.gpgsign 签名）
- *   4) 创建带签名的附注标签 vX.Y.Z 并推送 main + 标签
+ *   4) 创建未签名的附注标签 vX.Y.Z 并推送 main + 标签（CI 侧不要求签名，见 .github/workflows/release.yml）
  *   5) 推送后由 GitHub Actions 自动完成 Docker 镜像构建与 GitHub Release 发布
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -89,13 +89,13 @@ log(`VERSION -> ${next}`);
 
 sh("node scripts/sync-version.mjs");
 
-// ---------- 4) 提交 + 打签名的附注标签 ----------
-sh("git add VERSION package.json src/config/configVersion.ts");
+// ---------- 4) 提交 + 打附注标签（未签名；容器/CI 内无 GPG 密钥，不做签名） ----------
+sh("git add VERSION package.json src/config/configVersion.ts public/index.html public/dashboard.html docker-compose.yml");
 sh(`git commit -m "chore(release): ${tag} 版本发布"`);
 log(`已创建签名提交: ${tag}`);
 
 sh(`git tag -a ${tag} -m "${tag}"`);
-log(`已创建签名标签: ${tag}`);
+log(`已创建附注标签（未签名）: ${tag}`);
 
 // ---------- 5) 推送或回滚 ----------
 if (dryRun) {

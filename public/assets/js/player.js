@@ -31,6 +31,10 @@ const FALLBACK_PROVIDERS = ['gdstudio', 'pyncmd', 'bodian', 'joox'];
 let lastAudioSource = '';
 let fallbackAttempt = 0;
 
+// 播放代际：每次 playSongItem 递增；异步回调（匹配/换源/歌词）写入前必须校验代际，
+// 阻断快速切歌时旧请求覆盖新播放的竞态（M1）
+let playGeneration = 0;
+
     // --- 音频播放引擎 ---
     let _seeking = false;
     audio.addEventListener('timeupdate', () => {
@@ -73,15 +77,20 @@ let fallbackAttempt = 0;
     });
 
     // 播放失败/卡死自动换源：排除已失败的音源，按优先级重试其他 provider
+    // M1：换源锁绑定播放代际 —— 同一代际重复触发跳过；切歌后（代际变化）新请求可接管，
+    // 旧请求在 await 后经代际校验直接丢弃，不再写入 audio，也不再释放新请求的锁
     let fallbackInFlight = false;
+    let fallbackGen = -1;
     async function tryFallbackSource(reason) {
-      if (fallbackInFlight) return;
-      const track = currentTrack;
-      if (!track || !track.id || fallbackAttempt >= FALLBACK_PROVIDERS.length) {
+      const gen = playGeneration;
+      const trackAtEntry = currentTrack;
+      if (fallbackInFlight && fallbackGen === gen) return;
+      if (!trackAtEntry || !trackAtEntry.id || fallbackAttempt >= FALLBACK_PROVIDERS.length) {
         showToast({ type: 'error', title: '音频播放失败', message: '直链已失效、HTTPS 升级后音源不可达，或跨域受限（可在服务端配置 PROXY_URL 中转）' });
         return;
       }
       fallbackInFlight = true;
+      fallbackGen = gen;
       try {
         const failedSource = lastAudioSource;
         const candidates = FALLBACK_PROVIDERS.filter(s => s !== failedSource);
@@ -89,8 +98,10 @@ let fallbackAttempt = 0;
         fallbackAttempt++;
         if (nextServer) {
           showToast({ type: 'info', title: '正在换源', message: `${failedSource || '当前'}音源不可用${reason ? `（${reason}）` : ''}，尝试 ${nextServer}…` });
-          const r = await fetch(`/match?id=${encodeURIComponent(track.id)}&server=${nextServer}&br=999`);
+          const r = await fetch(`/match?id=${encodeURIComponent(trackAtEntry.id)}&server=${nextServer}&br=999`);
           const d = await r.json();
+          // 代际校验：切歌后旧换源结果一律丢弃
+          if (gen !== playGeneration || trackAtEntry !== currentTrack) return;
           if (d.code === 200 && d.data && d.data.url) {
             lastAudioSource = d.data.source || nextServer;
             let url = d.data.url;
@@ -105,7 +116,10 @@ let fallbackAttempt = 0;
           }
         }
       } catch (e) { /* 继续走下面的失败提示 */ }
-      finally { fallbackInFlight = false; }
+      finally {
+        // 只有同一代际的请求才能释放锁，防止旧请求吞掉新请求的换源
+        if (fallbackGen === gen) { fallbackInFlight = false; fallbackGen = -1; }
+      }
       showToast({ type: 'error', title: '音频播放失败', message: '直链已失效、HTTPS 升级后音源不可达，或跨域受限（可在服务端配置 PROXY_URL 中转）' });
     }
 
@@ -386,6 +400,7 @@ let fallbackAttempt = 0;
     syncBackToTopVisibility();
 
     async function playSongItem(track) {
+      const myGen = ++playGeneration;   // M1：本次播放的代际，旧请求的异步回调一律作废
       currentTrack = track;
       showToast({ type: 'info', title: '正在匹配音频', message: `正在为《${track.name}》调度高保真直链...` });
       try {
@@ -405,9 +420,12 @@ let fallbackAttempt = 0;
         if (location.protocol === 'https:' && audioUrl.startsWith('http://')) {
           audioUrl = audioUrl.replace(/^http:\/\//, 'https://');
         }
+        // M1 代际校验：切歌后旧请求不再写入音频元素
+        if (myGen !== playGeneration) return;
         updatePlayerMeta(track);
         audio.src = audioUrl;
         await audio.play();
+        if (myGen !== playGeneration) return;
         showPlayerBar();
         showToast({ type: 'success', title: '开始播放', message: `《${track.name}》- ${track.artist}` });
         loadLyrics(track.id, track.source || 'netease');
@@ -429,6 +447,8 @@ let fallbackAttempt = 0;
       try {
         const res = await fetch(`/lyric?id=${id}&source=${source}`);
         const json = await res.json();
+        // M3 归属校验：返回时已切歌则丢弃，避免旧歌词覆盖新曲目
+        if (!currentTrack || currentTrack.id !== id) return;
         if (json.code === 200 && json.data?.lyric) parseLRC(json.data.lyric);
       } catch (e) {}
     }
@@ -485,7 +505,8 @@ let fallbackAttempt = 0;
         return;
       }
       panel.innerHTML = lyricsData.map((l, i) =>
-        `<p data-lyric-index="${i}" onclick="seekToLyric(${i})" class="lyric-line text-sm text-slate-400 dark:text-slate-500 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 py-1 transition-all duration-300">${l.text}</p>`
+        // H1：歌词来自第三方上游（可含 HTML），必须转义后拼接，阻断存储型 XSS
+        `<p data-lyric-index="${i}" onclick="seekToLyric(${i})" class="lyric-line text-sm text-slate-400 dark:text-slate-500 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 py-1 transition-all duration-300">${escapeHtml(l.text)}</p>`
       ).join('');
       panel.scrollTop = 0;
     }
