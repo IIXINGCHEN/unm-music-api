@@ -26,6 +26,11 @@ let lyricsData = [];
 let currentLyricIndex = -1;
 const audio = document.getElementById('mainAudioPlayer');
 
+// 播放失败自动换源：B 站等 CDN 可能 403（Referer/签名限制），按音源优先级逐个重试
+const FALLBACK_PROVIDERS = ['gdstudio', 'pyncmd', 'bodian', 'joox'];
+let lastAudioSource = '';
+let fallbackAttempt = 0;
+
     // --- 音频播放引擎 ---
     let _seeking = false;
     audio.addEventListener('timeupdate', () => {
@@ -67,7 +72,33 @@ const audio = document.getElementById('mainAudioPlayer');
       }
     });
 
-    audio.addEventListener('error', () => {
+    audio.addEventListener('error', async () => {
+      const track = currentTrack;
+      // 自动换源：排除已失败的音源，按优先级重试其他 provider
+      if (track && track.id && fallbackAttempt < FALLBACK_PROVIDERS.length) {
+        const failedSource = lastAudioSource;
+        const candidates = FALLBACK_PROVIDERS.filter(s => s !== failedSource);
+        const nextServer = candidates[fallbackAttempt % Math.max(candidates.length, 1)];
+        fallbackAttempt++;
+        if (nextServer) {
+          showToast({ type: 'info', title: '正在换源', message: `${failedSource || '当前'}音源不可用，尝试 ${nextServer}…` });
+          try {
+            const r = await fetch(`/match?id=${encodeURIComponent(track.id)}&server=${nextServer}&br=999`);
+            const d = await r.json();
+            if (d.code === 200 && d.data && d.data.url) {
+              lastAudioSource = d.data.source || nextServer;
+              let url = d.data.url;
+              if (location.protocol === 'https:' && url.startsWith('http://')) {
+                url = url.replace(/^http:\/\//, 'https://');
+              }
+              audio.src = url;
+              await audio.play();
+              showToast({ type: 'success', title: '换源成功', message: `已切换到 ${lastAudioSource} 音源` });
+              return;
+            }
+          } catch (e) { /* 继续走下面的失败提示 */ }
+        }
+      }
       showToast({ type: 'error', title: '音频播放失败', message: '直链已失效、HTTPS 升级后音源不可达，或跨域受限（可在服务端配置 PROXY_URL 中转）' });
     });
 
@@ -331,11 +362,14 @@ const audio = document.getElementById('mainAudioPlayer');
       showToast({ type: 'info', title: '正在匹配音频', message: `正在为《${track.name}》调度高保真直链...` });
       try {
         let audioUrl = track.url;
+        fallbackAttempt = 0;
+        lastAudioSource = track.source || '';
         if (!audioUrl && track.id) {
           const matchRes = await fetch(`/match?id=${track.id}&br=999`);
           const matchData = await matchRes.json();
           if (matchData.code === 200 && matchData.data?.url) {
             audioUrl = matchData.data.url;
+            lastAudioSource = matchData.data.source || lastAudioSource;
           } else {
             throw new Error(matchData.message || '无可用音源');
           }
