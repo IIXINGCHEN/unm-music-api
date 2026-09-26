@@ -88,17 +88,22 @@ for (const f of htmlFiles) {
 // 5) docker-compose.yml 本地镜像标签：image: hoolhub/unm-server:<version>
 //    本地构建、本地命名，不再引用上游远程镜像，确保部署用的永远是当前源码构建的镜像。
 //    幂等替换：兼容旧的 ghcr.io 远端名，首次运行即迁移为本地名。
+//    构建环境（如 Docker builder 阶段）可能没有该文件，缺失时跳过、不阻断构建。
 const composePath = `${root}docker-compose.yml`;
-let compose = readFileSync(composePath, "utf-8");
-const composeUpdated = compose.replace(
-  /^[ \t]*image:[ \t]*\S+[ \t]*$/m,
-  `    image: hoolhub/unm-server:${version}`
-);
-if (composeUpdated !== compose) {
-  writeFileSync(composePath, composeUpdated, "utf-8");
-  console.log(`[sync-version] docker-compose.yml 镜像标签 -> hoolhub/unm-server:${version}`);
-} else {
-  console.log(`[sync-version] docker-compose.yml 镜像标签已对齐: hoolhub/unm-server:${version}`);
+try {
+  let compose = readFileSync(composePath, "utf-8");
+  const composeUpdated = compose.replace(
+    /^[ \t]*image:[ \t]*\S+[ \t]*$/m,
+    `    image: hoolhub/unm-server:${version}`
+  );
+  if (composeUpdated !== compose) {
+    writeFileSync(composePath, composeUpdated, "utf-8");
+    console.log(`[sync-version] docker-compose.yml 镜像标签 -> hoolhub/unm-server:${version}`);
+  } else {
+    console.log(`[sync-version] docker-compose.yml 镜像标签已对齐: hoolhub/unm-server:${version}`);
+  }
+} catch (err) {
+  console.warn(`[sync-version] 跳过 docker-compose.yml 同步（构建环境无此文件）: ${err.message}`);
 }
 
 console.log(`[sync-version] 全部版本号已与根目录 VERSION 文件对齐: v${version}`);
