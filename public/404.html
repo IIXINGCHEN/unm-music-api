@@ -12,7 +12,7 @@
       try {
         var s = localStorage.getItem('theme');
         var p = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var isDark = s ? s === 'dark' : p;
+        var isDark = s ? s === 'dark' : (p || true);
         if (isDark) {
           document.documentElement.classList.add('dark');
         } else {
@@ -31,113 +31,39 @@
     [data-lucide] { display: inline-block; vertical-align: middle; }
   </style>
 
-  <!-- 品牌字体自托管（latin 子集，由 scripts/sync-fonts.mjs 生成）；中文回退系统字体栈 -->
-  <link rel="stylesheet" href="./assets/css/fonts.css" />
+  <!-- 字体样式异步加载：不阻塞首帧 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" /></noscript>
 
   <!-- 核心样式表 (标准引入 + 服务端直出内联支持) -->
   <link rel="stylesheet" href="./assets/css/tailwind.css" />
-  <link rel="stylesheet" href="./assets/css/main.css" />
   <link rel="stylesheet" href="./assets/css/404.css" />
   <!--INLINE_PAGE_CSS-->
   <script src="/vendor/lucide.min.js"></script>
-  <script src="/assets/js/theme.js"></script>
-  <script src="/assets/js/drawer.js"></script>
 </head>
 
-<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between mesh-gradient relative overflow-x-hidden">
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between mesh-gradient">
 
-  <!-- ========================================================================= -->
-  <!-- 顶部现代化玻璃拟态导航中枢 (Modern Fixed Navigation Bar) -->
-  <!-- ========================================================================= -->
-  <header class="fixed top-0 inset-x-0 z-50 w-full nav-glass-header transition-all duration-300">
-    <!-- 顶部极细微高光反光线 -->
-    <div class="nav-specular-highlight"></div>
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2.5 sm:gap-6 relative w-full">
-      
-      <!-- 1. 左侧：品牌 Logo + 状态光标 + 标题 + 404 徽章 -->
-      <div class="flex items-center space-x-3 flex-shrink-0">
-        <a href="/" class="flex items-center space-x-3 group interactive-btn" aria-label="返回 UNM-Server 首页">
-          <div class="relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-white to-slate-100 dark:from-slate-800 dark:to-slate-900 shadow-md border border-slate-200/90 dark:border-white/10 flex items-center justify-center p-1.5 sm:p-2 transition-all duration-300 group-hover:scale-105 group-hover:shadow-rose-500/20 group-hover:border-rose-500/40">
-            <img src="./favicon.png" alt="UNM Logo" class="w-full h-full object-contain" />
-            <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border-2 border-white dark:border-slate-950"></span>
-            </span>
-          </div>
-          <div class="flex items-center space-x-2">
-            <span class="font-extrabold text-base sm:text-xl tracking-tight text-slate-900 dark:text-white group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors">UNM-Server</span>
-            <span class="text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 shadow-sm">404</span>
-          </div>
-        </a>
+  <!-- 顶部精简导航 -->
+  <header class="w-full max-w-5xl mx-auto px-6 py-8 flex items-center justify-between">
+    <a href="/" class="flex items-center space-x-3 group">
+      <div class="w-9 h-9 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-center p-2 group-hover:scale-105 transition">
+        <img src="./favicon.png" alt="Logo" class="w-full h-full object-contain" />
       </div>
+      <span class="font-bold text-base text-slate-900 dark:text-white">UNM-Server</span>
+    </a>
 
-      <!-- 2. 中间：分段胶囊导航项 (带图标与平滑高亮) -->
-      <nav class="hidden md:flex items-center space-x-1 p-1 rounded-full bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-white/10 shadow-inner backdrop-blur-xl text-xs sm:text-sm font-semibold">
-        <a href="/#playlist-station" class="nav-pill-item group flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all duration-200">
-          <i data-lucide="disc-3" class="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors"></i>
-          <span>歌单视听</span>
-        </a>
-        <a href="/#workbench" class="nav-pill-item group flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all duration-200">
-          <i data-lucide="terminal" class="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors"></i>
-          <span>API 调试</span>
-        </a>
-        <a href="/#providers" class="nav-pill-item group flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all duration-200">
-          <i data-lucide="layers" class="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors"></i>
-          <span>音源矩阵</span>
-        </a>
-        <a href="/dashboard" class="nav-pill-item group flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-sky-600 dark:text-sky-400 hover:text-sky-500 dark:hover:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-500/10 transition-all duration-200">
-          <i data-lucide="activity" class="w-4 h-4 text-sky-500"></i>
-          <span>遥测大盘</span>
-        </a>
-      </nav>
-
-      <!-- 3. 右侧：返回主站 + 深浅主题切换 + 移动端菜单开关 -->
-      <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-        <a href="/" class="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-sky-600 dark:bg-white dark:hover:bg-sky-400 text-white dark:text-slate-900 font-bold text-xs sm:text-sm transition shadow-md interactive-btn">
-          <i data-lucide="arrow-left" class="w-4 h-4"></i>
-          <span>返回主站</span>
-        </a>
-
-        <button id="themeToggle" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 hover:border-sky-500/30 transition shadow-sm flex items-center justify-center interactive-btn" title="切换深色/浅色模式">
-          <i data-lucide="moon" class="w-4 h-4 sm:w-5 sm:h-5 hidden dark:block"></i>
-          <i data-lucide="sun" class="w-4 h-4 sm:w-5 sm:h-5 block dark:hidden"></i>
-        </button>
-
-        <!-- 移动端汉堡折叠按钮 -->
-        <button onclick="toggleMobileDrawer()" class="md:hidden w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:text-sky-500 hover:border-sky-500/30 transition shadow-sm flex items-center justify-center interactive-btn" aria-label="展开导航菜单">
-          <i data-lucide="menu" id="mobileMenuIcon" class="w-4 h-4"></i>
-        </button>
-      </div>
-
-    </div>
-
-    <!-- 移动端全景半透明下拉抽屉 -->
-    <div id="mobileDrawer" class="hidden md:hidden fixed top-[64px] sm:top-[80px] inset-x-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border-b border-slate-200/80 dark:border-white/10 shadow-2xl transition-all duration-300 overflow-hidden flex-col">
-      <div class="px-4 py-5 space-y-3 max-w-lg mx-auto w-full">
-        <div class="grid grid-cols-2 gap-2 text-xs font-bold">
-          <a href="/#playlist-station" onclick="toggleMobileDrawer()" class="flex items-center space-x-2.5 p-3 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5 text-slate-800 dark:text-slate-200 hover:text-sky-500 dark:hover:text-sky-400 transition">
-            <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center flex-shrink-0"><i data-lucide="disc-3" class="w-4 h-4"></i></div>
-            <span>歌单视听</span>
-          </a>
-          <a href="/#workbench" onclick="toggleMobileDrawer()" class="flex items-center space-x-2.5 p-3 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5 text-slate-800 dark:text-slate-200 hover:text-sky-500 dark:hover:text-sky-400 transition">
-            <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center flex-shrink-0"><i data-lucide="terminal" class="w-4 h-4"></i></div>
-            <span>API 调试</span>
-          </a>
-          <a href="/#providers" onclick="toggleMobileDrawer()" class="flex items-center space-x-2.5 p-3 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5 text-slate-800 dark:text-slate-200 hover:text-sky-500 dark:hover:text-sky-400 transition">
-            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center flex-shrink-0"><i data-lucide="layers" class="w-4 h-4"></i></div>
-            <span>音源矩阵</span>
-          </a>
-          <a href="/dashboard" onclick="toggleMobileDrawer()" class="flex items-center space-x-2.5 p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 transition">
-            <div class="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-500 flex items-center justify-center flex-shrink-0"><i data-lucide="activity" class="w-4 h-4"></i></div>
-            <span>遥测大盘</span>
-          </a>
-        </div>
-      </div>
-    </div>
+    <button id="themeToggle" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition shadow-sm">
+      <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
+      <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
+    </button>
   </header>
 
   <!-- 404 主体内容区 (留白与现代卡片) -->
-  <main class="w-full max-w-xl mx-auto px-6 pt-28 sm:pt-36 pb-12 flex-1 flex flex-col items-center justify-center text-center">
+  <main class="w-full max-w-xl mx-auto px-6 py-12 flex-1 flex flex-col items-center justify-center text-center">
     <div class="glass-card bg-white/80 dark:bg-slate-900/60 p-10 sm:p-12 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-6 w-full">
       <div class="w-16 h-16 rounded-2xl bg-sky-500/10 dark:bg-sky-500/20 text-sky-500 flex items-center justify-center mx-auto shadow-sm">
         <i data-lucide="compass" class="w-8 h-8"></i>
@@ -164,65 +90,12 @@
     </div>
   </main>
 
-  <!-- 全局统一页脚 (Footer) -->
-  <footer class="w-full border-t border-slate-200/80 dark:border-white/10 glass-panel bg-white/60 dark:bg-slate-950/70 relative z-10 transition-colors mt-12 sm:mt-16">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-10">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10 w-full min-w-0">
-        <div class="lg:col-span-5 space-y-4 min-w-0">
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2"><img src="/favicon.png" alt="UNM-Server Logo" class="w-full h-full object-contain" /></div>
-            <div class="flex items-center space-x-2">
-              <span class="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
-              <span class="app-version-badge text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">v3.1.0 PRO</span>
-            </div>
-          </div>
-          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">企业级跨源音乐流媒体与无损音频解析中台网关。基于 Hono + TypeScript 构建，提供智能解灰、FLAC 24-bit/192kHz 母带直连、实时 LRC 歌词与全链路遥测。</p>
-          <div class="flex flex-wrap items-center gap-2 pt-1 font-mono text-xs">
-            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span><span>13 Nodes Online</span></span>
-            <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-semibold"><i data-lucide="zap" class="w-3 h-3"></i><span>Zero-Buffer Stream</span></span>
-          </div>
-        </div>
-        <div class="lg:col-span-2 space-y-3 min-w-0">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">核心特性</h4>
-          <ul class="space-y-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-            <li><a href="/#playlist-station" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>多音源解灰匹配</span></a></li>
-            <li><a href="/#playlist-station" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>歌单完整获取与分页</span></a></li>
-            <li><a href="/#workbench" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>API 在线调试台</span></a></li>
-            <li><a href="/#providers" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>13 大音源矩阵</span></a></li>
-          </ul>
-        </div>
-        <div class="lg:col-span-2 space-y-3 min-w-0">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">开发者 & 中台</h4>
-          <ul class="space-y-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-            <li><a href="/#workbench" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>API 交互调试台</span></a></li>
-            <li><a href="/dashboard" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5 font-semibold text-sky-600 dark:text-sky-400"><span>全链路遥测大盘</span></a></li>
-            <li><a href="/info" target="_blank" rel="noopener noreferrer" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>系统环境配置 (/info)</span></a></li>
-            <li><a href="/health" target="_blank" rel="noopener noreferrer" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>节点健康检查 (/health)</span></a></li>
-          </ul>
-        </div>
-        <div class="lg:col-span-3 space-y-3 min-w-0">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">开源生态 & 社区</h4>
-          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">本项目完全遵循 MIT 开源协议，支持私有化部署、Docker 容器化与云原生集群集成。</p>
-          <div class="space-y-1.5 text-xs text-slate-500 dark:text-slate-400 font-mono">
-            <div><span class="text-slate-400">上游核心:</span> <a href="https://github.com/UnblockNeteaseMusic/server" target="_blank" rel="noopener noreferrer" class="text-sky-500 hover:underline">UNM Engine 0.28.0+</a></div>
-            <div><span class="text-slate-400">官方 API:</span> <a href="https://music.gdstudio.xyz" target="_blank" rel="noopener noreferrer" class="text-sky-500 hover:underline">GD Studio XYZ</a></div>
-            <div><span class="text-slate-400">项目作者:</span> <a href="https://imsyy.top/" target="_blank" rel="noopener noreferrer" class="text-slate-800 dark:text-slate-200 font-bold hover:underline">imsyy</a></div>
-          </div>
-        </div>
-      </div>
-      <div class="pt-6 border-t border-slate-200/60 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400 font-medium">
-        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2"><span>Copyright &copy; <span class="current-year-text">2026</span> <a href="https://imsyy.top/" target="_blank" rel="noopener noreferrer" class="font-bold text-slate-800 dark:text-slate-200 hover:text-sky-500 transition">imsyy</a> · UNM-Server All Rights Reserved.</span></div>
-        <div class="flex flex-wrap items-center justify-center gap-2 font-mono text-[11px]">
-          <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300">Hono 4.7+</span>
-          <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300">TypeScript 5.7+</span>
-          <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-emerald-500 font-semibold">SLA 99.99%</span>
-        </div>
-      </div>
-    </div>
+  <!-- 底部 Footer -->
+  <footer class="w-full max-w-5xl mx-auto px-6 py-8 text-center text-xs text-slate-400 border-t border-slate-200/60 dark:border-slate-800/60">
+    <div>Copyright &copy; <span id="year"></span> UNM-Server · All Rights Reserved</div>
   </footer>
 
-  <!-- 页面逻辑：主题切换与图标（lucide 已在 <head> 引入，此处不重复加载） -->
+  <!-- 页面逻辑：主题切换 -->
   <script src="/assets/js/404.js"></script>
-  <script>lucide.createIcons();</script>
 </body>
 </html>

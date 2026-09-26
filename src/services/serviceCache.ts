@@ -61,6 +61,17 @@ export class LRUCache<T = unknown> {
     });
   }
 
+  has(key: string): boolean {
+    // 不经过 get()：避免污染 hits/misses 命中率统计
+    const item = this.cache.get(key);
+    if (!item) return false;
+    if (Date.now() > item.expiresAt) {
+      this.cache.delete(key);
+      return false;
+    }
+    return true;
+  }
+
   delete(key: string): boolean {
     return this.cache.delete(key);
   }

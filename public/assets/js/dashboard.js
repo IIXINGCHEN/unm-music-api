@@ -3,21 +3,18 @@
  * 轮询控制、遥测表格渲染与明细抽屉。依赖 vendor/lucide 与 vendor/chart.umd。
  */
 
-    var confirmCallback = null;
-    document.querySelectorAll('.current-year-text').forEach(el => el.textContent = String(new Date().getFullYear()));
+document.getElementById('year').textContent = new Date().getFullYear();
     lucide.createIcons();
 
-    // --- XSS 防护：本页独立加载（不引入 core.js），需自带转义助手 ---
-    // 大盘渲染的 Referer / IP / 路径等字段均为请求方可控数据
+    // HTML 转义：阻断遥测日志等外部可控字段经 innerHTML 注入脚本（存储型 XSS）
     function escapeHtml(value) {
-      return String(value === undefined || value === null ? '' : value)
+      return String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
     }
-    window.escapeHtml = window.escapeHtml || escapeHtml;
 
     // 现代 Toast 通知系统
     function showToast({ type = 'info', title = '', message = '', duration = 3000 }) {
@@ -43,21 +40,16 @@
       }
 
       toast.className = `glass-panel bg-white/95 dark:bg-slate-900/95 border ${borderClass} shadow-2xl px-4 py-3.5 rounded-2xl flex items-start space-x-3.5 pointer-events-auto transform translate-x-12 opacity-0 transition-all duration-300 ease-out max-w-md`;
-      // 骨架 innerHTML 固定；标题/消息可能携带用户输入或上游错误文本，一律 textContent 注入
       toast.innerHTML = `
         <div class="flex-shrink-0 mt-0.5">${iconHtml}</div>
         <div class="flex-1 text-sm">
-          <div class="font-bold text-slate-900 dark:text-white mb-0.5 js-toast-title"></div>
-          <div class="text-slate-600 dark:text-slate-300 leading-relaxed js-toast-message"></div>
+          ${title ? `<div class="font-bold text-slate-900 dark:text-white mb-0.5">${escapeHtml(title)}</div>` : ''}
+          <div class="text-slate-600 dark:text-slate-300 leading-relaxed">${escapeHtml(message)}</div>
         </div>
         <button onclick="dismissToast('${id}')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 interactive-btn">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       `;
-      toast.querySelector('.js-toast-title').textContent = title;
-      toast.querySelector('.js-toast-message').textContent = message;
-      // 空标题隐藏节点，避免残留 mb-0.5 造成多余间距（保持与旧条件渲染一致的视觉）
-      if (!title) toast.querySelector('.js-toast-title').style.display = 'none';
 
       container.appendChild(toast);
       lucide.createIcons();
@@ -80,64 +72,36 @@
       setTimeout(() => toast.remove(), 300);
     }
 
-    // 0. API Key 管理逻辑 (URL 参数自动同步与免循环弹窗设计)
-    let isAuthPrompted = false;
-    let isAuthRequired = false;
-
-    (function initUrlApiKey() {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const queryKey = params.get('api_key') || params.get('key');
-        if (queryKey && queryKey.trim()) {
-          localStorage.setItem('unm_monitor_api_key', queryKey.trim());
-          params.delete('api_key');
-          params.delete('key');
-          const newSearch = params.toString() ? `?${params.toString()}` : '';
-          window.history.replaceState({}, '', `${window.location.pathname}${newSearch}${window.location.hash}`);
-        }
-      } catch (e) {}
-    })();
-
+    // 0. API Key 管理逻辑
     function getStoredApiKey() {
       return localStorage.getItem('unm_monitor_api_key') || '';
     }
 
     function openApiKeyModal() {
       const modal = document.getElementById('apiKeyModal');
-      if (!modal) return;
       document.getElementById('inputApiKeyModal').value = getStoredApiKey();
       modal.classList.remove('hidden');
       lucide.createIcons();
     }
 
     function closeApiKeyModal() {
-      const modal = document.getElementById('apiKeyModal');
-      if (modal) modal.classList.add('hidden');
+      document.getElementById('apiKeyModal').classList.add('hidden');
     }
 
-    async function saveApiKey() {
+    function saveApiKey() {
       const val = document.getElementById('inputApiKeyModal').value.trim();
       localStorage.setItem('unm_monitor_api_key', val);
       closeApiKeyModal();
-      isAuthPrompted = false;
-      isAuthRequired = false;
-      showToast({ type: 'success', title: '凭证已保存', message: '正在验证并拉取遥测数据...' });
-      await loadDashboardData(1);
-      if (!isAuthRequired && pollInterval > 0 && !pollTimer) {
-        pollTimer = setInterval(() => loadDashboardData(currentPage, false), pollInterval);
-        const dot = document.getElementById('refreshPulseDot');
-        if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
-      }
+      showToast({ type: 'success', title: '凭证已保存', message: 'API Key 已更新，正在重新加载数据...' });
+      loadDashboardData(1);
     }
 
-    async function clearSavedApiKey() {
+    function clearSavedApiKey() {
       localStorage.removeItem('unm_monitor_api_key');
       document.getElementById('inputApiKeyModal').value = '';
       closeApiKeyModal();
-      isAuthPrompted = false;
-      isAuthRequired = false;
       showToast({ type: 'info', title: '凭证已清除', message: '已移除本地保存的 API Key' });
-      await loadDashboardData(1);
+      loadDashboardData(1);
     }
 
     function getAuthHeaders() {
@@ -153,11 +117,20 @@
     };
 
     function toggleSection(sec) {
-      const next = !sectionStates[sec];
-      setSectionVisibility(sec, next);
-      showToast(next
-        ? { type: 'info', title: '面板展开', message: `已展开 ${sec.toUpperCase()} 监控模块` }
-        : { type: 'info', title: '面板折叠', message: `已收起 ${sec.toUpperCase()} 监控模块` });
+      sectionStates[sec] = !sectionStates[sec];
+      const content = document.getElementById(`content${capitalize(sec)}`);
+      const icon = document.getElementById(`iconToggle${capitalize(sec)}`);
+      const label = document.getElementById(`labelToggle${capitalize(sec)}`);
+
+      if (sectionStates[sec]) {
+        content.classList.remove('hidden');
+        icon.classList.remove('rotate-180');
+        label.textContent = sec === 'logs' ? '收起表格' : '收起面板';
+      } else {
+        content.classList.add('hidden');
+        icon.classList.add('rotate-180');
+        label.textContent = sec === 'logs' ? '展开表格' : '展开面板';
+      }
     }
 
     function capitalize(str) {
@@ -165,32 +138,34 @@
     }
 
     function switchLayoutPreset(preset) {
-      const btnAll = document.getElementById('btnViewAll');
-      const btnCharts = document.getElementById('btnViewCharts');
-      const btnLogs = document.getElementById('btnViewLogs');
+      const idleD = "px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition interactive-btn";
+      const activeD = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
+      const idleM = "px-2 py-2 rounded-xl text-slate-600 dark:text-slate-400 transition min-h-[40px]";
+      const activeM = "px-2 py-2 rounded-xl bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition min-h-[40px]";
 
-      [btnAll, btnCharts, btnLogs].forEach(b => {
-        b.className = "px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition interactive-btn";
+      const groups = {
+        all: [document.getElementById('btnViewAll'), document.getElementById('btnViewAllM')],
+        charts: [document.getElementById('btnViewCharts'), document.getElementById('btnViewChartsM')],
+        logs: [document.getElementById('btnViewLogs'), document.getElementById('btnViewLogsM')],
+      };
+      Object.entries(groups).forEach(([key, [d, m]]) => {
+        const on = key === preset;
+        if (d) d.className = on ? activeD : idleD;
+        if (m) m.className = on ? activeM : idleM;
       });
 
       if (preset === 'all') {
-        btnAll.className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
         setSectionVisibility('kpis', true);
         setSectionVisibility('charts', true);
         setSectionVisibility('logs', true);
-        showToast({ type: 'info', title: '布局模式', message: '已切换至全景概览模式' });
       } else if (preset === 'charts') {
-        btnCharts.className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
         setSectionVisibility('kpis', true);
         setSectionVisibility('charts', true);
         setSectionVisibility('logs', false);
-        showToast({ type: 'info', title: '布局模式', message: '已切换至图表分析矩阵专注模式' });
       } else if (preset === 'logs') {
-        btnLogs.className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm transition interactive-btn";
         setSectionVisibility('kpis', false);
         setSectionVisibility('charts', false);
         setSectionVisibility('logs', true);
-        showToast({ type: 'info', title: '布局模式', message: '已切换至日志排查专注模式' });
       }
     }
 
@@ -440,49 +415,44 @@
       });
     }
 
-    // 3. 昼夜模式与 Chart 主题无损热更新 (极致丝滑零重绘零网络开销)
-    function updateChartTheme(isDark) {
-      const textColor = isDark ? '#94a3b8' : '#64748b';
-      const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
-      const borderColor = isDark ? '#0f172a' : '#ffffff';
-      const tooltipBg = isDark ? '#0f172a' : '#ffffff';
-      const tooltipTitle = isDark ? '#ffffff' : '#0f172a';
-      const tooltipBody = isDark ? '#cbd5e1' : '#334155';
-      const tooltipBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+    // 3. 昼夜模式
+    const themeToggle = document.getElementById('themeToggle');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
 
-      const charts = [waveformChartInstance, endpointsChartInstance, sourcesDonutChartInstance, statusDonutChartInstance];
-      for (const chart of charts) {
-        if (!chart) continue;
-        if (chart.options.scales) {
-          if (chart.options.scales.x) {
-            chart.options.scales.x.ticks.color = textColor;
-            if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = gridColor;
-          }
-          if (chart.options.scales.y) {
-            chart.options.scales.y.ticks.color = textColor;
-            if (chart.options.scales.y.grid) chart.options.scales.y.grid.color = gridColor;
-          }
-        }
-        if (chart.options.plugins?.legend?.labels) {
-          chart.options.plugins.legend.labels.color = textColor;
-        }
-        if (chart.options.plugins?.tooltip) {
-          chart.options.plugins.tooltip.backgroundColor = tooltipBg;
-          chart.options.plugins.tooltip.titleColor = tooltipTitle;
-          chart.options.plugins.tooltip.bodyColor = tooltipBody;
-          chart.options.plugins.tooltip.borderColor = tooltipBorder;
-        }
-        if (chart.data.datasets?.[0]?.borderColor && chart.config.type === 'doughnut') {
-          chart.data.datasets[0].borderColor = borderColor;
-          chart.data.datasets[0].borderWidth = isDark ? 2 : 1;
-        }
-        chart.update('none');
+    function setTheme(isDark, silent = false) {
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+        if (!silent) showToast({ type: 'info', title: '主题模式', message: '已切换至深色暗夜模式' });
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+        if (!silent) showToast({ type: 'info', title: '主题模式', message: '已切换至清爽浅色模式' });
       }
+      lucide.createIcons();
     }
 
-    // 主题切换实现复用共享模块 theme.js，仅注入图表联动钩子
-    initThemeSystem({ onChange: updateChartTheme });
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark.matches)) {
+      setTheme(true, true);
+    } else {
+      setTheme(false, true);
+    }
 
+    themeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setTheme(!isDark);
+      if (waveformChartInstance && endpointsChartInstance && sourcesDonutChartInstance && statusDonutChartInstance) {
+        waveformChartInstance.destroy();
+        endpointsChartInstance.destroy();
+        sourcesDonutChartInstance.destroy();
+        statusDonutChartInstance.destroy();
+        initCharts();
+        loadDashboardData(currentPage, false);
+      }
+    });
+
+    // 4. 轮询控制器
     let pollTimer = null;
     let pollInterval = 3000;
     let currentPage = 1;
@@ -492,19 +462,12 @@
     function changePollInterval(val) {
       pollInterval = parseInt(val, 10);
       clearInterval(pollTimer);
-      pollTimer = null;
       const dot = document.getElementById('refreshPulseDot');
       if (pollInterval > 0) {
-        if (!isAuthRequired) {
-          dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
-          pollTimer = setInterval(() => loadDashboardData(currentPage, false), pollInterval);
-        } else {
-          dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500';
-        }
-        showToast({ type: 'info', title: '轮询配置', message: `自动刷新间隔已设置为 ${pollInterval / 1000} 秒` });
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
+        pollTimer = setInterval(() => loadDashboardData(currentPage, false), pollInterval);
       } else {
         dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
-        showToast({ type: 'warning', title: '轮询已暂停', message: '已暂停后台自动数据刷新' });
       }
     }
 
@@ -514,9 +477,6 @@
       searchDebounce = setTimeout(() => {
         const kw = document.getElementById('inputSearchKeyword').value.trim();
         loadDashboardData(1);
-        if (kw) {
-          showToast({ type: 'info', title: '筛选检索', message: `正在检索关键词: "${kw}"` });
-        }
       }, 350);
     }
 
@@ -524,39 +484,9 @@
       const ep = document.getElementById('selectEndpointFilter').value;
       const st = document.getElementById('selectStatusFilter').value;
       loadDashboardData(1);
-      showToast({ type: 'info', title: '过滤条件已更新', message: `端点: ${ep || '全部'} · 状态: ${st || '全部'}` });
     }
 
-    // 渲染鉴权锁定内嵌占位卡片 (替代阻断性全屏弹窗循环)
-    function renderAuthRequiredState() {
-      // 注意：表格实际容器为 #logsTableContent（与 renderTelemetryLogs 一致），此前写入不存在的
-      // #tableLogsBody 导致鉴权锁定卡片从不渲染，401 时用户只看到空白表格
-      const tbody = document.getElementById('logsTableContent');
-      if (tbody) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="8" class="py-12 px-4 text-center">
-              <div class="max-w-md mx-auto p-6 sm:p-8 rounded-3xl bg-amber-500/10 border border-amber-500/25 text-center space-y-3.5 shadow-sm">
-                <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center mx-auto">
-                  <i data-lucide="key" class="w-6 h-6"></i>
-                </div>
-                <div>
-                  <h4 class="font-extrabold text-base text-slate-900 dark:text-white">监控接口安全鉴权保护</h4>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">请输入访问凭证（MONITOR_SECRET_KEY）以加载实时遥测与请求明细。</p>
-                </div>
-                <button onclick="openApiKeyModal()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md shadow-amber-500/20 transition interactive-btn inline-flex items-center space-x-1.5">
-                  <i data-lucide="key" class="w-4 h-4"></i>
-                  <span>输入访问密钥 (API Key)</span>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-        lucide.createIcons();
-      }
-    }
-
-    // 5. 拉取监控数据 (带自动 API Key 鉴权头与防死循环设计)
+    // 5. 拉取监控数据 (带自动 API Key 鉴权头)
     async function loadDashboardData(page = 1, showSpinner = true) {
       currentPage = page;
       const pathFilter = document.getElementById('selectEndpointFilter').value;
@@ -572,39 +502,14 @@
       });
 
       try {
-        // /monitor/* 双平台兼容路径（Vercel 重写与 Netlify 转发均可直达；独立部署经别名路由同样生效）
-        const res = await fetch(`/monitor/data?${query.toString()}`, {
+        const res = await fetch(`/api/monitor/data?${query.toString()}`, {
           headers: getAuthHeaders(),
         });
 
         if (res.status === 401) {
-          isAuthRequired = true;
-          // 遇到 401 立即停止后台轮询，杜绝任何周期性弹窗刷屏
-          if (pollTimer) {
-            clearInterval(pollTimer);
-            pollTimer = null;
-          }
-          const dot = document.getElementById('refreshPulseDot');
-          if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500';
-
-          const modal = document.getElementById('apiKeyModal');
-          const isModalHidden = modal ? modal.classList.contains('hidden') : true;
-
-          // 仅在首次未提示且弹窗关闭时优雅提示一次
-          if (!isAuthPrompted) {
-            isAuthPrompted = true;
-            showToast({ type: 'warning', title: '需要鉴权', message: '监控接口需要访问密钥凭证 (API Key)' });
-            if (isModalHidden) {
-              openApiKeyModal();
-            }
-          }
-
-          renderAuthRequiredState();
+          showToast({ type: 'warning', title: '需要鉴权', message: '监控接口需要访问密钥凭证 (API Key)' });
+          openApiKeyModal();
           return;
-        }
-
-        if (res.ok) {
-          isAuthRequired = false;
         }
 
         const json = await res.json();
@@ -678,17 +583,16 @@
         statusDonutChartInstance.update();
       }
 
-      // 渲染 Top Callers (Who) —— caller 名称含 Referer/Origin/IP 等外部可控数据，必须转义（含 title 属性）
+      // 渲染 Top Callers (Who)
       const callerContainer = document.getElementById('topCallersList');
       if (stats.topCallers && stats.topCallers.length > 0) {
         callerContainer.innerHTML = stats.topCallers.map(item => {
           const pct = Math.min(Math.round((item.count / total) * 100), 100);
-          const safeName = escapeHtml(item.name);
           return `
             <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/60 dark:border-white/5 space-y-2 interactive-btn">
               <div class="flex items-center justify-between">
-                <span class="truncate max-w-[200px] font-bold text-slate-800 dark:text-slate-200" title="${safeName}">${safeName}</span>
-                <span class="font-bold font-mono px-2.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs">${Number(item.count) || 0} 次 (${pct}%)</span>
+                <span class="truncate max-w-[200px] font-bold text-slate-800 dark:text-slate-200" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+                <span class="font-bold font-mono px-2.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs">${item.count} 次 (${pct}%)</span>
               </div>
               <div class="w-full h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                 <div class="h-full bg-indigo-500 rounded-full" style="width: ${pct}%"></div>
@@ -712,14 +616,12 @@
         return;
       }
 
-      // 日志字段（path/ip/referer/clientType 等）含请求方可控数据：全部经 escapeHtml 转义后再进入模板与属性
       tbody.innerHTML = logs.map(l => {
-        const safeId = escapeHtml(l.id);
-        let codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">${Number(l.status) || 0}</span>`;
+        let codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">${l.status}</span>`;
         if (l.status >= 400 && l.status < 500) {
-          codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">${Number(l.status) || 0}</span>`;
+          codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">${l.status}</span>`;
         } else if (l.status >= 500) {
-          codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">${Number(l.status) || 0}</span>`;
+          codeBadge = `<span class="px-2.5 py-1 rounded-md font-mono font-bold text-xs bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">${l.status}</span>`;
         }
 
         const callerDisplay = l.referer !== '-'
@@ -727,20 +629,20 @@
           : `<span class="text-slate-400 font-medium">Direct API</span>`;
 
         return `
-          <tr class="hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition cursor-pointer" onclick="openDrawer('${safeId}')">
+          <tr class="hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition cursor-pointer" onclick="openDrawer('${l.id}')">
             <td class="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap text-xs sm:text-sm">${escapeHtml(l.timeStr)}</td>
             <td class="py-3.5 px-4 font-mono font-semibold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
               <span class="text-sky-500 font-bold">${escapeHtml(l.method)}</span> ${escapeHtml(l.path)}
             </td>
             <td class="py-3.5 px-4">${codeBadge}</td>
-            <td class="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300 font-semibold text-xs sm:text-sm">${Number(l.duration) || 0}ms</td>
+            <td class="py-3.5 px-4 font-mono text-slate-600 dark:text-slate-300 font-semibold text-xs sm:text-sm">${l.duration}ms</td>
             <td class="py-3.5 px-4">${callerDisplay}</td>
             <td class="py-3.5 px-4">
               <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold">${escapeHtml(l.clientType)}</span>
             </td>
             <td class="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400 text-xs sm:text-sm">${escapeHtml(l.ip)}</td>
             <td class="py-3.5 px-4 text-right">
-              <button onclick="event.stopPropagation(); openDrawer('${safeId}')" class="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sky-500 hover:text-white transition text-xs font-bold interactive-btn">查看</button>
+              <button onclick="event.stopPropagation(); openDrawer('${l.id}')" class="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sky-500 hover:text-white transition text-xs font-bold interactive-btn">查看</button>
             </td>
           </tr>
         `;
@@ -755,7 +657,6 @@
       const target = currentPage + delta;
       if (target >= 1) {
         loadDashboardData(target);
-        showToast({ type: 'info', title: '分页切换', message: `正在加载第 ${target} 页数据...` });
       }
     }
 
@@ -774,7 +675,6 @@
 
       document.getElementById('drawerOverlay').classList.remove('hidden');
       lucide.createIcons();
-      showToast({ type: 'info', title: '明细展开', message: `已载入请求 ${item.path} 遥测结构` });
     }
 
     function closeDrawer() {
@@ -782,30 +682,31 @@
     }
 
     // 9. 现代确认对话框
-    window.showConfirmDialog = function({ title = '确认操作', message = '', onConfirm = null }) {
+    let confirmCallback = null;
+    function showConfirmDialog({ title = '确认操作', message = '', onConfirm = null }) {
       document.getElementById('confirmTitle').textContent = title;
       document.getElementById('confirmMessage').textContent = message;
       confirmCallback = onConfirm;
       document.getElementById('confirmModal').classList.remove('hidden');
       lucide.createIcons();
-    };
+    }
 
-    window.closeConfirm = function(accepted) {
+    function closeConfirm(accepted) {
       document.getElementById('confirmModal').classList.add('hidden');
       if (accepted && typeof confirmCallback === 'function') {
         confirmCallback();
       }
       confirmCallback = null;
-    };
+    }
 
     // 10. 清空与导出
-    window.clearLogsData = async function() {
+    async function clearLogsData() {
       showConfirmDialog({
         title: '清空遥测日志',
         message: '确定要重置并清空所有内存遥测日志记录吗？清空后当前聚合统计与明细将全部重置。',
         onConfirm: async () => {
           try {
-            const res = await fetch('/monitor/clear', {
+            const res = await fetch('/api/monitor/clear', {
               method: 'POST',
               headers: getAuthHeaders(),
             });
@@ -814,13 +715,10 @@
               openApiKeyModal();
               return;
             }
-            if (!res.ok) {
-              throw new Error(`服务端返回 HTTP ${res.status}`);
-            }
             loadDashboardData(1);
             showToast({ type: 'success', title: '清空完成', message: '已成功重置所有遥测数据与内存日志' });
           } catch (err) {
-            showToast({ type: 'error', title: '清空失败', message: err?.message || '网络异常' });
+            showToast({ type: 'error', title: '清空失败', message: err.message });
           }
         }
       });
@@ -841,60 +739,7 @@
       showToast({ type: 'success', title: '导出成功', message: `已成功导出 ${currentLogsCache.length} 条遥测记录为 JSON` });
     }
 
-    // Ping 探针检测 (多端智能延迟感知)
-    async function checkPing() {
-      const pingEl = document.getElementById('pingText');
-      const mobilePingEl = document.getElementById('mobilePingText');
-      const pingBadges = document.querySelectorAll('#pingBadge, #mobilePingBadge');
-      const start = performance.now();
-      try {
-        const res = await fetch('/health', { cache: 'no-store' });
-        const latency = Math.round(performance.now() - start);
-        const text = res.ok ? `${latency}ms` : 'Degraded';
-        if (pingEl) pingEl.textContent = `Ping: ${text}`;
-        if (mobilePingEl) mobilePingEl.textContent = `Ping: ${text}`;
-
-        pingBadges.forEach(badge => {
-          badge.classList.remove('bg-emerald-500/10', 'text-emerald-600', 'dark:text-emerald-400', 'border-emerald-500/20',
-            'bg-amber-500/10', 'text-amber-600', 'dark:text-amber-400', 'border-amber-500/20',
-            'bg-rose-500/10', 'text-rose-600', 'dark:text-rose-400', 'border-rose-500/20');
-          if (res.ok && latency < 80) {
-            badge.classList.add('bg-emerald-500/10', 'text-emerald-600', 'dark:text-emerald-400', 'border-emerald-500/20');
-          } else if (res.ok && latency < 200) {
-            badge.classList.add('bg-amber-500/10', 'text-amber-600', 'dark:text-amber-400', 'border-amber-500/20');
-          } else {
-            badge.classList.add('bg-rose-500/10', 'text-rose-600', 'dark:text-rose-400', 'border-rose-500/20');
-          }
-        });
-      } catch {
-        if (pingEl) pingEl.textContent = 'Offline';
-        if (mobilePingEl) mobilePingEl.textContent = 'Offline';
-      }
-    }
-    checkPing();
-    setInterval(checkPing, 10000);
-
-    // 全局导出，供 HTML onclick 直接调用
-    window.openApiKeyModal = openApiKeyModal;
-    window.closeApiKeyModal = closeApiKeyModal;
-    window.saveApiKey = saveApiKey;
-    window.clearSavedApiKey = clearSavedApiKey;
-    window.toggleSection = toggleSection;
-    window.switchLayoutPreset = switchLayoutPreset;
-    window.changePollInterval = changePollInterval;
-    window.exportJsonLogs = exportJsonLogs;
-    window.paginate = paginate;
-    window.openDrawer = openDrawer;
-    window.closeDrawer = closeDrawer;
-    window.dismissToast = dismissToast;
-
-    // 初始启动（年份填充已在文件头部执行，不再重复）
-    fetch('/info').then(r => r.json()).then(j => {
-      if (j?.data?.version) {
-        document.querySelectorAll('.app-version-badge').forEach(el => el.textContent = `v${j.data.version} PRO`);
-      }
-    }).catch(() => {});
+    // 初始启动
     initCharts();
     loadDashboardData(1);
     changePollInterval(3000);
-    lucide.createIcons();

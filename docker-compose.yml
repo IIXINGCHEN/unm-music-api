@@ -1,18 +1,16 @@
 services:
   unm-server:
     container_name: unm-server
-    image: ghcr.io/iixingchen/unm-music-api:latest
+    image: hoolhub/unm-server:4.5.0
     build:
       context: .
       dockerfile: Dockerfile
+    # 每次 up 都先按当前源码重新构建镜像，避免旧镜像导致前端与源码不一致
+    # （否则 docker compose up -d 会直接复用已存在的旧镜像）
+    pull_policy: build
     restart: unless-stopped
     ports:
-      # 端口发布地址使用独立变量 BIND_HOST，**不复用 HOST**。
-      # HOST 在 .env.example 里被文档化为「服务监听地址」（如需暴露公网可设为 0.0.0.0），
-      # 且下方 environment 又把它强制为 0.0.0.0；若此处再用 ${HOST}，任何按文档设置
-      # HOST=0.0.0.0 的部署都会把端口静默发布到全部网络接口（而非仅回环），
-      # 与「默认不对外暴露」的意图相反。
-      - "${BIND_HOST:-127.0.0.1}:${PORT:-5678}:5678"
+      - "${HOST:-127.0.0.1}:${PORT:-5678}:5678"
     env_file:
       - .env
     environment:

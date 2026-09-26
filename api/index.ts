@@ -25,10 +25,12 @@ export default function handler(req: any, res: any) {
 
   if (allowOrigin) {
     res.setHeader("Access-Control-Allow-Origin", allowOrigin);
-    // 与主应用 cors() 行为对齐：不开启 credentials（避免 Origin 反射 + 凭证组合的过度授权）
+    if (allowOrigin !== "*") {
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
   }
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, HEAD");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With, x-api-key, api_key");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-api-key, Authorization, X-Requested-With, Accept, Origin, Accept-Version, Content-Length");
 
   // OPTIONS 预检请求响应
   if (req.method === "OPTIONS") {

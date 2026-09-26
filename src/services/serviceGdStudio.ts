@@ -1,10 +1,11 @@
 import axios, { type AxiosInstance } from "axios";
-import { env, HTTP_CONFIG, AUDIO_CONFIG, UPSTREAM_APIS, PLAYLIST_CONFIG } from "../config/index.js";
+import { env, HTTP_CONFIG, AUDIO_CONFIG, UPSTREAM_APIS } from "../config/index.js";
 import { globalCache } from "./serviceCache.js";
-import { sanitizeParam, clampBitrate, normalizeSource } from "../utils/utilString.js";
+import { sanitizeParam } from "../utils/utilString.js";
 import type {
   GDTrack,
   GDUrlResponse,
+  GDUrlStatus,
   GDPicResponse,
   GDLyricResponse,
   LyricResult,
@@ -12,9 +13,67 @@ import type {
   PlaylistTrack,
 } from "../types/typeMusic.js";
 
+/**
+ * CRC32 (IEEE 802.3, 多项式 0xEDB88320)。
+ * GD Studio 官方站同源 api.php 强制签名 s=crc32(urlEncode(name或id))，
+ * 缺/错 s 返回 {"detail":"Invalid request."}；公共 music-api.gdstudio.xyz
+ * 目前无签也能调通，但为与官方实现对齐、防范未来收紧，统一加签。
+ */
+const CRC32_TABLE: number[] = (() => {
+  const table = new Array<number>(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(str: string): number {
+  let crc = 0xffffffff;
+  for (let i = 0; i < str.length; i++) {
+    crc = CRC32_TABLE[(crc ^ str.charCodeAt(i)) & 0xff]! ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+/** GD 官方 urlEncode：encodeURIComponent 后再转义 ()*'! */
+function gdUrlEncode(value: string): string {
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+}
+
 class GDStudioService {
   private client: AxiosInstance;
   private baseUrl: string;
+
+  /**
+   * 上游 GD Studio api.php 实测拒绝的 source（HTTP 400 "Value of `source` is not supported."）。
+   * 实测支持：search→netease/joox/bilibili/netease_album；url→netease/joox/bilibili；
+   * lyric/pic→netease/joox。被拒绝的 source 提前抛错，让路由返回 400 而非 500。
+   */
+  private static readonly REJECTED_SOURCES = new Set([
+    "kuwo",
+    "qq",
+    "kugou",
+    "migu",
+    "bodian",
+    "bilivideo",
+    "ytdlp",
+    "youtube",
+    "youtubedl",
+    "pyncmd",
+  ]);
+
+  private assertSourceSupported(source: string): void {
+    if (GDStudioService.REJECTED_SOURCES.has(source)) {
+      throw new Error(`不支持的上游音源: ${source}（GD Studio api.php 会拒绝该 source）`);
+    }
+  }
 
   constructor() {
     this.baseUrl = env.GDSTUDIO_API_URL;
@@ -31,7 +90,11 @@ class GDStudioService {
    * 通用调用 GD Studio API 并按策略缓存
    */
   async callApi<T>(types: string, params: Record<string, string | number> = {}, ttl: number = env.CACHE_TTL_AUDIO): Promise<T> {
-    const cacheKey = `gd:${types}:${JSON.stringify(params)}`;
+    // 缓存键归一化：键名排序后序列化，避免相同语义参数因键序不同导致缓存穿透
+    const stableParams = Object.keys(params)
+      .sort()
+      .map((k) => [k, (params as Record<string, any>)[k]] as const);
+    const cacheKey = `gd:${types}:${JSON.stringify(stableParams)}`;
     const cached = globalCache.get(cacheKey) as T | null;
     if (cached) {
       return cached;
@@ -41,6 +104,18 @@ class GDStudioService {
       types,
       ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])),
     });
+
+    // GD 官方签名：search 签 name，url/lyric/pic 签 id，其他 types 若带 id 则签 id。
+    // s=crc32(urlEncode(签名对象))，十进制字符串形式加入 query。
+    const signTarget =
+      types === "search"
+        ? params["name"]
+        : params["id"] !== undefined
+          ? params["id"]
+          : undefined;
+    if (signTarget !== undefined && signTarget !== "") {
+      query.set("s", String(crc32(gdUrlEncode(String(signTarget)))));
+    }
 
     const requestUrl = `${this.baseUrl}?${query.toString()}`;
     try {
@@ -71,7 +146,8 @@ class GDStudioService {
 
     const cleanCount = Math.min(Math.max(count || env.DEFAULT_SEARCH_COUNT, 1), AUDIO_CONFIG.MAX_SEARCH_COUNT);
     const cleanPages = Math.max(pages || AUDIO_CONFIG.DEFAULT_SEARCH_PAGE, 1);
-    const cleanSource = normalizeSource(source, env.DEFAULT_SEARCH_SOURCE);
+    const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
+    this.assertSourceSupported(cleanSource);
 
     const data = await this.callApi<GDTrack[]>(
       "search",
@@ -98,8 +174,11 @@ class GDStudioService {
     const cleanId = sanitizeParam(id, 50);
     if (!cleanId) return null;
 
-    const cleanSource = normalizeSource(source, env.DEFAULT_AUDIO_SOURCE);
-    const cleanBr = clampBitrate(br);
+    const cleanSource = sanitizeParam(source, 30, env.DEFAULT_AUDIO_SOURCE).toLowerCase();
+    this.assertSourceSupported(cleanSource);
+    const cleanBr = (AUDIO_CONFIG.SUPPORTED_BITRATES as readonly number[]).includes(Number(br))
+      ? Number(br)
+      : env.DEFAULT_BITRATE;
 
     const data = await this.callApi<GDUrlResponse>(
       "url",
@@ -111,16 +190,29 @@ class GDStudioService {
       env.CACHE_TTL_AUDIO
     );
 
-    if (data && typeof data === "object" && data.url) {
-      return {
-        url: data.url,
-        br: Number(data.br) || cleanBr,
-        size: Number(data.size) || 0,
-        source: cleanSource,
-        from: data.from || "music.gdstudio.xyz",
-      };
-    }
-    return null;
+    // 上游 br 负值语义：-1 获取失败 / -2 无版权 / -3 试听版。
+    // 软失败时保持返回对象（含空 url）而非 null，由调用方按 status 决定是否换源。
+    const rawBr = Number((data as any)?.br);
+    const hasUrl = Boolean(data && typeof data === "object" && (data as any).url);
+    const status: GDUrlStatus =
+      hasUrl
+        ? "ok"
+        : rawBr === -2
+          ? "no_copyright"
+          : rawBr === -3
+            ? "trial"
+            : "unavailable";
+    // 上游 api.php 返回的 br 单位是 kbps（如 320）；本项目与
+    // @unblockneteasemusic/server 0.28.0 对齐，对外统一使用 bps（如 320000）
+    const brKbps = rawBr > 0 ? rawBr : cleanBr;
+    return {
+      url: hasUrl ? String((data as any).url) : "",
+      br: brKbps * 1000,
+      size: Number((data as any)?.size) || 0,
+      source: cleanSource,
+      from: (data as any)?.from || "music.gdstudio.xyz",
+      status,
+    };
   }
 
   /**
@@ -134,7 +226,8 @@ class GDStudioService {
     const cleanId = sanitizeParam(id, 100);
     if (!cleanId) return null;
 
-    const cleanSource = normalizeSource(source, env.DEFAULT_SEARCH_SOURCE);
+    const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
+    this.assertSourceSupported(cleanSource);
     const cleanSize = (AUDIO_CONFIG.SUPPORTED_PICTURE_SIZES as readonly number[]).includes(Number(size))
       ? Number(size)
       : env.DEFAULT_PICTURE_SIZE;
@@ -158,15 +251,25 @@ class GDStudioService {
   /**
    * 获取歌词（尽力而为：上游失败自动重试一次，仍失败则返回空歌词而非抛错，
    * 歌词属可选增强数据，不应让播放主链路出现 500 噪音）
+   *
+   * 兜底链：GD 上游 lyric → lrclib.net（需 meta.track_name）。
+   * lrclib 超时 8s，失败静默降级为空，不阻断主链路。
    */
   async getLyric(
     id: string | number,
-    source: string = env.DEFAULT_SEARCH_SOURCE
+    source: string = env.DEFAULT_SEARCH_SOURCE,
+    meta?: {
+      artist_name?: string;
+      track_name?: string;
+      album_name?: string;
+      duration?: number;
+    }
   ): Promise<LyricResult> {
     const cleanId = sanitizeParam(id, 100);
     if (!cleanId) return { lyric: "", tlyric: "" };
 
-    const cleanSource = normalizeSource(source, env.DEFAULT_SEARCH_SOURCE);
+    const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
+    this.assertSourceSupported(cleanSource);
 
     const fetchOnce = () =>
       this.callApi<GDLyricResponse>(
@@ -192,12 +295,41 @@ class GDStudioService {
       }
     }
 
-    if (data && typeof data === "object") {
+    if (data && typeof data === "object" && (data.lyric || data.tlyric)) {
       return {
         lyric: data.lyric || "",
         tlyric: data.tlyric || "",
       };
     }
+
+    // 上游无歌词时走 lrclib.net 兜底（与 GD 官方站行为对齐）
+    const trackName = meta?.track_name?.trim();
+    if (trackName) {
+      try {
+        const lrclib = axios.create({ timeout: 8000 });
+        // lrclib duration 单位为秒；NCM 系 duration 多为毫秒，>10000 时换算
+        const rawDur = Number(meta?.duration) || 0;
+        const durSec = rawDur > 10000 ? Math.round(rawDur / 1000) : Math.round(rawDur);
+        const q = new URLSearchParams();
+        if (meta?.artist_name?.trim()) q.set("artist_name", meta.artist_name.trim());
+        q.set("track_name", trackName);
+        if (meta?.album_name?.trim()) q.set("album_name", meta.album_name.trim());
+        if (durSec > 0) q.set("duration", String(durSec));
+        const res = await lrclib.get<{
+          syncedLyrics?: string;
+          plainLyrics?: string;
+        }>(`https://lrclib.net/api/get?${q.toString()}`, {
+          headers: { "User-Agent": HTTP_CONFIG.USER_AGENT },
+        });
+        const synced = res.data?.syncedLyrics?.trim();
+        if (synced) {
+          return { lyric: synced, tlyric: "" };
+        }
+      } catch (err: any) {
+        console.warn(`[GDStudio] lrclib 兜底失败 (track=${trackName}): ${err.message}`);
+      }
+    }
+
     return { lyric: "", tlyric: "" };
   }
 
@@ -241,76 +373,74 @@ class GDStudioService {
       const playlist = res.data && res.data.playlist;
       if (playlist) {
         const rawSongIds = (playlist.trackIds || playlist.tracks || []).map((t) => String(t.id)).filter(Boolean);
-        const targetIds = rawSongIds.slice(0, limit);
-        const trackMap = new Map<string, PlaylistTrack>();
+        let tracks: PlaylistTrack[] = [];
 
         if (Array.isArray(playlist.tracks) && playlist.tracks.length > 0) {
-          for (const t of playlist.tracks) {
-            const idStr = String(t.id);
-            trackMap.set(idStr, {
-              id: idStr,
-              name: t.name || "未知曲目",
-              artist: (t.ar || t.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
-              album: t.al?.name || t.album?.name || "未知专辑",
-              picUrl: t.al?.picUrl || t.album?.picUrl || "",
-              duration: t.dt ? Math.round(t.dt / 1000) : 0,
-            });
-          }
+          tracks = playlist.tracks.slice(0, limit).map((t: any) => ({
+            id: String(t.id),
+            name: t.name || "未知曲目",
+            artist: (t.ar || t.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
+            album: t.al?.name || t.album?.name || "未知专辑",
+            picUrl: t.al?.picUrl || t.album?.picUrl || "",
+            duration: t.dt ? Math.round(t.dt / 1000) : 0,
+          }));
         }
 
-        // 找出尚未取得详情的曲目 ID，按 DETAIL_CHUNK_SIZE 个一组分块
-        const missingIds = targetIds.filter((id) => !trackMap.has(id));
-        if (missingIds.length > 0) {
+        // 如果 tracks 数量少于 limit 且还有更多 trackIds，按 200 个一组批量拉取全部详情
+        // 受限并发（3路）+ allSettled：避免单请求串行放大为数十次上游调用
+        if (tracks.length < limit && rawSongIds.length > tracks.length) {
+          const neededIds = rawSongIds.slice(tracks.length, limit);
+          const chunkSize = 200;
           const chunks: string[][] = [];
-          for (let i = 0; i < missingIds.length; i += PLAYLIST_CONFIG.DETAIL_CHUNK_SIZE) {
-            chunks.push(missingIds.slice(i, i + PLAYLIST_CONFIG.DETAIL_CHUNK_SIZE));
+          for (let i = 0; i < neededIds.length; i += chunkSize) {
+            chunks.push(neededIds.slice(i, i + chunkSize));
+          }
+          const CONCURRENCY = 3;
+          const fetchChunk = async (chunk: string[]) => {
+            try {
+              const batchUrl = `https://music.163.com/api/song/detail?ids=[${chunk.join(",")}]`;
+              const batchRes = await this.client.get<{ songs?: Array<any> }>(batchUrl, {
+                headers: {
+                  Referer: UPSTREAM_APIS.NETEASE_REFERER,
+                  "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
+                },
+                timeout: 8000,
+              });
+              if (Array.isArray(batchRes.data?.songs)) {
+                return batchRes.data.songs.map((s: any) => ({
+                  id: String(s.id),
+                  name: s.name || "未知曲目",
+                  artist: (s.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
+                  album: s.album?.name || "未知专辑",
+                  picUrl: s.album?.picUrl || "",
+                  duration: s.duration ? Math.round(s.duration / 1000) : 0,
+                }));
+              }
+            } catch (batchErr: any) {
+              console.warn(`[Playlist] 批量获取歌曲详情 chunk 异常: ${batchErr.message}`);
+            }
+            return [];
+          };
+          for (let i = 0; i < chunks.length; i += CONCURRENCY) {
+            const batch = chunks.slice(i, i + CONCURRENCY);
+            const results = await Promise.allSettled(batch.map(fetchChunk));
+            for (const r of results) {
+              if (r.status === "fulfilled") tracks.push(...r.value);
+            }
           }
 
-          // 限流并发分批推进：避免超大歌单一次性打满数百个并发上游请求
-          for (let i = 0; i < chunks.length; i += PLAYLIST_CONFIG.DETAIL_CHUNK_CONCURRENCY) {
-            await Promise.all(
-              chunks.slice(i, i + PLAYLIST_CONFIG.DETAIL_CHUNK_CONCURRENCY).map(async (chunk) => {
-                try {
-                  // 网易云标准批量获取详情接口
-                  const batchUrl = `${UPSTREAM_APIS.NETEASE_SONG_DETAIL_V3}?c=[${chunk.map((id) => `{"id":${id}}`).join(",")}]`;
-                  const batchRes = await this.client.get<{ songs?: Array<any> }>(batchUrl, {
-                    headers: {
-                      Referer: UPSTREAM_APIS.NETEASE_REFERER,
-                      "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
-                    },
-                    timeout: 8000,
-                  });
-                  if (Array.isArray(batchRes.data?.songs)) {
-                    for (const s of batchRes.data.songs) {
-                      const idStr = String(s.id);
-                      trackMap.set(idStr, {
-                        id: idStr,
-                        name: s.name || "未知曲目",
-                        artist: (s.ar || s.artists || []).map((a: any) => a.name).join(" / ") || "未知歌手",
-                        album: s.al?.name || s.album?.name || "未知专辑",
-                        picUrl: s.al?.picUrl || s.album?.picUrl || "",
-                        duration: s.dt ? Math.round(s.dt / 1000) : (s.duration ? Math.round(s.duration / 1000) : 0),
-                      });
-                    }
-                  }
-                } catch (batchErr: any) {
-                  console.warn(`[Playlist] 批量获取歌曲详情 chunk 异常: ${batchErr.message}`);
-                }
-              })
-            );
+          // 只保留**真实取到元数据**的曲目，不再合成占位对象。
+          // 原实现在缺失时填充 "歌单曲目 #id" / artist="网易云音乐" / duration=0，
+          // 其形状与真实条目一致，消费端无法区分成功与降级，等于把降级结果伪装成成功。
+          // 改为如实返回已获取到的曲目，并通过 missingCount 显式声明缺失数量。
+          const __missingInBatch = Math.max(0, neededIds.length - tracks.length);
+          if (__missingInBatch > 0) {
+            console.warn(`[Playlist] 歌单 ${cleanId} 批量详情有 ${__missingInBatch} 首曲目元数据缺失`);
           }
         }
 
-        // 严格按歌单官方原始顺序组装列表，只保留**真实取到元数据**的曲目。
-        // 原实现在缺失时合成占位对象（"歌单曲目 #id" / artist="网易云音乐" / duration=0），
-        // 其形状与真实条目一致，消费端无法区分，等于把降级结果伪装成成功。
-        // 改为如实返回已获取到的曲目，并通过 partialLoaded 显式声明缺失数量。
-        const tracks: PlaylistTrack[] = [];
-        for (const id of targetIds) {
-          const existing = trackMap.get(id);
-          if (existing) tracks.push(existing);
-        }
-        const missingCount = targetIds.length - tracks.length;
+        // 相对请求 limit 的缺失数（如实声明，不再用占位对象伪装）
+        const missingCount = Math.max(0, Math.min(rawSongIds.length, limit) - tracks.length);
 
         const result: PlaylistDetail = {
           id: cleanId,
@@ -370,7 +500,68 @@ class GDStudioService {
 
     return null;
   }
+
+  /**
+   * 获取网易云歌单或专辑的歌曲 ID 列表
+   */
+  async getPlaylistSongIds(playlistId: string | number): Promise<string[]> {
+    const cleanId = sanitizeParam(playlistId, 50);
+    if (!cleanId) return [];
+
+    const cacheKey = `playlist:ids:${cleanId}`;
+    const cached = globalCache.get(cacheKey) as string[] | null;
+    if (cached) return cached;
+
+    // 1. 优先尝试网易云官方歌单接口
+    try {
+      const ncmUrl = `${UPSTREAM_APIS.NETEASE_PLAYLIST_DETAIL}?id=${encodeURIComponent(cleanId)}`;
+      const res = await this.client.get<{
+        playlist?: {
+          trackIds?: Array<{ id: number | string }>;
+          tracks?: Array<{ id: number | string }>;
+        };
+      }>(ncmUrl, {
+        headers: {
+          Referer: UPSTREAM_APIS.NETEASE_REFERER,
+          "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
+        },
+        timeout: 8000,
+      });
+
+      const playlist = res.data && res.data.playlist;
+      const trackList = playlist?.trackIds || playlist?.tracks;
+      if (Array.isArray(trackList) && trackList.length > 0) {
+        const ids = trackList.map((t) => String(t.id)).filter(Boolean);
+        globalCache.set(cacheKey, ids, env.CACHE_TTL_PLAYLIST);
+        return ids;
+      }
+    } catch (err: any) {
+      console.warn(`[Playlist] 网易云官方歌单拉取失败: ${err.message}，尝试专辑接口回退...`);
+    }
+
+    // 2. 回退尝试 GD Studio netease_album
+    try {
+      const albumData = await this.callApi<GDTrack[]>(
+        "search",
+        {
+          source: "netease_album",
+          name: cleanId,
+        },
+        env.CACHE_TTL_PLAYLIST
+      );
+      if (Array.isArray(albumData) && albumData.length > 0) {
+        const ids = albumData.map((song) => String(song.id)).filter(Boolean);
+        if (ids.length > 0) {
+          globalCache.set(cacheKey, ids, env.CACHE_TTL_PLAYLIST);
+          return ids;
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[Playlist] GD Studio netease_album 获取失败: ${err.message}`);
+    }
+
+    return [];
+  }
 }
 
 export const gdStudio = new GDStudioService();
-export const gdstudio = gdStudio;

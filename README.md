@@ -7,7 +7,7 @@
 **网易云音乐解灰与跨平台高保真音乐 API 服务**  
 *(Modern TypeScript 5.x + Hono 4.x + Serverless Edition)*
 
-[![Version](https://img.shields.io/badge/version-v3.1.0-sky.svg?style=flat-square)](https://github.com/IIXINGCHEN/unm-music-api/releases)
+[![Version](https://img.shields.io/badge/version-v4.1.0-sky.svg?style=flat-square)](https://github.com/IIXINGCHEN/unm-music-api/releases)
 [![License](https://img.shields.io/badge/license-MIT-emerald.svg?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-indigo.svg?style=flat-square)](https://nodejs.org/)
 [![Docker](https://img.shields.io/badge/docker-multi--arch-blue.svg?style=flat-square)](https://github.com/IIXINGCHEN/unm-music-api/pkgs/container/unm-music-api)
@@ -136,6 +136,33 @@ pnpm start
 pnpm prd
 ```
 
+### 方式 5: 一键管理控制台（跨平台脚本，推荐本地/测试机）
+
+项目根目录提供 `unm-console.sh`（Linux/macOS）与 `unm-console.ps1`（Windows，功能对齐），
+覆盖生产/开发双环境的启动（前/后台）、停止、重启、状态、9 项配置检测与日志查看：
+
+```bash
+# Linux / macOS：交互菜单
+./unm-console.sh
+# 常用命令
+./unm-console.sh check --env all      # 启动前先检测配置
+./unm-console.sh start --env prod     # 后台启动生产环境
+./unm-console.sh start --env dev      # 后台启动开发环境（tsx 热重载）
+./unm-console.sh status               # 双环境状态
+./unm-console.sh logs --env prod -f   # 实时跟踪日志
+./unm-console.sh stop --env prod
+```
+
+```powershell
+# Windows（先 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned）
+.\unm-console.ps1                     # 交互菜单
+.\unm-console.ps1 check -Env all
+.\unm-console.ps1 start -Env prod
+```
+
+> 端口优先级：`-Port/--port` 参数 > `.env` 中 `DEV_PORT`（仅 dev）> `PORT` > `5678`；
+> 运行状态（PID/端口/日志）保存在项目内 `.unm-console/` 目录。
+
 ---
 
 ## ⚙️ 环境变量配置字典 (`.env`)
@@ -244,7 +271,7 @@ pnpm prd
 - **说明**: 批量提取歌单或专辑下所有歌曲 ID 组成的字符串数组。
 
 ### 7. 系统状态与监控大盘 API
-- `GET /info`：获取服务基础信息、版本 (`3.1.0`) 及当前启用的可用音源列表。
+- `GET /info`：获取服务基础信息、版本 (`4.1.0`) 及当前启用的可用音源列表。
 - `GET /health`：获取健康检查探针，支持 `?verbose=true` 查看 Node.js 内存占用与缓存命中统计。
 - `GET /ping`：轻量秒级存活检查（返回 `{"code": 200, "message": "pong"}`）。
 - `GET /api/monitor/data`：拉取近 1000 条脱敏请求审计日志、QPS、状态码与音源命中率（受 `MONITOR_SECRET_KEY` 保护）。
@@ -258,7 +285,7 @@ pnpm prd
 - **实时流量指标**：实时 QPS、平均响应时延、状态码分布统计。
 - **音源命中率分析**：13 大音源命中占比与解析成功率。
 - **请求审计流水**：实时访问日志流，内置搜索过滤与关键敏感信息脱敏防护。
-- **安全鉴权防护**：`/api/monitor/*` 始终受 `MONITOR_SECRET_KEY` 保护。该变量**必须显式配置**，未配置或为空时服务拒绝启动（不会自动生成，也不会打印到日志）。前端会自动引导输入并安全持久化鉴权凭据。
+- **安全鉴权防护**：若配置了 `MONITOR_SECRET_KEY`，前端将自动引导输入并安全持久化鉴权凭据。
 
 ---
 

@@ -1,14 +1,15 @@
 import type { MiddlewareHandler } from "hono";
+import type { AppEnv } from "../types/typeApi.js";
 import { getEffectiveMonitorSecret } from "../config/index.js";
 import { errorResponse } from "../utils/utilResponse.js";
 import { timingSafeCompare } from "../utils/utilSecurity.js";
 import type { ApiResponse } from "../types/typeApi.js";
 
 /**
- * 监控大盘与管理接口鉴权中间件
+ * 监控大盘与管理接口鉴权中间件（fail-closed）
  */
-export const monitorAuthMiddleware: MiddlewareHandler = async (c, next) => {
-  // 生效密钥：env.MONITOR_SECRET_KEY 为空时由 configEnv 生成 ephemeral 密钥，
+export const monitorAuthMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
+  // 生效密钥：configEnv 已在启动期强校验非空（空密钥时进程拒绝启动），
   // 因此此处不再存在“未配置即放行”的分支 —— 原实现在密钥为空时直接 next()，
   // 等于把审计日志（调用方 IP、Referer、完整 URL）对公网开放。
   const secretKey = getEffectiveMonitorSecret();

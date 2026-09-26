@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -7,12 +7,13 @@ import { env, APP_INFO, HTTP_CONFIG } from "./config/index.js";
 import { routes } from "./routes/index.js";
 import { monitorService } from "./services/serviceMonitor.js";
 import { rateLimitMiddleware } from "./middlewares/middlewareRateLimit.js";
-import { isAllowedDomain, getClientIp } from "./utils/utilSecurity.js";
+import { isAllowedDomain } from "./utils/utilSecurity.js";
+import { getClientIp } from "./utils/utilNet.js";
 import { errorResponse, successResponse } from "./utils/utilResponse.js";
 import { resolvePublicFile } from "./utils/utilPath.js";
-import type { ApiResponse } from "./types/typeApi.js";
+import type { ApiResponse, AppEnv } from "./types/typeApi.js";
 
-const app = new Hono();
+const app = new Hono<AppEnv>();
 
 // 1. 全局请求耗时计算与遥测日志记录中间件
 app.use("*", async (c, next) => {
@@ -21,7 +22,7 @@ app.use("*", async (c, next) => {
   const duration = Date.now() - start;
   c.header("X-Response-Time", `${duration}ms`);
 
-  // 记录监控日志
+  // 记录监控日志（与限流共用可信代理链下的真实客户端 IP）
   const pathName = c.req.path;
   const ip = getClientIp(c);
   const referer = c.req.header("referer") || "";
@@ -29,7 +30,7 @@ app.use("*", async (c, next) => {
   const userAgent = c.req.header("user-agent") || "";
   const fullUrl = c.req.url;
   const query = c.req.query();
-  const status = (c.res as any).status || 200;
+  const status = c.res?.status ?? 500;
 
   monitorService.record({
     method: c.req.method,
@@ -42,7 +43,7 @@ app.use("*", async (c, next) => {
     referer,
     origin,
     userAgent,
-    source: ((c as any).get?.("matchedSource") as string) || undefined,
+    source: c.get("matchedSource") || undefined,
   });
 });
 
@@ -149,7 +150,10 @@ const readCss = async (file: string): Promise<string> => {
     const css = await fs.readFile(path, "utf-8");
     cssCache.set(file, { mtime: st.mtimeMs, css });
     return css;
-  } catch {
+  } catch (err) {
+    // 文件删除/读取失败时清理缓存并打日志，避免静默返回无样式页面
+    cssCache.delete(file);
+    console.warn(`[Static CSS] 读取失败 ${file}: ${(err as Error).message}`);
     return "";
   }
 };
@@ -159,10 +163,11 @@ const buildPageStyle = async (files: string[]): Promise<string> => {
 };
 const injectPageCss = (html: string, style: string) => {
   if (html.includes("<!--INLINE_PAGE_CSS-->")) {
-    return html.replace("<!--INLINE_PAGE_CSS-->", () => style);
+    // replaceAll：占位符若出现多次全部替换，避免残留字面注释输出到客户端
+    return html.replaceAll("<!--INLINE_PAGE_CSS-->", () => style);
   }
-  // 如果没有占位符，安全插入到 </head> 之前（函数式替换规避 $ 特殊序列）
-  return html.replace("</head>", () => `${style}\n</head>`);
+  // 如果没有占位符，安全插入到 </head> 之前
+  return html.replace("</head>", `${style}\n</head>`);
 };
 app.get("/", async (c) => {
   const htmlPath = resolvePublicFile("index.html");
@@ -191,7 +196,7 @@ app.get("/", async (c) => {
 });
 
 // 监控大盘路由 (/dashboard & /monitor)
-const handleDashboard = async (c: any) => {
+const handleDashboard = async (c: Context<AppEnv>) => {
   const htmlPath = resolvePublicFile("dashboard.html");
   if (htmlPath) {
     try {

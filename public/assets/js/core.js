@@ -7,20 +7,38 @@
     document.querySelectorAll('.current-year-text').forEach(el => el.textContent = new Date().getFullYear());
     lucide.createIcons();
 
-    // --- 主题切换系统：实现见共享模块 theme.js ---
-    initThemeSystem();
+    // --- 主题切换系统 (防刷新闪烁设计) ---
+    const themeToggle = document.getElementById('themeToggle');
+    function setTheme(isDark, animate = false) {
+      if (animate) {
+        document.documentElement.classList.add('theme-transitioning');
+      }
+      document.documentElement.classList.toggle('dark', isDark);
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      lucide.createIcons();
+      if (animate) {
+        setTimeout(() => {
+          document.documentElement.classList.remove('theme-transitioning');
+        }, 320);
+      }
+    }
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const nextDark = !document.documentElement.classList.contains('dark');
+        setTheme(nextDark, true);
+      });
+    }
 
-    // --- XSS 防护：全局 HTML 转义助手（文本节点与双/单引号属性上下文通用） ---
-    window.escapeHtml = function(value) {
-      return String(value === undefined || value === null ? '' : value)
+    // --- Toast 提示 ---
+    // HTML 转义：title/message 可能拼接用户输入（如曲名、搜索词），阻断脚本注入
+    function escapeHtml(value) {
+      return String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
-    };
-
-    // --- Toast 提示 ---
+    }
     function showToast({ type = 'info', title = '提示', message = '' }) {
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
@@ -30,15 +48,12 @@
          type === 'warning' ? 'border-amber-500/40 text-amber-300' :
          'border-sky-500/40 text-sky-300');
       const iconName = type === 'success' ? 'check-circle-2' : type === 'error' ? 'alert-circle' : type === 'warning' ? 'alert-triangle' : 'info';
-      // 标题/消息可能携带上游错误文本或用户输入：骨架 innerHTML 固定，动态内容一律 textContent 注入
       toast.innerHTML = `
         <div class="mt-0.5 flex-shrink-0"><i data-lucide="${iconName}" class="w-5 h-5"></i></div>
         <div class="flex-1 min-w-0">
-          <div class="font-bold text-xs sm:text-sm text-white truncate js-toast-title"></div>
-          <div class="text-[11px] sm:text-xs text-slate-300 mt-0.5 break-words js-toast-message"></div>
+          <div class="font-bold text-xs sm:text-sm text-white truncate">${escapeHtml(title)}</div>
+          <div class="text-[11px] sm:text-xs text-slate-300 mt-0.5 break-words">${escapeHtml(message)}</div>
         </div>`;
-      toast.querySelector('.js-toast-title').textContent = title;
-      toast.querySelector('.js-toast-message').textContent = message;
       container.appendChild(toast);
       lucide.createIcons();
       requestAnimationFrame(() => toast.classList.remove('translate-y-2', 'opacity-0'));
@@ -48,86 +63,26 @@
       }, 3500);
     }
 
-    // --- 服务 Ping 探活 (多端智能延迟感知) ---
+    // --- 服务 Ping 探活 ---
     async function checkHealthPing() {
       const startTime = performance.now();
-      const pingEl = document.getElementById('pingText');
-      const mobilePingEl = document.getElementById('mobilePingText');
-      const pingBadges = document.querySelectorAll('#pingBadge, #mobilePingBadge');
       try {
         const res = await fetch('/ping');
         const latency = Math.round(performance.now() - startTime);
-        const text = res.ok ? `${latency}ms` : 'Degraded';
-        if (pingEl) pingEl.textContent = `Ping: ${text}`;
-        if (mobilePingEl) mobilePingEl.textContent = `Ping: ${text}`;
-
-        pingBadges.forEach(badge => {
-          badge.classList.remove('bg-emerald-500/10', 'text-emerald-600', 'dark:text-emerald-400', 'border-emerald-500/20',
-            'bg-amber-500/10', 'text-amber-600', 'dark:text-amber-400', 'border-amber-500/20',
-            'bg-rose-500/10', 'text-rose-600', 'dark:text-rose-400', 'border-rose-500/20');
-          if (res.ok && latency < 80) {
-            badge.classList.add('bg-emerald-500/10', 'text-emerald-600', 'dark:text-emerald-400', 'border-emerald-500/20');
-          } else if (res.ok && latency < 200) {
-            badge.classList.add('bg-amber-500/10', 'text-amber-600', 'dark:text-amber-400', 'border-amber-500/20');
-          } else {
-            badge.classList.add('bg-rose-500/10', 'text-rose-600', 'dark:text-rose-400', 'border-rose-500/20');
-          }
-        });
+        if (res.ok) document.getElementById('pingText').textContent = `Ping: ${latency}ms`;
       } catch (e) {
-        if (pingEl) pingEl.textContent = 'Offline';
-        if (mobilePingEl) mobilePingEl.textContent = 'Offline';
+        document.getElementById('pingText').textContent = 'Offline';
       }
     }
     checkHealthPing();
     setInterval(checkHealthPing, 10000);
 
-    // 滚动监听与导航高亮联动 (ScrollSpy)
-    function initNavScrollSpy() {
-      const navLinks = document.querySelectorAll('header nav a.nav-pill-item');
-      if (!navLinks.length) return;
-      const sections = ['playlist-station', 'workbench', 'providers'];
-
-      window.addEventListener('scroll', () => {
-        const scrollY = window.scrollY + 140;
-        let currentSection = '';
-
-        for (const secId of sections) {
-          const el = document.getElementById(secId);
-          if (el) {
-            const top = el.offsetTop;
-            const height = el.offsetHeight;
-            if (scrollY >= top && scrollY < top + height) {
-              currentSection = secId;
-              break;
-            }
-          }
-        }
-
-        navLinks.forEach(link => {
-          const href = link.getAttribute('href') || '';
-          if (currentSection && (href === `#${currentSection}` || href === `/#${currentSection}`)) {
-            link.classList.add('active');
-          } else if (href.startsWith('#') || href.startsWith('/#')) {
-            link.classList.remove('active');
-          }
-        });
-      }, { passive: true });
+    // --- 移动端抽屉 ---
+    function toggleMobileDrawer() {
+      const drawer = document.getElementById('mobileDrawer');
+      drawer.classList.toggle('hidden');
+      drawer.classList.toggle('flex');
     }
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initNavScrollSpy);
-    } else {
-      initNavScrollSpy();
-    }
-
-    // 快速定位至音乐播放器
-    window.scrollToPlayer = function() {
-      const playerBar = document.getElementById('playerBar');
-      if (playerBar) {
-        playerBar.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        playerBar.classList.add('ring-2', 'ring-sky-500');
-        setTimeout(() => playerBar.classList.remove('ring-2', 'ring-sky-500'), 1500);
-      }
-    };
 
     // --- 折叠系统 (纯 SVG 表格图标) ---
     function bindCollapse(btnId, iconId, bodyId, stateKey) {
@@ -141,12 +96,10 @@
           body.classList.add('hidden');
           icon.classList.add('rotate-180');
           btn.title = '展开表格';
-          btn.setAttribute('aria-expanded', 'false');
         } else {
           body.classList.remove('hidden');
           icon.classList.remove('rotate-180');
           btn.title = '折叠表格';
-          btn.setAttribute('aria-expanded', 'true');
         }
         lucide.createIcons();
       };
@@ -154,30 +107,6 @@
     const togglePlaylistStation = bindCollapse('btnPlaylistToggle', 'iconPlaylistToggle', 'playlistStationBody', '_playlistCollapsed');
     const toggleWorkbenchStation = bindCollapse('btnWorkbenchToggle', 'iconWorkbenchToggle', 'workbenchStationBody', '_workbenchCollapsed');
     const toggleSpecsTable = bindCollapse('btnSpecsToggle', 'iconSpecsToggle', 'specsTableContent', '_specsCollapsed');
-
-    // 播放器状态同步到导航栏（歌曲名、歌手、声波律动）
-    window.syncIslandMusicState = function(track, isPlaying) {
-      const musicPill = document.getElementById('islandMusicPill');
-      const titleEl = document.getElementById('islandTrackTitle');
-      const wavesEl = document.getElementById('islandAudioWaves');
-
-      if (!musicPill) return;
-
-      if (track && (track.name || track.id)) {
-        musicPill.classList.remove('hidden');
-        musicPill.classList.add('flex');
-        if (titleEl) {
-          titleEl.textContent = `${track.name || '正在播放'}`;
-        }
-        if (wavesEl) {
-          wavesEl.style.opacity = isPlaying ? '1' : '0.35';
-        }
-      } else {
-        musicPill.classList.add('hidden');
-        musicPill.classList.remove('flex');
-      }
-      lucide.createIcons();
-    };
 
     // 从后端 /info 同步统一版本号徽章（版本由根目录 VERSION 文件单点管理）
     async function syncAppVersionBadge() {
@@ -193,3 +122,39 @@
       } catch (e) { /* 静态兜底文本保持不变 */ }
     }
     syncAppVersionBadge();
+// --- 滚动显现（Aurora Engine 视觉增强）：纯展示层，不触碰任何业务逻辑 ---
+function initRevealOnScroll() {
+  const els = document.querySelectorAll('.reveal');
+  if (!els.length) return;
+  if (!('IntersectionObserver' in window)) {
+    els.forEach(el => el.classList.add('reveal-visible'));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('reveal-visible');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  els.forEach(el => io.observe(el));
+}
+initRevealOnScroll();
+
+/* iOS 底部 TabBar 滚动联动高亮 */
+(function initIosTabBarSpy() {
+  const items = Array.from(document.querySelectorAll('#iosTabBar [data-tabtarget]'));
+  if (!items.length || !('IntersectionObserver' in window)) return;
+  const setActive = id => items.forEach(el => {
+    const on = el.dataset.tabtarget === id;
+    el.classList.toggle('text-[#007aff]', on);
+    el.classList.toggle('dark:text-[#0a84ff]', on);
+    el.classList.toggle('text-slate-500', !on);
+    el.classList.toggle('dark:text-slate-400', !on);
+  });
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-35% 0px -55% 0px' });
+  items.forEach(el => { const sec = document.getElementById(el.dataset.tabtarget); if (sec) io.observe(sec); });
+})();

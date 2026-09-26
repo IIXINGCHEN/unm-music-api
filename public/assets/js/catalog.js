@@ -12,8 +12,19 @@ let playlistFilterKeyword = '';
 let currentPage = 1;
 let totalPages = 1;
 let pageSize = 20;
-// 搜索代际令牌：快速连续搜索时丢弃过期响应，防止旧结果覆盖新结果
-let _searchGeneration = 0;
+
+// HTML 转义：曲目/歌单/搜索词等外部可控字段经 innerHTML 渲染前必须转义，阻断存储型 XSS
+// （与 core.js 的全局 escapeHtml 实现一致，本地兜底以防加载顺序变化）
+if (typeof escapeHtml === 'undefined') {
+  var escapeHtml = function (value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+}
 
     // --- 搜索与歌单完整获取 + 多端分页管理 ---
     async function executeSearch(page = 1) {
@@ -24,7 +35,6 @@ let _searchGeneration = 0;
         return;
       }
 
-      const gen = ++_searchGeneration;
       currentMode = 'search';
       const tbody = document.getElementById('trackListBody');
       tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400"><i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-2 animate-spin text-sky-500"></i><span>正在全网跨源搜索《${escapeHtml(keyword)}》...</span></td></tr>`;
@@ -33,12 +43,9 @@ let _searchGeneration = 0;
       try {
         const res = await fetch(`/search?name=${encodeURIComponent(keyword)}&source=${source}&count=50&page=${page}`);
         const json = await res.json();
-        if (gen !== _searchGeneration) return; // 已有更新的搜索发出，丢弃过期响应
         if (json.code === 200 && Array.isArray(json.data) && json.data.length > 0) {
           allFullTracks = json.data.map(item => ({
             id: item.id || item.song_id || item.mid,
-            urlId: item.url_id || '',
-            lyricId: item.lyric_id || '',
             name: item.name || item.title || item.song_name,
             artist: Array.isArray(item.artist) ? item.artist.join('/') : (item.artist || item.singer),
             album: item.album || item.album_name || '-',
@@ -50,14 +57,12 @@ let _searchGeneration = 0;
           const filterInput = document.getElementById('playlistFilterInput');
           if (filterInput) filterInput.value = '';
           applyTrackListPagination(1);
-        } else if (gen === _searchGeneration) {
+        } else {
           tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400">未检索到匹配的曲目</td></tr>`;
           lucide.createIcons();
         }
       } catch (err) {
-        if (gen === _searchGeneration) {
-          tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-rose-400">搜索请求异常: ${escapeHtml(err.message)}</td></tr>`;
-        }
+        tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-rose-400">搜索请求异常: ${escapeHtml(err.message)}</td></tr>`;
       }
     }
 
@@ -65,7 +70,7 @@ let _searchGeneration = 0;
       currentMode = 'playlist';
       showToast({ type: 'info', title: '正在载入歌单', message: `正在完整获取《${title}》全部曲目...` });
       const tbody = document.getElementById('trackListBody');
-      tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400"><i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-2 animate-spin text-sky-500"></i><span>正在完整解析歌单《${title}》(ID: ${playlistId}) 全部曲目...</span></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400"><i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-2 animate-spin text-sky-500"></i><span>正在完整解析歌单《${escapeHtml(title)}》(ID: ${escapeHtml(playlistId)}) 全部曲目...</span></td></tr>`;
       lucide.createIcons();
 
       try {
@@ -171,33 +176,31 @@ let _searchGeneration = 0;
         tbody.innerHTML = '<tr><td colspan="5" class="py-12 text-center text-slate-400">未匹配到任何歌曲曲目</td></tr>';
         return;
       }
-      // 曲目元数据来自第三方音源上游，属外部不可信数据：一律经 escapeHtml 转义后再进入模板；
-      // 「填入调试台」按钮仅传递数字索引，点击时再从数组取数据，杜绝把歌名内嵌进 onclick JS 字符串
       tbody.innerHTML = tracks.map((track, idx) => `
         <tr class="hover:bg-slate-100/50 dark:hover:bg-slate-900/60 transition group">
           <td class="py-3 px-4 font-mono text-center text-slate-400">${globalOffset + idx + 1}</td>
           <td class="py-3 px-4 min-w-0">
             <div class="font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-500 transition-colors">${escapeHtml(track.name)}</div>
-            <div class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">${escapeHtml(track.artist || '未知艺人')}</div>
+            <div class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">${escapeHtml(track.artist) || '未知艺人'}</div>
           </td>
-          <td class="py-3 px-4 text-slate-600 dark:text-slate-300 truncate max-w-[160px]">${escapeHtml(track.album || '-')}</td>
-          <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/10 text-sky-500 border border-sky-500/20 font-mono uppercase">${escapeHtml(track.source || 'NCM')}</span></td>
+          <td class="py-3 px-4 text-slate-600 dark:text-slate-300 truncate max-w-[160px]">${escapeHtml(track.album) || '-'}</td>
+          <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/10 text-sky-500 border border-sky-500/20 font-mono uppercase">${escapeHtml(track.source) || 'NCM'}</span></td>
           <td class="py-3 px-4 text-right whitespace-nowrap">
             <div class="flex items-center justify-end space-x-1.5">
               <button onclick="playSingleTrack(${idx})" class="p-1.5 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 hover:bg-sky-500 hover:text-white transition interactive-btn" title="立即播放"><i data-lucide="play" class="w-3.5 h-3.5"></i></button>
               <button onclick="addSingleTrackToQueue(${idx})" class="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn" title="加入播放队列"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button>
-              <button onclick="testInWorkbenchByIdx(${idx})" class="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-cyan-500 transition interactive-btn" title="填入调试台"><i data-lucide="terminal" class="w-3.5 h-3.5"></i></button>
+              <button onclick="sendToWorkbench(${idx})" class="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-cyan-500 transition interactive-btn" title="填入调试台"><i data-lucide="terminal" class="w-3.5 h-3.5"></i></button>
             </div>
           </td>
         </tr>`).join('');
       lucide.createIcons();
     }
 
-    // 按当前分页结果集中的索引填入调试台（避免将外部曲目名拼入内联事件）
-    function testInWorkbenchByIdx(idx) {
+    // 调试台填入：按索引取曲目对象，不把外部可控的 id/name 拼进 onclick 字符串，杜绝属性注入
+    function sendToWorkbench(idx) {
       const track = currentSearchResults[idx];
-      if (!track || !track.id) return;
-      testInWorkbench(String(track.id));
+      if (!track) return;
+      if (typeof testInWorkbench === 'function') testInWorkbench(track.id);
     }
 
     function playSingleTrack(idx) {
@@ -235,3 +238,12 @@ let _searchGeneration = 0;
       renderPlayerQueue();
       showToast({ type: 'success', title: '已批量添加', message: `已将 ${targetList.length} 首曲目加入队列` });
     }
+
+// --- 艺人专栏一键速搜：填入艺人名并触发跨源搜索，平滑滚动到视听工坊 ---
+function quickArtistSearch(name) {
+  const input = document.getElementById('searchKeywordInput');
+  if (input) input.value = name;
+  executeSearch(1);
+  const station = document.getElementById('playlist-station');
+  if (station) station.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}

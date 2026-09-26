@@ -3,9 +3,9 @@ import { env, APP_INFO } from "../config/index.js";
 import { globalCache } from "../services/serviceCache.js";
 import { getAvailableProviders } from "../services/serviceUnm.js";
 import { successResponse } from "../utils/utilResponse.js";
-import type { ApiResponse, ServerInfoData, HealthData } from "../types/typeApi.js";
+import type { ApiResponse, ServerInfoData, HealthData, AppEnv } from "../types/typeApi.js";
 
-const infoRoute = new Hono();
+const infoRoute = new Hono<AppEnv>();
 const startTime = Date.now();
 
 // 获取服务器基本信息

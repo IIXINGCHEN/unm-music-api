@@ -1,36 +1,69 @@
 import { Hono, type Context } from "hono";
 import { z } from "zod";
-import { env, AUDIO_CONFIG, PLAYLIST_CONFIG } from "../config/index.js";
+import { env, AUDIO_CONFIG } from "../config/index.js";
 import { gdStudio } from "../services/serviceGdStudio.js";
-import { successResponse, errorResponse, parseQuery } from "../utils/utilResponse.js";
-import type { ApiResponse } from "../types/typeApi.js";
+import { successResponse, errorResponse } from "../utils/utilResponse.js";
+import type { ApiResponse, AppEnv } from "../types/typeApi.js";
 import type { GDTrack, GDPicResponse, LyricResult, PlaylistDetail } from "../types/typeMusic.js";
 
-const resourceRoute = new Hono();
+const resourceRoute = new Hono<AppEnv>();
+
+/** 上游明确拒绝的 source 属客户端参数错误，返回 400 而非 500 */
+function unsupportedSourceResponse(c: Context, error: any) {
+  if (error?.message?.startsWith("不支持的上游音源")) {
+    return c.json<ApiResponse>(errorResponse(400, error.message), 400);
+  }
+  return null;
+}
+
 
 const searchSchema = z.object({
-  name: z.string().trim().min(1, "缺少 name 参数").max(100),
+  name: z.string().min(1, "缺少 name 参数").max(100),
   source: z.string().max(30).optional(),
-  count: z.string().optional().transform((val) => (val ? parseInt(val, 10) : env.DEFAULT_SEARCH_COUNT)),
+  count: z
+    .string()
+    .optional()
+    .transform((val) => {
+      const n = parseInt(val ?? "", 10);
+      return Number.isInteger(n) ? n : env.DEFAULT_SEARCH_COUNT;
+    }),
   pages: z.string().optional(),
   page: z.string().optional(),
 });
 
 const picSchema = z.object({
-  id: z.string().trim().min(1, "缺少 id 参数").max(100),
+  id: z.string().min(1, "缺少 id 参数").max(100),
   source: z.string().max(30).optional(),
-  size: z.string().optional().transform((val) => (val ? parseInt(val, 10) : env.DEFAULT_PICTURE_SIZE)),
+  size: z
+    .string()
+    .optional()
+    .transform((val) => {
+      const n = parseInt(val ?? "", 10);
+      return Number.isInteger(n) ? n : env.DEFAULT_PICTURE_SIZE;
+    }),
 });
 
 const lyricSchema = z.object({
-  id: z.string().trim().min(1, "缺少 id 参数").max(100),
+  id: z.string().min(1, "缺少 id 参数").max(100),
   source: z.string().max(30).optional(),
+  // 歌词兜底用元数据（可选）：上游无歌词时走 lrclib.net 按曲名/歌手/时长匹配
+  name: z.string().max(100).optional(),
+  artist: z.string().max(100).optional(),
+  album: z.string().max(100).optional(),
+  duration: z.string().max(20).optional(),
 });
 
 // 跨平台歌曲搜索 (/search)
 resourceRoute.get("/search", async (c) => {
-  const parsed = parseQuery(c, searchSchema);
-  if (parsed.err) return parsed.err;
+  const query = c.req.query();
+  const parsed = searchSchema.safeParse(query);
+  if (!parsed.success) {
+    return c.json<ApiResponse>(
+      errorResponse(400, parsed.error.issues[0]?.message || "参数不完整"),
+      400
+    );
+  }
+
   const { name, source, count, pages, page } = parsed.data;
   const pageNum = parseInt(pages || page || "1", 10) || AUDIO_CONFIG.DEFAULT_SEARCH_PAGE;
 
@@ -38,6 +71,8 @@ resourceRoute.get("/search", async (c) => {
     const results = await gdStudio.search(name, source || env.DEFAULT_SEARCH_SOURCE, count, pageNum);
     return c.json<ApiResponse<GDTrack[]>>(successResponse(results, "搜索成功"));
   } catch (error: any) {
+    const bad = unsupportedSourceResponse(c, error);
+    if (bad) return bad;
     console.error(`[Search Error] name=${name}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `搜索失败: ${error.message}`), 500);
   }
@@ -45,8 +80,15 @@ resourceRoute.get("/search", async (c) => {
 
 // 专辑封面图获取 (/pic 与 /picture)
 const handlePicture = async (c: Context) => {
-  const parsed = parseQuery(c, picSchema);
-  if (parsed.err) return parsed.err;
+  const query = c.req.query();
+  const parsed = picSchema.safeParse(query);
+  if (!parsed.success) {
+    return c.json<ApiResponse>(
+      errorResponse(400, parsed.error.issues[0]?.message || "参数不完整"),
+      400
+    );
+  }
+
   const { id, source, size } = parsed.data;
   try {
     const data = await gdStudio.getPic(id, source || env.DEFAULT_SEARCH_SOURCE, size);
@@ -56,6 +98,8 @@ const handlePicture = async (c: Context) => {
 
     return c.json<ApiResponse<GDPicResponse>>(successResponse(data));
   } catch (error: any) {
+    const bad = unsupportedSourceResponse(c, error);
+    if (bad) return bad;
     console.error(`[Picture Error] id=${id}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `获取封面失败: ${error.message}`), 500);
   }
@@ -66,13 +110,27 @@ resourceRoute.get("/picture", handlePicture);
 
 // 歌词获取 (/lyric)
 resourceRoute.get("/lyric", async (c) => {
-  const parsed = parseQuery(c, lyricSchema);
-  if (parsed.err) return parsed.err;
-  const { id, source } = parsed.data;
+  const query = c.req.query();
+  const parsed = lyricSchema.safeParse(query);
+  if (!parsed.success) {
+    return c.json<ApiResponse>(
+      errorResponse(400, parsed.error.issues[0]?.message || "参数不完整"),
+      400
+    );
+  }
+
+  const { id, source, name, artist, album, duration } = parsed.data;
   try {
-    const data = await gdStudio.getLyric(id, source || env.DEFAULT_SEARCH_SOURCE);
+    const data = await gdStudio.getLyric(id, source || env.DEFAULT_SEARCH_SOURCE, {
+      track_name: name,
+      artist_name: artist,
+      album_name: album,
+      duration: duration ? Number(duration) : undefined,
+    });
     return c.json<ApiResponse<LyricResult>>(successResponse(data));
   } catch (error: any) {
+    const bad = unsupportedSourceResponse(c, error);
+    if (bad) return bad;
     console.error(`[Lyric Error] id=${id}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `获取歌词失败: ${error.message}`), 500);
   }
@@ -86,9 +144,11 @@ resourceRoute.get("/playlist/:id", async (c) => {
   }
 
   const query = c.req.query();
-  // limit clamp 到 [1, MAX_LIMIT]：杜绝超大值触发对上游的无界并发批量详情请求
-  const rawLimit = query.limit ? parseInt(query.limit, 10) || 1000 : 1000;
-  const limit = Math.min(Math.max(rawLimit, 1), PLAYLIST_CONFIG.MAX_LIMIT);
+  const limitRaw = parseInt(query.limit ?? "", 10);
+  const limit =
+    Number.isInteger(limitRaw) && limitRaw > 0
+      ? Math.min(limitRaw, AUDIO_CONFIG.MAX_PLAYLIST_LIMIT)
+      : AUDIO_CONFIG.DEFAULT_PLAYLIST_LIMIT;
   const idsOnly = query.idsOnly === "true" || query.raw === "true";
 
   try {

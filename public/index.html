@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
+  <meta name="description" content="UNM-Server · 企业级多音源音频流媒体与无损音乐 API 网关：13 节点智能调度、FLAC 母带直连、跨源搜索与全链路遥测。" />
   <title>UNM-Server · 企业级多音源音频流媒体与无损音乐 API 网关</title>
   <link rel="shortcut icon" href="./favicon.png" type="image/png" />
 
@@ -13,7 +14,7 @@
       try {
         var s = localStorage.getItem('theme');
         var p = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var isDark = s ? s === 'dark' : p;
+        var isDark = s ? s === 'dark' : (p || true);
         if (isDark) {
           document.documentElement.classList.add('dark');
         } else {
@@ -25,230 +26,209 @@
 
   <!-- 关键样式内联：首帧即正确底色，杜绝 FOUC -->
   <style>
-    html { background-color: #f8fafc; color-scheme: light; }
-    html.dark { background-color: #040711; color-scheme: dark; }
+    html { background-color: #f6f8fc; color-scheme: light; }
+    html.dark { background-color: #05070f; color-scheme: dark; }
     html, body { overflow-x: hidden !important; max-width: 100vw; margin: 0; padding: 0; }
     body { -webkit-font-smoothing: antialiased; font-size: 15px; }
     *, *::before, *::after { box-sizing: border-box; }
     [data-lucide] { display: inline-block; vertical-align: middle; }
   </style>
 
-  <!-- 品牌字体自托管（latin 子集，由 scripts/sync-fonts.mjs 生成）；中文回退系统字体栈 -->
-  <link rel="stylesheet" href="./assets/css/fonts.css" />
+  <!-- 字体样式异步加载：系统字体栈即时回退 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" /></noscript>
 
   <!-- 核心样式表 (标准引入 + 服务端直出内联支持) -->
-  <link rel="stylesheet" href="./assets/css/tailwind.css" />
-  <link rel="stylesheet" href="./assets/css/main.css" />
-  <link rel="stylesheet" href="./assets/css/player.css" />
+  <link rel="stylesheet" href="./assets/css/tailwind.css?v=4.5.0-20260926032148" />
+  <link rel="stylesheet" href="./assets/css/main.css?v=4.5.0-20260926032148" />
+  <link rel="stylesheet" href="./assets/css/player.css?v=4.5.0-20260926032148" />
   <!--INLINE_PAGE_CSS-->
-  <script src="/vendor/lucide.min.js"></script>
-  <script src="/assets/js/theme.js"></script>
-  <script src="/assets/js/drawer.js"></script>
+  <script src="/vendor/lucide.min.js?v=4.5.0-20260926032148"></script>
 </head>
 
-<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white relative w-full overflow-x-hidden">
+<body class="bg-slate-50 text-slate-800 dark:bg-[#05070f] dark:text-slate-100 min-h-screen flex flex-col justify-between selection:bg-sky-500 selection:text-white relative w-full overflow-x-hidden">
 
   <!-- 现代 Toast 漂浮通知容器 -->
   <div id="toastContainer" class="fixed top-5 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[140] flex flex-col space-y-3 pointer-events-none max-w-[calc(100vw-32px)]"></div>
 
-  <!-- 高端环境流光呼吸背景 -->
-  <div class="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
-    <div class="ambient-glow w-[500px] h-[500px] sm:w-[750px] sm:h-[750px] top-[-180px] left-1/2 -translate-x-1/2 bg-gradient-to-b from-sky-400/35 via-indigo-600/25 to-transparent dark:from-sky-500/25 dark:via-indigo-950/45 dark:to-transparent"></div>
+  <!-- Aurora Engine 氛围场：极光漂移 + 网格 + 噪点 -->
+  <div class="aurora-field" aria-hidden="true">
+    <div class="bg-grid"></div>
+    <div class="aurora-blob w-[520px] h-[520px] sm:w-[780px] sm:h-[780px] top-[-200px] left-1/2 -translate-x-1/2 bg-gradient-to-b from-sky-400/30 via-indigo-500/20 to-transparent dark:from-sky-500/20 dark:via-indigo-600/25 dark:to-transparent"></div>
+    <div class="aurora-blob aurora-blob-b w-[420px] h-[420px] sm:w-[620px] sm:h-[620px] top-[32%] right-[-160px] bg-gradient-to-l from-violet-400/25 via-fuchsia-500/15 to-transparent dark:from-violet-600/20 dark:via-fuchsia-900/20"></div>
+    <div class="aurora-blob aurora-blob-c w-[420px] h-[420px] sm:w-[620px] sm:h-[620px] top-[68%] left-[-160px] bg-gradient-to-r from-cyan-400/20 via-sky-500/15 to-transparent dark:from-cyan-800/20 dark:via-sky-900/15"></div>
+    <div class="noise-overlay"></div>
   </div>
 
   <!-- ========================================================================= -->
-  <!-- 顶部现代化玻璃拟态导航中枢 (Modern Fixed Navigation Bar) -->
+  <!-- 1. iOS 悬浮 Liquid Glass 导航 -->
   <!-- ========================================================================= -->
-  <header class="fixed top-0 inset-x-0 z-50 w-full nav-glass-header transition-all duration-300">
-    <!-- 顶部极细微高光反光线 -->
-    <div class="nav-specular-highlight"></div>
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2.5 sm:gap-6 relative w-full">
-      
-      <!-- 1. 左侧：品牌 Logo + 状态光标 + 标题 + 版本徽章 -->
-      <div class="flex items-center space-x-3 flex-shrink-0">
-        <a href="/" class="flex items-center space-x-3 group interactive-btn" aria-label="UNM-Server 首页">
-          <div class="relative w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-white to-slate-100 dark:from-slate-800 dark:to-slate-900 shadow-md border border-slate-200/90 dark:border-white/10 flex items-center justify-center p-1.5 sm:p-2 transition-all duration-300 group-hover:scale-105 group-hover:shadow-sky-500/20 group-hover:border-sky-500/40">
-            <img src="./favicon.png" alt="UNM Logo" class="w-full h-full object-contain" />
-            <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border-2 border-white dark:border-slate-950"></span>
-            </span>
+  <header class="fixed top-0 inset-x-0 z-[80] w-full pointer-events-none">
+    <div class="max-w-7xl 2xl:max-w-[1520px] mx-3 sm:mx-6 lg:mx-auto mt-3 px-3 sm:px-5 h-14 sm:h-16 flex items-center justify-between liquid-glass-strong rounded-full pointer-events-auto">
+      <div class="flex items-center space-x-3 sm:space-x-7 min-w-0">
+        <a href="/" class="flex items-center space-x-2.5 group flex-shrink-0">
+          <div class="relative w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white dark:bg-slate-900 shadow-lg shadow-sky-500/10 border border-slate-200 dark:border-white/10 flex items-center justify-center p-2 transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
+            <img src="./favicon.png" alt="UNM-Server Logo" class="w-full h-full object-contain" />
+            <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-[#05070f] animate-pulse-glow"></span>
           </div>
           <div class="flex items-center space-x-2">
-            <span class="font-extrabold text-base sm:text-xl tracking-tight text-slate-900 dark:text-white group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors">UNM-Server</span>
-            <span class="app-version-badge text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-sm hidden xs:inline-flex">v3.1.0 PRO</span>
+            <span class="font-extrabold text-base sm:text-xl tracking-tight text-slate-900 dark:text-white whitespace-nowrap">UNM<span class="text-gradient">-Server</span></span>
+            <span class="app-version-badge hidden min-[400px]:inline-flex text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex-shrink-0 font-mono whitespace-nowrap">v4.5 PRO</span>
           </div>
         </a>
+
+        <nav class="hidden xl:flex items-center space-x-0.5 text-sm font-semibold text-slate-600 dark:text-slate-300">
+          <a href="#playlist-station" class="px-2 py-2 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-500/10 transition flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0"><i data-lucide="list-music" class="w-4 h-4 text-sky-500"></i><span>歌单视听</span></a>
+          <a href="#artist-spotlight" class="px-2 py-2 rounded-xl hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-500/10 transition flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0"><i data-lucide="mic-2" class="w-4 h-4 text-rose-500"></i><span>艺人专栏</span></a>
+          <a href="#workbench" class="px-2 py-2 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-500/10 transition flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0"><i data-lucide="terminal" class="w-4 h-4 text-cyan-500"></i><span>API 调试台</span></a>
+          <a href="#providers" class="px-2 py-2 rounded-xl hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-emerald-500/10 transition flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0"><i data-lucide="radio" class="w-4 h-4 text-emerald-500"></i><span>音源矩阵</span></a>
+          <a href="#vip-subscription" class="px-2 py-2 rounded-xl hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-500/10 transition flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0"><i data-lucide="crown" class="w-4 h-4 text-amber-500"></i><span>Pro 部署</span></a>
+          <a href="#specs" class="px-2 py-2 rounded-xl hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-500/10 transition flex items-center space-x-1.5 whitespace-nowrap flex-shrink-0"><i data-lucide="book-open" class="w-4 h-4 text-indigo-400"></i><span>REST 规范</span></a>
+        </nav>
       </div>
 
-      <!-- 2. 中间：分段胶囊导航项 (带图标与平滑高亮) + 律动声波 -->
-      <nav class="hidden md:flex items-center space-x-1 p-1 rounded-full bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-white/10 shadow-inner backdrop-blur-xl text-xs sm:text-sm font-semibold">
-        <a href="#playlist-station" class="nav-pill-item group flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all duration-200">
-          <i data-lucide="disc-3" class="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors"></i>
-          <span>歌单视听</span>
-        </a>
-        <a href="#workbench" class="nav-pill-item group flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all duration-200">
-          <i data-lucide="terminal" class="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors"></i>
-          <span>API 调试</span>
-        </a>
-        <a href="#providers" class="nav-pill-item group flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all duration-200">
-          <i data-lucide="layers" class="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors"></i>
-          <span>音源矩阵</span>
-        </a>
-        <a href="/dashboard" class="nav-pill-item group flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-sky-600 dark:text-sky-400 hover:text-sky-500 dark:hover:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-500/10 transition-all duration-200">
-          <i data-lucide="activity" class="w-4 h-4 text-sky-500"></i>
-          <span>遥测大盘</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span>
-        </a>
-        <a href="/info" target="_blank" rel="noopener noreferrer" class="nav-pill-item group hidden xl:flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-white/10 transition-all duration-200">
-          <i data-lucide="cpu" class="w-4 h-4 text-slate-400 group-hover:text-sky-500 transition-colors"></i>
-          <span>系统环境</span>
-        </a>
-
-        <!-- 正在播放音乐时的律动指示条 -->
-        <div id="islandMusicPill" class="hidden items-center space-x-2 pl-2.5 pr-3.5 py-1 border-l border-slate-200/80 dark:border-white/10 ml-1">
-          <div id="islandAudioWaves" class="flex items-center space-x-0.5 h-3.5 flex-shrink-0">
-            <span class="audio-bar"></span>
-            <span class="audio-bar"></span>
-            <span class="audio-bar"></span>
-            <span class="audio-bar"></span>
-          </div>
-          <span id="islandTrackTitle" class="text-xs font-medium text-sky-600 dark:text-sky-400 max-w-[130px] truncate cursor-pointer hover:underline" onclick="scrollToPlayer()" title="点击定位播放器">播放中...</span>
-        </div>
-      </nav>
-
-      <!-- 3. 右侧：Ping 探针 + 极速测试 + 深浅主题切换 + 移动端菜单开关 -->
       <div class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-        <div id="pingBadge" class="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-all">
-          <span class="relative flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
+        <div id="pingBadge" class="hidden 2xl:inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-bold whitespace-nowrap">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span id="pingText">Ping: --ms</span>
         </div>
 
-        <button onclick="executeQuickTest()" class="inline-flex items-center space-x-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm transition shadow-md shadow-sky-500/20 interactive-btn" title="一键测试音源解析 (周杰伦《晴天》)">
+        <a href="/dashboard" class="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-full bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-500/25 font-bold text-sm transition">
+          <i data-lucide="activity" class="w-4 h-4"></i>
+          <span>遥测大盘</span>
+        </a>
+
+        <button onclick="executeQuickTest()" class="hidden md:inline-flex items-center gap-1.5 px-4 min-h-[36px] rounded-full bg-[#007aff] dark:bg-[#0a84ff] text-white font-bold text-sm shadow-lg shadow-blue-500/30 active:scale-95 transition">
           <i data-lucide="zap" class="w-4 h-4"></i>
-          <span class="hidden sm:inline">极速测试</span>
+          <span>一键极速测试</span>
         </button>
 
-        <button id="themeToggle" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 hover:border-sky-500/30 transition shadow-sm flex items-center justify-center interactive-btn" title="切换深色/浅色模式">
+        <button id="themeToggle" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-sky-500 hover:border-sky-500/40 transition shadow-sm flex items-center justify-center" title="切换深色/浅色模式">
           <i data-lucide="moon" class="w-4 h-4 sm:w-5 sm:h-5 hidden dark:block"></i>
           <i data-lucide="sun" class="w-4 h-4 sm:w-5 sm:h-5 block dark:hidden"></i>
         </button>
 
-        <!-- 移动端汉堡折叠按钮 -->
-        <button onclick="toggleMobileDrawer()" class="md:hidden w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:text-sky-500 hover:border-sky-500/30 transition shadow-sm flex items-center justify-center interactive-btn" aria-label="展开导航菜单">
-          <i data-lucide="menu" id="mobileMenuIcon" class="w-4 h-4"></i>
+        <button onclick="toggleMobileDrawer()" class="xl:hidden w-9 h-9 rounded-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 flex items-center justify-center" title="展开导航">
+          <i data-lucide="menu" class="w-5 h-5"></i>
         </button>
-      </div>
-
-    </div>
-
-    <!-- 移动端全景半透明下拉抽屉 -->
-    <div id="mobileDrawer" class="hidden md:hidden fixed top-[64px] sm:top-[80px] inset-x-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl border-b border-slate-200/80 dark:border-white/10 shadow-2xl transition-all duration-300 overflow-hidden flex-col">
-      <div class="px-4 py-5 space-y-3 max-w-lg mx-auto w-full">
-        <div class="grid grid-cols-2 gap-2 text-xs font-bold">
-          <a href="#playlist-station" onclick="toggleMobileDrawer()" class="flex items-center space-x-2.5 p-3 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5 text-slate-800 dark:text-slate-200 hover:text-sky-500 dark:hover:text-sky-400 transition">
-            <div class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center flex-shrink-0"><i data-lucide="disc-3" class="w-4 h-4"></i></div>
-            <span>歌单视听</span>
-          </a>
-          <a href="#workbench" onclick="toggleMobileDrawer()" class="flex items-center space-x-2.5 p-3 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5 text-slate-800 dark:text-slate-200 hover:text-sky-500 dark:hover:text-sky-400 transition">
-            <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center flex-shrink-0"><i data-lucide="terminal" class="w-4 h-4"></i></div>
-            <span>API 调试</span>
-          </a>
-          <a href="#providers" onclick="toggleMobileDrawer()" class="flex items-center space-x-2.5 p-3 rounded-2xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-white/5 text-slate-800 dark:text-slate-200 hover:text-sky-500 dark:hover:text-sky-400 transition">
-            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center flex-shrink-0"><i data-lucide="layers" class="w-4 h-4"></i></div>
-            <span>音源矩阵</span>
-          </a>
-          <a href="/dashboard" onclick="toggleMobileDrawer()" class="flex items-center space-x-2.5 p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 transition">
-            <div class="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-500 flex items-center justify-center flex-shrink-0"><i data-lucide="activity" class="w-4 h-4"></i></div>
-            <span>遥测大盘</span>
-          </a>
-        </div>
-        <div class="pt-2 border-t border-slate-200/60 dark:border-white/5 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-          <a href="/info" target="_blank" rel="noopener noreferrer" class="flex items-center space-x-1.5 hover:text-sky-500 transition">
-            <i data-lucide="cpu" class="w-4 h-4"></i>
-            <span>系统环境与节点状态</span>
-          </a>
-          <div id="mobilePingBadge" class="inline-flex items-center space-x-1.5 px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-bold">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span id="mobilePingText">Ping: --ms</span>
-          </div>
-        </div>
       </div>
     </div>
   </header>
 
-  <main class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-8 sm:pb-12 space-y-12 sm:space-y-20 flex-1 relative z-10 min-w-0">
+  <!-- 移动端导航抽屉 -->
+  <div id="mobileDrawer" class="fixed inset-0 z-[95] bg-slate-300/70 dark:bg-slate-950/80 backdrop-blur-2xl hidden flex-col justify-between p-6 transition-all duration-300 xl:hidden">
+    <div class="flex items-center justify-between border-b border-slate-900/10 dark:border-white/10 pb-4">
+      <div class="flex items-center space-x-3">
+        <img src="./favicon.png" class="w-8 h-8 object-contain" alt="Logo" />
+        <span class="font-extrabold text-lg text-slate-900 dark:text-white">UNM<span class="text-gradient">-Server</span></span>
+      </div>
+      <button onclick="toggleMobileDrawer()" class="p-2 rounded-full bg-slate-900/10 dark:bg-white/10 text-slate-600 dark:text-slate-300 transition" aria-label="关闭导航"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+    <div class="flex flex-col space-y-3 py-8 text-base font-bold text-slate-800 dark:text-slate-200">
+      <a href="#playlist-station" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 hover:border-sky-500/40 transition"><i data-lucide="list-music" class="w-5 h-5 text-sky-400"></i><span>精选歌单视听</span></a>
+      <a href="#artist-spotlight" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 hover:border-rose-500/40 transition"><i data-lucide="mic-2" class="w-5 h-5 text-rose-400"></i><span>艺人专栏速搜</span></a>
+      <a href="#workbench" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 hover:border-cyan-500/40 transition"><i data-lucide="terminal" class="w-5 h-5 text-cyan-400"></i><span>API 在线调试台</span></a>
+      <a href="#providers" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 hover:border-emerald-500/40 transition"><i data-lucide="radio" class="w-5 h-5 text-emerald-400"></i><span>13 大音源矩阵</span></a>
+      <a href="#vip-subscription" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 hover:border-amber-500/40 transition"><i data-lucide="crown" class="w-5 h-5 text-amber-400"></i><span>Pro 生产级部署</span></a>
+      <a href="#specs" onclick="toggleMobileDrawer()" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 hover:border-indigo-500/40 transition"><i data-lucide="book-open" class="w-5 h-5 text-indigo-400"></i><span>REST 接口规范</span></a>
+      <a href="/dashboard" class="flex items-center space-x-3 p-3.5 rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/30"><i data-lucide="activity" class="w-5 h-5"></i><span>全链路遥测大盘</span></a>
+    </div>
+    <div class="border-t border-slate-900/10 dark:border-white/10 pt-4 text-center text-xs text-slate-500 dark:text-slate-400 font-mono">UNM-Server · Hono + TypeScript</div>
+  </div>
+
+  <main class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-32 pb-10 sm:pb-16 space-y-16 sm:space-y-28 flex-1 relative z-10 min-w-0">
 
     <!-- Hero 核心展示区 -->
-    <section class="space-y-6 sm:space-y-8 w-full min-w-0">
-      <div class="flex items-center justify-center">
-        <div class="inline-flex items-center space-x-2 px-3 sm:px-4 py-1.5 rounded-full bg-slate-900/80 border border-slate-700/60 text-slate-300 text-xs sm:text-sm font-medium shadow-lg backdrop-blur-md">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-          <span class="text-slate-400">最新状态:</span>
-          <span class="text-white font-bold">13 节点智能调度引擎运行中 · 99.99% SLA</span>
-          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i>
+    <section class="relative space-y-8 sm:space-y-10 w-full min-w-0 pt-2 sm:pt-6 pb-2">
+      <div class="watermark absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[34vw] sm:text-[24vw] lg:text-[19rem] pointer-events-none select-none" aria-hidden="true">UNM</div>
+
+      <div class="relative flex items-center justify-center reveal">
+        <div class="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/70 dark:bg-white/[0.06] border border-slate-200/80 dark:border-white/10 text-xs sm:text-sm font-medium shadow-lg shadow-sky-500/5 backdrop-blur-xl">
+          <span class="relative flex w-2.5 h-2.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span class="text-slate-500 dark:text-slate-400">调度引擎运行中</span>
+          <span class="w-px h-3.5 bg-slate-300 dark:bg-white/15"></span>
+          <span class="text-slate-900 dark:text-white font-bold font-mono">13 NODES · 99.99% SLA</span>
         </div>
       </div>
 
-      <div class="text-center max-w-4xl mx-auto space-y-3 sm:space-y-4">
-        <h1 class="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.15]">
-          企业级跨源音乐流媒体与<br class="hidden sm:inline" />
-          <span class="bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">无损音频解析中台网关</span>
+      <div class="relative text-center max-w-5xl mx-auto space-y-5 sm:space-y-6">
+        <h1 class="reveal ios-large-title text-[2.65rem] leading-[1.06] sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 dark:text-white" style="--reveal-delay:80ms">
+          企业级跨源音乐流媒体<br />
+          <span class="text-gradient">无损音频解析中台网关</span>
         </h1>
-        <p class="text-xs sm:text-base md:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-          基于现代 Hono + TypeScript 构建的高性能多源音频调度网关，提供毫秒级智能解灰、FLAC 24bit/192kHz 母带直连、跨源搜索与 LRC 逐字歌词引擎。
+        <p class="reveal text-sm sm:text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed" style="--reveal-delay:160ms">
+          基于 Hono + TypeScript 构建的高性能多源音频调度网关 —— 毫秒级智能解灰、
+          FLAC 24bit / 192kHz 母带直连、跨源搜索与 LRC 逐字歌词引擎，一处接入，全网畅听。
         </p>
       </div>
 
-      <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm font-mono font-semibold">
-        <div class="px-3.5 py-1.5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center space-x-1.5 shadow-sm"><i data-lucide="disc-3" class="w-4 h-4"></i><span>FLAC 192kHz / 24-bit</span></div>
-        <div class="px-3.5 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center space-x-1.5 shadow-sm"><i data-lucide="zap" class="w-4 h-4"></i><span>Zero-Buffer 直链推流</span></div>
-        <div class="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center space-x-1.5 shadow-sm"><i data-lucide="cpu" class="w-4 h-4"></i><span>13 上游容灾并发竞速</span></div>
-        <div class="px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center space-x-1.5 shadow-sm"><i data-lucide="layers" class="w-4 h-4"></i><span>&lt;15ms 内存多级缓存</span></div>
-      </div>
-
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-2">
-        <button onclick="executeQuickTest()" class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-600 hover:opacity-95 text-white font-bold text-sm sm:text-base transition shadow-xl shadow-sky-500/25 flex items-center justify-center space-x-2 interactive-btn">
-          <i data-lucide="play" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-          <span>即刻一键测试解析 (周杰伦《晴天》)</span>
+      <div class="relative flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 reveal" style="--reveal-delay:240ms">
+        <button onclick="executeQuickTest()" class="reveal w-full sm:w-auto ios-btn ios-btn-filled !min-h-[52px] !px-8 !text-base space-x-2.5" style="--reveal-delay:240ms">
+          <i data-lucide="play" class="w-5 h-5"></i>
+          <span>即刻一键测试解析</span>
+          <span class="font-mono font-medium text-white/70 text-xs hidden sm:inline">周杰伦《晴天》</span>
         </button>
-        <a href="#workbench" class="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 hover:border-sky-500 text-slate-800 dark:text-slate-200 font-bold text-sm sm:text-base transition shadow-sm flex items-center justify-center space-x-2 interactive-btn">
-          <i data-lucide="terminal" class="w-4 h-4 sm:w-5 sm:h-5 text-sky-500"></i>
+        <a href="#workbench" class="w-full sm:w-auto ios-btn ios-btn-tinted !min-h-[52px] !px-8 !text-base space-x-2.5">
+          <i data-lucide="terminal" class="w-5 h-5 text-sky-500"></i>
           <span>进入 API 交互调试台</span>
         </a>
       </div>
+
+      <!-- 核心指标带 -->
+      <div class="relative reveal" style="--reveal-delay:320ms">
+        <div class="liquid-glass ios-rounded px-6 sm:px-10 py-6 sm:py-7 grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+          <div class="text-center space-y-1">
+            <div class="text-3xl sm:text-4xl font-black font-mono text-slate-900 dark:text-white tracking-tight">13</div>
+            <div class="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">音源节点并发竞速</div>
+          </div>
+          <div class="text-center space-y-1 lg:border-l lg:border-slate-200/70 lg:dark:border-white/10">
+            <div class="text-3xl sm:text-4xl font-black font-mono tracking-tight"><span class="text-gradient">&lt;15ms</span></div>
+            <div class="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">内存多级缓存命中</div>
+          </div>
+          <div class="text-center space-y-1 lg:border-l lg:border-slate-200/70 lg:dark:border-white/10">
+            <div class="text-3xl sm:text-4xl font-black font-mono text-slate-900 dark:text-white tracking-tight">192<span class="text-lg sm:text-xl text-slate-400">kHz</span></div>
+            <div class="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">FLAC 母带直连</div>
+          </div>
+          <div class="text-center space-y-1 lg:border-l lg:border-slate-200/70 lg:dark:border-white/10">
+            <div class="text-3xl sm:text-4xl font-black font-mono tracking-tight"><span class="text-gradient-warm">99.99%</span></div>
+            <div class="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">多级容灾 SLA</div>
+          </div>
+        </div>
+      </div>
     </section>
 
-    <!-- 歌单视听工坊 (含经典老歌与完整分页) -->
-    <section id="playlist-station" class="glass-panel bg-white/70 dark:bg-slate-900/60 p-4 sm:p-8 lg:p-10 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl space-y-6 sm:space-y-8 w-full min-w-0 overflow-hidden">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-200/60 dark:border-white/10 pb-4">
-        <div>
-          <div class="inline-flex items-center space-x-1.5 text-xs font-bold text-sky-500 uppercase tracking-wider mb-1"><i data-lucide="radio" class="w-4 h-4"></i><span>Interactive Music Hub</span></div>
-          <h2 class="text-xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-center space-x-2">
-            <i data-lucide="list-music" class="w-5 h-5 sm:w-6 sm:h-6 text-sky-500"></i>
-            <span>歌单视听与跨源搜索工坊</span>
+    <!-- 歌单视听工坊 -->
+    <section id="playlist-station" class="scroll-mt-24 md:scroll-mt-28 reveal liquid-glass ios-rounded-lg p-5 sm:p-9 lg:p-11 shadow-2xl shadow-slate-900/5 dark:shadow-black/30 space-y-6 sm:space-y-8 w-full min-w-0 overflow-hidden">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-slate-200/60 dark:border-white/10 pb-5">
+        <div class="space-y-2">
+          <div class="eyebrow"><span>Interactive Music Hub</span></div>
+          <h2 class="text-2xl sm:text-[2rem] font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+            <span class="w-10 h-10 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-sky-500/30"><i data-lucide="list-music" class="w-5 h-5"></i></span>
+            歌单视听与跨源搜索工坊
           </h2>
-          <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1">支持网易云、QQ音乐、酷狗、酷我、Bilibili与咪咕全网搜索、歌单完整解析与全功能分页</p>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">网易云 · QQ 音乐 · 酷狗 · 酷我 · Bilibili · 咪咕 —— 全网搜索、歌单完整解析与全功能分页</p>
         </div>
-        <button onclick="togglePlaylistStation()" id="btnPlaylistToggle" type="button" title="折叠表格" aria-controls="playlistStationBody" aria-expanded="true" class="group flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-sky-500 transition interactive-btn px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 w-fit flex-shrink-0 shadow-sm">
-          <svg class="w-4 h-4 text-slate-500 group-hover:text-sky-500 dark:text-slate-400 dark:group-hover:text-sky-400 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path><path d="M9 3v18"></path></svg>
-          <i data-lucide="chevron-up" class="w-3.5 h-3.5 transition-transform duration-300" id="iconPlaylistToggle"></i>
+        <button onclick="togglePlaylistStation()" id="btnPlaylistToggle" title="折叠面板" class="group flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-sky-500 transition px-3 py-2 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 w-fit flex-shrink-0">
+          <i data-lucide="chevron-up" class="w-4 h-4 transition-transform duration-300" id="iconPlaylistToggle"></i>
+          <span>收起</span>
         </button>
       </div>
 
-      <div id="playlistStationBody" class="space-y-6 sm:space-y-8 transition-all duration-300 w-full min-w-0">
+      <div id="playlistStationBody" class="space-y-6 sm:space-y-7 transition-all duration-300 w-full min-w-0">
         <!-- 搜索工具栏 -->
-        <div class="p-4 sm:p-5 rounded-2xl bg-white/60 dark:bg-slate-950/60 border border-slate-200/80 dark:border-white/10 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 w-full">
+        <div class="p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-white/[0.03] border border-slate-200/70 dark:border-white/10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 w-full">
           <div class="flex items-center space-x-2 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 flex-shrink-0">
-            <i data-lucide="search" class="w-4 h-4 text-sky-500"></i>
-            <span>跨平台全网检索:</span>
+            <span class="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center"><i data-lucide="search" class="w-4 h-4"></i></span>
+            <span>跨平台全网检索</span>
           </div>
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 lg:justify-end">
-            <select id="searchSourceSelect" class="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer">
+            <select id="searchSourceSelect" class="w-full sm:w-auto px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer">
               <option value="netease">网易云音乐 (NCM)</option>
               <option value="qq">QQ 音乐 (Tencent)</option>
               <option value="kugou">酷狗音乐 (KuGou)</option>
@@ -257,149 +237,150 @@
               <option value="migu">咪咕音乐 (Migu)</option>
             </select>
             <div class="relative flex-1 sm:w-72 lg:w-80">
-              <input id="searchKeywordInput" type="text" placeholder="搜索歌曲 / 歌手 (例如: 天赐的声音)" onkeydown="if(event.key==='Enter') executeSearch(1)" class="w-full pl-9 pr-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
-              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input id="searchKeywordInput" type="text" placeholder="搜索歌曲 / 歌手 (例如: 天赐的声音)" onkeydown="if(event.key==='Enter') executeSearch(1)" class="w-full pl-10 pr-3.5 py-2.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition" />
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
             </div>
-            <button onclick="executeSearch(1)" class="px-5 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center space-x-1.5 shadow-md shadow-sky-500/20 interactive-btn flex-shrink-0"><i data-lucide="search" class="w-4 h-4"></i><span>搜索</span></button>
+            <button onclick="executeSearch(1)" class="ios-btn ios-btn-filled ios-btn-sm !text-sm space-x-1.5 flex-shrink-0"><i data-lucide="search" class="w-4 h-4"></i><span>搜索</span></button>
           </div>
         </div>
 
-        <!-- 快速精选歌单 Bento Grid (含经典老歌) -->
-        <div class="space-y-3">
+        <!-- 精选歌单 -->
+        <div class="space-y-4">
           <div class="flex items-center justify-between text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400">
-            <span class="flex items-center space-x-1.5"><i data-lucide="flame" class="w-4 h-4 text-amber-500"></i><span>精选热门与经典老歌推荐 (1-Click 一键试听)</span></span>
-            <span class="text-xs font-mono text-slate-400">点击卡片解析全部曲目</span>
+            <span class="flex items-center gap-2"><span class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center"><i data-lucide="flame" class="w-4 h-4"></i></span>精选热门与经典老歌 · 一键试听</span>
+            <span class="text-xs font-mono text-slate-400 hidden sm:inline">点击卡片解析全部曲目</span>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0">
-            <!-- 天赐的声音 -->
-            <button type="button" onclick="loadPresetPlaylist('8401628431', '天赐的声音 | 1-7 季歌曲全收录')" aria-label="载入歌单：天赐的声音" class="group p-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 hover:border-rose-500/50 hover:shadow-lg hover:shadow-rose-500/10 transition-all cursor-pointer min-w-0 relative overflow-hidden ring-1 ring-rose-500/20 text-left w-full">
-              <div class="absolute -right-6 -top-6 w-16 h-16 rounded-full bg-rose-500/10 blur-md pointer-events-none"></div>
-              <div class="flex items-center space-x-3 min-w-0">
-                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 via-pink-600 to-amber-500 text-white flex items-center justify-center font-black text-xl flex-shrink-0 shadow-md group-hover:scale-105 transition-transform"><i data-lucide="mic-2" class="w-6 h-6"></i></div>
+            <div onclick="loadPresetPlaylist('8401628431', '天赐的声音 | 1-7 季歌曲全收录')" class="group p-5 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover cursor-pointer min-w-0 relative overflow-hidden">
+              <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-rose-500/15 blur-2xl pointer-events-none group-hover:bg-rose-500/25 transition-colors"></div>
+              <div class="flex items-center space-x-3.5 min-w-0">
+                <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-rose-500 via-pink-600 to-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-rose-500/25 group-hover:scale-105 group-hover:rotate-3 transition-transform duration-300 p-3"><i data-lucide="mic-2" class="w-6 h-6"></i></div>
                 <div class="min-w-0 flex-1">
-                  <div class="flex items-center space-x-1.5">
+                  <div class="flex items-center gap-1.5">
                     <h4 class="font-extrabold text-sm text-slate-900 dark:text-white truncate group-hover:text-rose-400 transition-colors">天赐的声音</h4>
-                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-500/10 text-rose-500 flex-shrink-0">爆款Live</span>
+                    <span class="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-rose-500/10 text-rose-500 flex-shrink-0">爆款Live</span>
                   </div>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">薛之谦 / 张靓颖 / 黄霄雲 / 王赫野</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">薛之谦 / 张靓颖 / 黄霄雲 / 王赫野</p>
                 </div>
               </div>
-              <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                <span class="flex items-center space-x-1 text-rose-400 font-bold"><i data-lucide="play" class="w-3 h-3"></i><span>载入天赐精选单</span></span>
+              <div class="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <span class="flex items-center gap-1.5 text-rose-500 font-bold"><i data-lucide="play" class="w-3 h-3"></i><span>载入天赐精选单</span></span>
                 <span>500+ 首</span>
               </div>
-            </button>
-            <!-- 经典老歌·岁月留声 -->
-            <button type="button" onclick="loadPresetPlaylist('988690134', '经典老歌 · 久听不厌 (岁月留声)')" aria-label="载入歌单：经典老歌，岁月留声" class="group p-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all cursor-pointer min-w-0 relative overflow-hidden ring-1 ring-amber-500/20 text-left w-full">
-              <div class="absolute -right-6 -top-6 w-16 h-16 rounded-full bg-amber-500/10 blur-md pointer-events-none"></div>
-              <div class="flex items-center space-x-3 min-w-0">
-                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 via-orange-600 to-rose-600 text-white flex items-center justify-center font-black text-xl flex-shrink-0 shadow-md group-hover:scale-105 transition-transform"><i data-lucide="radio" class="w-6 h-6"></i></div>
+            </div>
+            <div onclick="loadPresetPlaylist('988690134', '经典老歌 · 久听不厌 (岁月留声)')" class="group p-5 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover cursor-pointer min-w-0 relative overflow-hidden">
+              <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-amber-500/15 blur-2xl pointer-events-none group-hover:bg-amber-500/25 transition-colors"></div>
+              <div class="flex items-center space-x-3.5 min-w-0">
+                <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-amber-500 via-orange-600 to-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-amber-500/25 group-hover:scale-105 group-hover:rotate-3 transition-transform duration-300 p-3"><i data-lucide="radio" class="w-6 h-6"></i></div>
                 <div class="min-w-0 flex-1">
-                  <div class="flex items-center space-x-1.5">
+                  <div class="flex items-center gap-1.5">
                     <h4 class="font-extrabold text-sm text-slate-900 dark:text-white truncate group-hover:text-amber-400 transition-colors">经典老歌·岁月留声</h4>
-                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/10 text-amber-500 flex-shrink-0">3.4亿播</span>
+                    <span class="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-500/10 text-amber-500 flex-shrink-0">3.4亿播</span>
                   </div>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">陈百强 / Beyond / 张国荣 / 陈慧娴</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">陈百强 / Beyond / 张国荣 / 陈慧娴</p>
                 </div>
               </div>
-              <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                <span class="flex items-center space-x-1 text-amber-400 font-bold"><i data-lucide="play" class="w-3 h-3"></i><span>载入经典老歌单</span></span>
+              <div class="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <span class="flex items-center gap-1.5 text-amber-500 font-bold"><i data-lucide="play" class="w-3 h-3"></i><span>载入经典老歌单</span></span>
                 <span>115 首</span>
               </div>
-            </button>
-            <!-- 8090回忆金曲 -->
-            <button type="button" onclick="loadPresetPlaylist('5347332390', '8090后回忆经典老歌1000首')" aria-label="载入歌单：8090 回忆金曲" class="group p-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all cursor-pointer min-w-0 relative overflow-hidden text-left w-full">
-              <div class="flex items-center space-x-3 min-w-0">
-                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 via-indigo-600 to-blue-600 text-white flex items-center justify-center font-black text-xl flex-shrink-0 shadow-md group-hover:scale-105 transition-transform"><i data-lucide="disc-3" class="w-6 h-6"></i></div>
+            </div>
+            <div onclick="loadPresetPlaylist('5347332390', '8090后回忆经典老歌1000首')" class="group p-5 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover cursor-pointer min-w-0 relative overflow-hidden">
+              <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-purple-500/15 blur-2xl pointer-events-none group-hover:bg-purple-500/25 transition-colors"></div>
+              <div class="flex items-center space-x-3.5 min-w-0">
+                <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-purple-500 via-indigo-600 to-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/25 group-hover:scale-105 group-hover:rotate-3 transition-transform duration-300 p-3"><i data-lucide="disc-3" class="w-6 h-6"></i></div>
                 <div class="min-w-0 flex-1">
-                  <div class="flex items-center space-x-1.5">
+                  <div class="flex items-center gap-1.5">
                     <h4 class="font-extrabold text-sm text-slate-900 dark:text-white truncate group-hover:text-purple-400 transition-colors">8090回忆金曲</h4>
-                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-500/10 text-purple-400 flex-shrink-0">怀旧</span>
+                    <span class="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-purple-500/10 text-purple-400 flex-shrink-0">怀旧</span>
                   </div>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">李圣杰 / 张震岳 / 迪克牛仔 / 黄品源</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">李圣杰 / 张震岳 / 迪克牛仔 / 黄品源</p>
                 </div>
               </div>
-              <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                <span class="flex items-center space-x-1 text-purple-400"><i data-lucide="play" class="w-3 h-3"></i><span>点击载入歌单</span></span>
+              <div class="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <span class="flex items-center gap-1.5 text-purple-400 font-bold"><i data-lucide="play" class="w-3 h-3"></i><span>点击载入歌单</span></span>
                 <span>800+ 首</span>
               </div>
-            </button>
-            <!-- 华语热歌风云榜 -->
-            <button type="button" onclick="loadPresetPlaylist('3778678', '华语热歌风云榜 (Top 100)')" aria-label="载入歌单：华语热歌风云榜" class="group p-4 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/10 transition-all cursor-pointer min-w-0 relative overflow-hidden text-left w-full">
-              <div class="flex items-center space-x-3 min-w-0">
-                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center font-black text-xl flex-shrink-0 shadow-md group-hover:scale-105 transition-transform"><i data-lucide="flame" class="w-6 h-6"></i></div>
+            </div>
+            <div onclick="loadPresetPlaylist('3778678', '华语热歌风云榜 (Top 100)')" class="group p-5 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover cursor-pointer min-w-0 relative overflow-hidden">
+              <div class="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-cyan-500/15 blur-2xl pointer-events-none group-hover:bg-cyan-500/25 transition-colors"></div>
+              <div class="flex items-center space-x-3.5 min-w-0">
+                <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-cyan-500/25 group-hover:scale-105 group-hover:rotate-3 transition-transform duration-300 p-3"><i data-lucide="flame" class="w-6 h-6"></i></div>
                 <div class="min-w-0 flex-1">
-                  <div class="flex items-center space-x-1.5">
+                  <div class="flex items-center gap-1.5">
                     <h4 class="font-extrabold text-sm text-slate-900 dark:text-white truncate group-hover:text-cyan-400 transition-colors">华语热歌风云榜</h4>
-                    <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-500/10 text-cyan-400 flex-shrink-0">TOP榜</span>
+                    <span class="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-cyan-500/10 text-cyan-400 flex-shrink-0">TOP榜</span>
                   </div>
-                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">周杰伦 / 张杰 / 薛之谦 / 邓紫棋</p>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-1">周杰伦 / 张杰 / 薛之谦 / 邓紫棋</p>
                 </div>
               </div>
-              <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                <span class="flex items-center space-x-1 text-cyan-400"><i data-lucide="play" class="w-3 h-3"></i><span>点击载入歌单</span></span>
+              <div class="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                <span class="flex items-center gap-1.5 text-cyan-400 font-bold"><i data-lucide="play" class="w-3 h-3"></i><span>点击载入歌单</span></span>
                 <span>200 首</span>
               </div>
-            </button>
+            </div>
           </div>
         </div>
 
         <!-- 结果列表头：过滤 + 分页大小 + 批量操作 -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white/50 dark:bg-slate-950/40 p-3 sm:p-4 rounded-2xl border border-slate-200/60 dark:border-white/5">
-          <div class="flex flex-wrap items-center gap-2 min-w-0">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50/80 dark:bg-white/[0.03] p-4 rounded-2xl border border-slate-200/60 dark:border-white/10">
+          <div class="flex flex-wrap items-center gap-2.5 min-w-0">
             <h3 id="searchResultTitle" class="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white truncate">搜索结果 / 歌单曲目</h3>
-            <span id="searchResultCountBadge" class="text-xs font-mono px-2.5 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-bold">共 0 首</span>
+            <span id="searchResultCountBadge" class="text-xs font-mono px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 font-bold">共 0 首</span>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <div class="relative w-full sm:w-44 lg:w-48">
-              <input id="playlistFilterInput" type="text" placeholder="歌单内快速过滤..." oninput="onPlaylistFilterInput(this.value)" class="w-full pl-8 pr-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
-              <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+              <input id="playlistFilterInput" type="text" placeholder="歌单内快速过滤..." oninput="onPlaylistFilterInput(this.value)" class="w-full pl-9 pr-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
+              <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
             </div>
-            <select id="pageSizeSelect" onchange="changePageSize(this.value)" class="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer">
+            <select id="pageSizeSelect" onchange="changePageSize(this.value)" class="px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer">
               <option value="20" selected>20 首/页</option>
               <option value="50">50 首/页</option>
               <option value="100">100 首/页</option>
               <option value="9999">全部展示</option>
             </select>
-            <button onclick="playAllSearchResults()" class="px-3 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white transition text-xs font-bold flex items-center space-x-1 interactive-btn shadow-sm shadow-sky-500/20"><i data-lucide="play-circle" class="w-3.5 h-3.5"></i><span>播放全部</span></button>
-            <button onclick="addAllToQueue()" class="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition text-xs font-semibold flex items-center space-x-1 interactive-btn"><i data-lucide="plus" class="w-3.5 h-3.5"></i><span>加入队列</span></button>
+            <button onclick="playAllSearchResults()" class="px-3.5 py-2 rounded-xl btn-aurora text-white text-xs font-bold flex items-center space-x-1"><i data-lucide="play-circle" class="w-3.5 h-3.5"></i><span>播放全部</span></button>
+            <button onclick="addAllToQueue()" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 transition text-xs font-semibold flex items-center space-x-1"><i data-lucide="plus" class="w-3.5 h-3.5"></i><span>加入队列</span></button>
           </div>
         </div>
 
         <!-- 歌曲表格 -->
-        <div class="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white/60 dark:bg-slate-950/60 shadow-sm min-w-0">
+        <div class="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white/60 dark:bg-slate-950/40 shadow-sm min-w-0">
           <div class="overflow-x-auto custom-scroll w-full">
             <table class="w-full text-left min-w-[550px] table-auto">
-              <thead class="bg-slate-100/70 dark:bg-slate-900/80 border-b border-slate-200 dark:border-white/10 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
+              <thead class="bg-slate-100/70 dark:bg-white/[0.04] border-b border-slate-200 dark:border-white/10 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th class="py-3 px-4 w-12 text-center">#</th>
-                  <th class="py-3 px-4">曲名 / 歌手</th>
-                  <th class="py-3 px-4">专辑</th>
-                  <th class="py-3 px-4 w-28">音源平台</th>
-                  <th class="py-3 px-4 w-36 text-right">操作</th>
+                  <th class="py-3.5 px-4 w-12 text-center">#</th>
+                  <th class="py-3.5 px-4">曲名 / 歌手</th>
+                  <th class="py-3.5 px-4">专辑</th>
+                  <th class="py-3.5 px-4 w-28">音源平台</th>
+                  <th class="py-3.5 px-4 w-36 text-right">操作</th>
                 </tr>
               </thead>
-              <tbody id="trackListBody" class="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs sm:text-sm">
-                <tr><td colspan="5" class="py-12 text-center text-slate-400"><i data-lucide="music" class="w-8 h-8 mx-auto mb-2 opacity-40"></i><span>输入关键词点击搜索，或点击上方歌单开始视听</span></td></tr>
+              <tbody id="trackListBody" class="divide-y divide-slate-100 dark:divide-white/5 text-xs sm:text-sm">
+                <tr><td colspan="5" class="py-14 text-center text-slate-400">
+                  <span class="w-14 h-14 rounded-2xl bg-sky-500/10 text-sky-500/60 flex items-center justify-center mx-auto mb-3"><i data-lucide="music" class="w-7 h-7"></i></span>
+                  <span>输入关键词点击搜索，或点击上方歌单开始视听</span>
+                </td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
         <!-- 完整分页控制器 -->
-        <div id="searchPagination" class="hidden flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 px-1 text-xs text-slate-500 border-t border-slate-200/60 dark:border-white/5">
+        <div id="searchPagination" class="hidden flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 px-1 text-xs text-slate-500 border-t border-slate-200/60 dark:border-white/10">
           <div class="flex items-center space-x-2">
             <span>第 <strong id="currentPageNum" class="text-sky-500 font-mono font-bold">1</strong> / <span id="totalPageNum" class="font-mono">1</span> 页 · 共 <span id="totalTracksNum" class="font-mono font-semibold">0</span> 首</span>
           </div>
           <div class="flex flex-wrap items-center gap-1.5">
-            <button onclick="goToPage(1)" id="btnPageFirst" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:text-sky-500 transition interactive-btn disabled:opacity-30 disabled:pointer-events-none flex items-center space-x-1"><i data-lucide="chevrons-left" class="w-3.5 h-3.5"></i><span class="hidden md:inline">首页</span></button>
-            <button onclick="goToPage(currentPage - 1)" id="btnPagePrev" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:text-sky-500 transition interactive-btn disabled:opacity-30 disabled:pointer-events-none flex items-center space-x-1"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i><span>上一页</span></button>
+            <button onclick="goToPage(1)" id="btnPageFirst" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:text-sky-500 transition disabled:opacity-30 disabled:pointer-events-none flex items-center space-x-1 border border-transparent hover:border-sky-500/30"><i data-lucide="chevrons-left" class="w-3.5 h-3.5"></i><span class="hidden md:inline">首页</span></button>
+            <button onclick="goToPage(currentPage - 1)" id="btnPagePrev" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:text-sky-500 transition disabled:opacity-30 disabled:pointer-events-none flex items-center space-x-1 border border-transparent hover:border-sky-500/30"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i><span>上一页</span></button>
             <div id="pageNumberButtons" class="flex items-center space-x-1"></div>
-            <button onclick="goToPage(currentPage + 1)" id="btnPageNext" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:text-sky-500 transition interactive-btn disabled:opacity-30 disabled:pointer-events-none flex items-center space-x-1"><span>下一页</span><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
-            <button onclick="goToPage(totalPages)" id="btnPageLast" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:text-sky-500 transition interactive-btn disabled:opacity-30 disabled:pointer-events-none flex items-center space-x-1"><span class="hidden md:inline">末页</span><i data-lucide="chevrons-right" class="w-3.5 h-3.5"></i></button>
+            <button onclick="goToPage(currentPage + 1)" id="btnPageNext" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:text-sky-500 transition disabled:opacity-30 disabled:pointer-events-none flex items-center space-x-1 border border-transparent hover:border-sky-500/30"><span>下一页</span><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+            <button onclick="goToPage(totalPages)" id="btnPageLast" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:text-sky-500 transition disabled:opacity-30 disabled:pointer-events-none flex items-center space-x-1 border border-transparent hover:border-sky-500/30"><span class="hidden md:inline">末页</span><i data-lucide="chevrons-right" class="w-3.5 h-3.5"></i></button>
             <div class="hidden lg:flex items-center space-x-1 pl-2 border-l border-slate-200 dark:border-white/10">
               <span class="text-slate-400 text-[11px]">跳至</span>
-              <input id="pageJumpInput" type="number" min="1" onkeydown="if(event.key==='Enter') jumpToPageInput()" class="w-12 px-1.5 py-1 text-center rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-sky-500" />
+              <input id="pageJumpInput" type="number" min="1" onkeydown="if(event.key==='Enter') jumpToPageInput()" class="w-12 px-1.5 py-1 text-center rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-sky-500" />
               <span class="text-slate-400 text-[11px]">页</span>
               <button onclick="jumpToPageInput()" class="px-2 py-1 rounded-lg bg-sky-500/10 text-sky-500 hover:bg-sky-500 hover:text-white transition font-bold text-[11px]">Go</button>
             </div>
@@ -408,45 +389,112 @@
       </div>
     </section>
 
-    <!-- API 在线交互调试台 -->
-    <section id="workbench" class="glass-panel bg-white/80 dark:bg-slate-900/60 p-4 sm:p-8 lg:p-10 rounded-3xl border border-slate-200/80 dark:border-white/10 shadow-2xl space-y-5 sm:space-y-6 w-full min-w-0 overflow-hidden">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/60 dark:border-white/10 pb-4">
-        <div>
-          <div class="inline-flex items-center space-x-1.5 text-xs font-bold text-cyan-500 uppercase tracking-wider mb-1"><i data-lucide="terminal" class="w-4 h-4"></i><span>Interactive API Sandbox</span></div>
-          <h2 class="text-lg sm:text-2xl font-extrabold text-slate-900 dark:text-white flex items-center space-x-2">
-            <span>在线 API 交互调试台</span>
-            <span class="text-[10px] sm:text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-500 border border-cyan-500/20">PRO DEV</span>
-          </h2>
-          <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5">支持 8 大核心端点交互调用、实时 cURL 命令生成、URL 直达预览与语法高亮</p>
+    <!-- 艺人专栏速搜 -->
+    <section id="artist-spotlight" class="scroll-mt-24 md:scroll-mt-28 reveal space-y-6 sm:space-y-8 w-full min-w-0">
+      <div class="text-center max-w-2xl mx-auto space-y-3">
+        <div class="eyebrow eyebrow-center justify-center"><span>Artist Spotlight</span></div>
+        <h2 class="text-2xl sm:text-[2rem] font-black tracking-tight text-slate-900 dark:text-white">艺人专栏 · 一键速搜</h2>
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">点击任意艺人，即刻跨源检索其全网曲库并载入视听工坊</p>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-5 w-full min-w-0">
+        <div onclick="quickArtistSearch('周杰伦')" class="group p-5 sm:p-6 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover cursor-pointer text-center relative overflow-hidden">
+          <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-rose-500/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="avatar-grad-1 w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto flex items-center justify-center text-white text-2xl sm:text-3xl font-black shadow-lg group-hover:scale-110 transition-transform duration-300">周</div>
+          <h4 class="mt-4 font-extrabold text-sm sm:text-base text-slate-900 dark:text-white group-hover:text-rose-400 transition-colors">周杰伦</h4>
+          <p class="mt-1 text-[11px] sm:text-xs text-slate-400 font-mono truncate">晴天 · 七里香 · 青花瓷</p>
+          <span class="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="search" class="w-3 h-3"></i>速搜曲库</span>
         </div>
-        <button onclick="toggleWorkbenchStation()" id="btnWorkbenchToggle" type="button" title="折叠表格" aria-controls="workbenchStationBody" aria-expanded="true" class="group flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-sky-500 transition interactive-btn px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 w-fit flex-shrink-0 shadow-sm">
-          <svg class="w-4 h-4 text-slate-500 group-hover:text-sky-500 dark:text-slate-400 dark:group-hover:text-sky-400 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path><path d="M9 3v18"></path></svg>
-          <i data-lucide="chevron-up" class="w-3.5 h-3.5 transition-transform duration-300" id="iconWorkbenchToggle"></i>
+        <div onclick="quickArtistSearch('陈奕迅')" class="group p-5 sm:p-6 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover cursor-pointer text-center relative overflow-hidden">
+          <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-indigo-500/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="avatar-grad-2 w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto flex items-center justify-center text-white text-2xl sm:text-3xl font-black shadow-lg group-hover:scale-110 transition-transform duration-300">陈</div>
+          <h4 class="mt-4 font-extrabold text-sm sm:text-base text-slate-900 dark:text-white group-hover:text-indigo-400 transition-colors">陈奕迅</h4>
+          <p class="mt-1 text-[11px] sm:text-xs text-slate-400 font-mono truncate">孤勇者 · 十年 · 浮夸</p>
+          <span class="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="search" class="w-3 h-3"></i>速搜曲库</span>
+        </div>
+        <div onclick="quickArtistSearch('林俊杰')" class="group p-5 sm:p-6 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover cursor-pointer text-center relative overflow-hidden">
+          <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="avatar-grad-3 w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto flex items-center justify-center text-white text-2xl sm:text-3xl font-black shadow-lg group-hover:scale-110 transition-transform duration-300">林</div>
+          <h4 class="mt-4 font-extrabold text-sm sm:text-base text-slate-900 dark:text-white group-hover:text-emerald-400 transition-colors">林俊杰</h4>
+          <p class="mt-1 text-[11px] sm:text-xs text-slate-400 font-mono truncate">江南 · 可惜没如果 · 修炼爱情</p>
+          <span class="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="search" class="w-3 h-3"></i>速搜曲库</span>
+        </div>
+        <div onclick="quickArtistSearch('邓紫棋')" class="group p-5 sm:p-6 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover cursor-pointer text-center relative overflow-hidden">
+          <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="avatar-grad-4 w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto flex items-center justify-center text-white text-2xl sm:text-3xl font-black shadow-lg group-hover:scale-110 transition-transform duration-300">邓</div>
+          <h4 class="mt-4 font-extrabold text-sm sm:text-base text-slate-900 dark:text-white group-hover:text-amber-400 transition-colors">邓紫棋</h4>
+          <p class="mt-1 text-[11px] sm:text-xs text-slate-400 font-mono truncate">泡沫 · 光年之外 · 句号</p>
+          <span class="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="search" class="w-3 h-3"></i>速搜曲库</span>
+        </div>
+        <div onclick="quickArtistSearch('薛之谦')" class="group p-5 sm:p-6 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover cursor-pointer text-center relative overflow-hidden">
+          <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-500/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="avatar-grad-5 w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto flex items-center justify-center text-white text-2xl sm:text-3xl font-black shadow-lg group-hover:scale-110 transition-transform duration-300">薛</div>
+          <h4 class="mt-4 font-extrabold text-sm sm:text-base text-slate-900 dark:text-white group-hover:text-cyan-400 transition-colors">薛之谦</h4>
+          <p class="mt-1 text-[11px] sm:text-xs text-slate-400 font-mono truncate">演员 · 丑八怪 · 认真的雪</p>
+          <span class="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="search" class="w-3 h-3"></i>速搜曲库</span>
+        </div>
+        <div onclick="quickArtistSearch('张杰')" class="group p-5 sm:p-6 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover cursor-pointer text-center relative overflow-hidden">
+          <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-pink-500/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="avatar-grad-6 w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto flex items-center justify-center text-white text-2xl sm:text-3xl font-black shadow-lg group-hover:scale-110 transition-transform duration-300">张</div>
+          <h4 class="mt-4 font-extrabold text-sm sm:text-base text-slate-900 dark:text-white group-hover:text-pink-400 transition-colors">张杰</h4>
+          <p class="mt-1 text-[11px] sm:text-xs text-slate-400 font-mono truncate">这，就是爱 · 逆战 · 天下</p>
+          <span class="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-pink-500 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="search" class="w-3 h-3"></i>速搜曲库</span>
+        </div>
+        <div onclick="quickArtistSearch('王菲')" class="group p-5 sm:p-6 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover cursor-pointer text-center relative overflow-hidden">
+          <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-teal-500/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="avatar-grad-7 w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto flex items-center justify-center text-white text-2xl sm:text-3xl font-black shadow-lg group-hover:scale-110 transition-transform duration-300">王</div>
+          <h4 class="mt-4 font-extrabold text-sm sm:text-base text-slate-900 dark:text-white group-hover:text-teal-400 transition-colors">王菲</h4>
+          <p class="mt-1 text-[11px] sm:text-xs text-slate-400 font-mono truncate">红豆 · 匆匆那年 · 传奇</p>
+          <span class="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-teal-500 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="search" class="w-3 h-3"></i>速搜曲库</span>
+        </div>
+        <div onclick="quickArtistSearch('Beyond')" class="group p-5 sm:p-6 rounded-3xl bg-white/70 dark:bg-white/[0.04] border border-slate-200/70 dark:border-white/10 card-hover cursor-pointer text-center relative overflow-hidden">
+          <div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-orange-500/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="avatar-grad-8 w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto flex items-center justify-center text-white text-2xl sm:text-3xl font-black shadow-lg group-hover:scale-110 transition-transform duration-300">B</div>
+          <h4 class="mt-4 font-extrabold text-sm sm:text-base text-slate-900 dark:text-white group-hover:text-orange-400 transition-colors">Beyond</h4>
+          <p class="mt-1 text-[11px] sm:text-xs text-slate-400 font-mono truncate">海阔天空 · 光辉岁月 · 真的爱你</p>
+          <span class="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="search" class="w-3 h-3"></i>速搜曲库</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- API 在线交互调试台 -->
+    <section id="workbench" class="scroll-mt-24 md:scroll-mt-28 reveal liquid-glass ios-rounded-lg p-5 sm:p-9 lg:p-11 shadow-2xl shadow-slate-900/5 dark:shadow-black/30 space-y-6 w-full min-w-0 overflow-hidden">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-slate-200/60 dark:border-white/10 pb-5">
+        <div class="space-y-2">
+          <div class="eyebrow"><span>Interactive API Sandbox</span></div>
+          <h2 class="text-2xl sm:text-[2rem] font-black tracking-tight text-slate-900 dark:text-white flex flex-wrap items-center gap-2.5">
+            <span class="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500 to-sky-600 text-white flex items-center justify-center shadow-lg shadow-cyan-500/30"><i data-lucide="terminal" class="w-5 h-5"></i></span>
+            <span>在线 API 交互调试台</span>
+            <span class="text-[10px] sm:text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-500 border border-cyan-500/25">PRO DEV</span>
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">8 大核心端点交互调用 · 实时 cURL 生成 · URL 直达预览 · 语法高亮</p>
+        </div>
+        <button onclick="toggleWorkbenchStation()" id="btnWorkbenchToggle" title="折叠面板" class="group flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-sky-500 transition px-3 py-2 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 w-fit flex-shrink-0">
+          <i data-lucide="chevron-up" class="w-4 h-4 transition-transform duration-300" id="iconWorkbenchToggle"></i>
+          <span>收起</span>
         </button>
       </div>
 
       <div id="workbenchStationBody" class="space-y-5 sm:space-y-6 transition-all duration-300 w-full min-w-0">
-        <div class="flex flex-wrap items-center gap-1.5 p-1 rounded-2xl bg-slate-100/90 dark:bg-slate-950/90 border border-slate-200 dark:border-white/5 text-xs font-semibold max-w-full overflow-x-auto custom-scroll" id="apiTabs">
-          <button onclick="switchApiTab('match')" class="px-3 py-1.5 rounded-xl tab-active transition interactive-btn whitespace-nowrap" data-tab="match">/match 智能解灰</button>
-          <button onclick="switchApiTab('ncmget')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="ncmget">/ncmget 官方直链</button>
-          <button onclick="switchApiTab('otherget')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="otherget">/otherget 跨源匹配</button>
-          <button onclick="switchApiTab('search')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="search">/search 全网搜索</button>
-          <button onclick="switchApiTab('lyric')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="lyric">/lyric 逐字歌词</button>
-          <button onclick="switchApiTab('pic')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="pic">/pic 高清封面</button>
-          <button onclick="switchApiTab('playlist')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 transition interactive-btn whitespace-nowrap" data-tab="playlist">/playlist 歌单解析</button>
-          <button onclick="switchApiTab('health')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-emerald-500 transition interactive-btn whitespace-nowrap" data-tab="health">/health 健康诊断</button>
-          <button onclick="switchApiTab('info')" class="px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:text-purple-500 transition interactive-btn whitespace-nowrap" data-tab="info">/info 系统环境</button>
+        <div class="ios-segmented flex items-center gap-1 text-xs font-semibold max-w-full" id="apiTabs">
+          <button onclick="switchApiTab('match')" class="px-4 py-2 rounded-full tab-active transition whitespace-nowrap min-h-[36px] inline-flex items-center" data-tab="match">/match 智能解灰</button>
+          <button onclick="switchApiTab('ncmget')" class="px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 transition whitespace-nowrap min-h-[36px] inline-flex items-center" data-tab="ncmget">/ncmget 官方直链</button>
+          <button onclick="switchApiTab('search')" class="px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 transition whitespace-nowrap min-h-[36px] inline-flex items-center" data-tab="search">/search 全网搜索</button>
+          <button onclick="switchApiTab('lyric')" class="px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 transition whitespace-nowrap min-h-[36px] inline-flex items-center" data-tab="lyric">/lyric 逐字歌词</button>
+          <button onclick="switchApiTab('pic')" class="px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 transition whitespace-nowrap min-h-[36px] inline-flex items-center" data-tab="pic">/pic 高清封面</button>
+          <button onclick="switchApiTab('playlist')" class="px-4 py-2 rounded-full text-slate-600 dark:text-slate-300 transition whitespace-nowrap min-h-[36px] inline-flex items-center" data-tab="playlist">/playlist 歌单解析</button>
+          <button onclick="switchApiTab('health')" class="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-emerald-500 transition whitespace-nowrap border border-transparent" data-tab="health">/health 健康诊断</button>
+          <button onclick="switchApiTab('info')" class="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-purple-500 transition whitespace-nowrap border border-transparent" data-tab="info">/info 系统环境</button>
         </div>
 
-        <div class="p-4 sm:p-5 rounded-2xl bg-white/70 dark:bg-slate-950/70 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-4">
+        <div class="p-4 sm:p-6 rounded-3xl bg-slate-50/80 dark:bg-white/[0.03] border border-slate-200/70 dark:border-white/10 space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 items-end w-full min-w-0">
             <div class="md:col-span-6 min-w-0" id="mainInputWrapper">
-              <label id="inputLabel" for="testInput" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">网易云歌曲 ID (例如: 191060 - 张杰《这，就是爱》)</label>
-              <input id="testInput" type="text" value="191060" oninput="updateWorkbenchUrlPreview()" onkeydown="if(event.key==='Enter') executeApiTest()" class="w-full px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-mono text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
+              <label id="inputLabel" for="testInput" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">网易云歌曲 ID (例如: 191060 - 张杰《这，就是爱》)</label>
+              <input id="testInput" type="text" value="191060" oninput="updateWorkbenchUrlPreview()" onkeydown="if(event.key==='Enter') executeApiTest()" class="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-mono text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition" />
             </div>
             <div class="md:col-span-3 min-w-0" id="serverSelectWrapper">
-              <label for="serverSelect" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">音源平台 / 调度策略 (server)</label>
-              <select id="serverSelect" onchange="updateWorkbenchUrlPreview()" class="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-mono text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer text-slate-900 dark:text-white">
+              <label for="serverSelect" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">音源平台 / 调度策略 (server)</label>
+              <select id="serverSelect" onchange="updateWorkbenchUrlPreview()" class="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-mono text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer text-slate-900 dark:text-white">
                 <option value="">自动竞速调度 (默认最佳)</option>
                 <option value="gdstudio">GD Studio (主核心)</option>
                 <option value="bodian">Bodian (波点高保真)</option>
@@ -460,8 +508,8 @@
               </select>
             </div>
             <div class="md:col-span-3 min-w-0" id="bitrateContainer">
-              <label for="bitrateSelect" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">音质码率 / 格式 (br)</label>
-              <select id="bitrateSelect" onchange="updateWorkbenchUrlPreview()" class="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-mono text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer text-slate-900 dark:text-white">
+              <label for="bitrateSelect" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">音质码率 / 格式 (br)</label>
+              <select id="bitrateSelect" onchange="updateWorkbenchUrlPreview()" class="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 font-mono text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 cursor-pointer text-slate-900 dark:text-white">
                 <option value="999">999kbps (FLAC 无损最高品质)</option>
                 <option value="320" selected>320kbps (标准高保真)</option>
                 <option value="192">192kbps (中等音质)</option>
@@ -470,107 +518,166 @@
             </div>
           </div>
 
-          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-white/5">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-slate-200/60 dark:border-white/10">
             <div class="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
               <span class="font-bold text-slate-400 flex-shrink-0 text-[11px]">快速预设:</span>
-              <button onclick="fillPreset('8401628431', 'playlist', '天赐的声音全收录')" class="px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white transition interactive-btn text-[11px] font-semibold">天赐的声音</button>
-              <button onclick="fillPreset('988690134', 'playlist', '经典老歌久听不厌')" class="px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500 hover:text-white transition interactive-btn text-[11px] font-semibold">经典老歌·岁月留声</button>
-              <button onclick="fillPreset('191060', 'match', '张杰《这，就是爱》')" class="px-2.5 py-1 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500 hover:text-white transition interactive-btn text-[11px] font-semibold">张杰《这，就是爱》</button>
-              <button onclick="fillPreset('186016', 'match', '周杰伦《晴天》')" class="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-sky-500 transition interactive-btn text-[11px]">周杰伦《晴天》</button>
-              <button onclick="fillPreset('1901371647', 'match', '陈奕迅《孤勇者》')" class="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-sky-500 transition interactive-btn text-[11px]">陈奕迅《孤勇者》</button>
+              <button onclick="fillPreset('8401628431', 'playlist', '天赐的声音全收录')" class="px-2.5 py-1.5 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white transition text-[11px] font-semibold">天赐的声音</button>
+              <button onclick="fillPreset('988690134', 'playlist', '经典老歌久听不厌')" class="px-2.5 py-1.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500 hover:text-white transition text-[11px] font-semibold">经典老歌·岁月留声</button>
+              <button onclick="fillPreset('191060', 'match', '张杰《这，就是爱》')" class="px-2.5 py-1.5 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500 hover:text-white transition text-[11px] font-semibold">张杰《这，就是爱》</button>
+              <button onclick="fillPreset('186016', 'match', '周杰伦《晴天》')" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:text-sky-500 transition text-[11px] border border-transparent hover:border-sky-500/30">周杰伦《晴天》</button>
+              <button onclick="fillPreset('1901371647', 'match', '陈奕迅《孤勇者》')" class="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:text-sky-500 transition text-[11px] border border-transparent hover:border-sky-500/30">陈奕迅《孤勇者》</button>
             </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
-              <button onclick="playCurrentWorkbenchTrack()" id="playWorkbenchBtn" class="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 dark:text-emerald-400 hover:text-white border border-emerald-500/20 font-bold text-xs sm:text-sm transition flex items-center justify-center space-x-1.5 interactive-btn shadow-sm" title="立即解析并播放输入框中的歌曲">
-                <i data-lucide="play" class="w-3.5 h-3.5"></i>
-                <span>试听播放</span>
-              </button>
-              <button onclick="executeApiTest()" id="executeBtn" class="px-6 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center space-x-1.5 shadow-md shadow-sky-500/20 interactive-btn flex-shrink-0">
-                <i data-lucide="send" class="w-3.5 h-3.5"></i>
-                <span>发送实时请求</span>
-              </button>
-            </div>
+            <button onclick="executeApiTest()" id="executeBtn" class="px-7 py-2.5 rounded-xl btn-aurora text-white font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5 flex-shrink-0"><i data-lucide="send" class="w-3.5 h-3.5"></i><span>发送实时请求</span></button>
           </div>
         </div>
 
-        <div class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-slate-300 space-y-2.5 font-mono text-xs">
+        <div class="p-4 rounded-2xl bg-slate-900/[0.96] dark:bg-black/60 border border-slate-800 text-slate-300 space-y-2.5 font-mono text-xs top-glow">
           <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center space-x-2 min-w-0">
-              <span class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 font-bold text-[10px] uppercase">GET Request</span>
+            <div class="flex items-center space-x-2.5 min-w-0">
+              <span class="px-2 py-1 rounded-lg bg-sky-500/20 text-sky-400 font-bold text-[10px] uppercase tracking-wider flex-shrink-0">GET Request</span>
               <span id="previewRequestUrl" class="text-slate-300 truncate font-mono text-[11px] select-all">/match?id=191060&br=320</span>
             </div>
             <div class="flex items-center space-x-1.5 flex-shrink-0">
-              <button onclick="openWorkbenchUrlInNewTab()" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition interactive-btn" title="在新标签页中打开 URL"><i data-lucide="external-link" class="w-3.5 h-3.5"></i></button>
-              <button onclick="copyWorkbenchCurl()" class="px-2.5 py-1 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 transition interactive-btn flex items-center space-x-1 text-[11px] font-sans font-bold" title="复制完整 cURL 命令"><i data-lucide="terminal" class="w-3 h-3"></i><span>复制 cURL</span></button>
+              <button onclick="openWorkbenchUrlInNewTab()" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition" title="在新标签页中打开 URL"><i data-lucide="external-link" class="w-3.5 h-3.5"></i></button>
+              <button onclick="copyWorkbenchCurl()" class="px-2.5 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 transition flex items-center space-x-1 text-[11px] font-sans font-bold" title="复制完整 cURL 命令"><i data-lucide="terminal" class="w-3 h-3"></i><span>复制 cURL</span></button>
             </div>
           </div>
         </div>
 
-        <div class="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-200 space-y-3 font-mono text-xs sm:text-sm w-full min-w-0 overflow-hidden shadow-inner">
-          <div class="flex flex-wrap items-center justify-between pb-3 border-b border-slate-800 text-xs gap-2">
+        <div class="p-4 sm:p-6 rounded-3xl bg-slate-950 border border-slate-800 text-slate-200 space-y-4 font-mono text-xs sm:text-sm w-full min-w-0 overflow-hidden shadow-inner top-glow">
+          <div class="flex flex-wrap items-center justify-between pb-4 border-b border-slate-800/80 text-xs gap-2">
             <div class="flex items-center space-x-2 sm:space-x-3">
-              <span class="px-2 py-0.5 rounded-md font-bold bg-emerald-500/20 text-emerald-400 text-[11px]" id="resStatus">HTTP --</span>
+              <span class="px-2.5 py-1 rounded-lg font-bold bg-emerald-500/15 text-emerald-400 text-[11px]" id="resStatus">HTTP --</span>
               <span class="text-slate-400 font-semibold text-[11px]" id="resLatency">耗时: --ms</span>
               <span class="text-sky-400 font-bold text-[11px]" id="resSource">命中音源: --</span>
             </div>
-            <div class="flex items-center space-x-2">
-              <button id="resPlayBtn" onclick="playLastTestedAudio()" class="hidden text-emerald-400 hover:text-emerald-300 transition flex items-center space-x-1 interactive-btn font-sans text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/20 shadow-sm" title="立即播放本次请求解析出的音频直链">
-                <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
-                <span>播放解析音频</span>
-              </button>
-              <button onclick="copyResponseJson()" class="text-slate-300 hover:text-white transition flex items-center space-x-1 interactive-btn font-sans text-xs"><i data-lucide="copy" class="w-3.5 h-3.5"></i><span>复制 JSON</span></button>
-            </div>
+            <button onclick="copyResponseJson()" class="text-slate-300 hover:text-white transition flex items-center space-x-1.5 font-sans text-xs font-semibold px-2.5 py-1.5 rounded-lg hover:bg-white/5"><i data-lucide="copy" class="w-3.5 h-3.5"></i><span>复制 JSON</span></button>
           </div>
-          <pre id="jsonOutput" class="leading-relaxed overflow-x-auto custom-scroll max-h-72 text-slate-300 p-2 text-[11px] sm:text-xs w-full bg-slate-900/50 rounded-xl">点击发送请求或选择上方预设即可查看实时返回数据...</pre>
+          <pre id="jsonOutput" class="leading-relaxed overflow-x-auto custom-scroll max-h-72 text-slate-300 p-3 text-[11px] sm:text-xs w-full bg-white/[0.02] rounded-2xl border border-white/5">点击发送请求或选择上方预设即可查看实时返回数据...</pre>
         </div>
       </div>
     </section>
 
     <!-- 13 大音源支持矩阵 -->
-    <section id="providers" class="space-y-5 sm:space-y-8 w-full min-w-0">
-      <div class="text-center max-w-2xl mx-auto space-y-1.5">
-        <div class="inline-flex items-center space-x-1 text-xs font-bold text-sky-500 uppercase tracking-wider"><i data-lucide="radio" class="w-3.5 h-3.5"></i><span>Multi-Source Cluster</span></div>
-        <h2 class="text-xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">13 大音源集群调度能力</h2>
-        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300">全平台支持免 Cookie 自动化解析，具备多级回退重试与并发竞速抢占能力</p>
+    <section id="providers" class="scroll-mt-24 md:scroll-mt-28 reveal space-y-6 sm:space-y-10 w-full min-w-0">
+      <div class="text-center max-w-2xl mx-auto space-y-3">
+        <div class="eyebrow eyebrow-center justify-center"><span>Multi-Source Cluster</span></div>
+        <h2 class="text-2xl sm:text-[2rem] font-black tracking-tight text-slate-900 dark:text-white">13 大音源集群调度能力</h2>
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">全平台免 Cookie 自动化解析 · 多级回退重试 · 并发竞速抢占</p>
       </div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 w-full min-w-0">
-        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">GD Studio</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-sky-500/10 text-sky-500">主核心</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">官方 API 端点，支持无损 320k/FLAC。</p></div>
-        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">Bodian (波点)</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-emerald-500/10 text-emerald-500">高保真</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">高保真流媒体，解析成功率超 99%。</p></div>
-        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">JOOX</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-indigo-500/10 text-indigo-500">海外音源</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">港台与海外曲库覆盖，直链稳定。</p></div>
-        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">KuGou (酷狗)</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-slate-500/10 text-slate-500">国内大库</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">庞大华语曲库，多品质毫秒匹配。</p></div>
-        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">Kuwo (酷我)</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-slate-500/10 text-slate-500">无损 FLAC</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">高码率音源库，支持无损试听。</p></div>
-        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">BiliVideo / Bili</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-pink-500/10 text-pink-500">ACG / Live</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">高质量现场翻唱与二次元音轨。</p></div>
-        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">PyNcmD</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-amber-500/10 text-amber-500">网易云官方</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">官方 API 双通道，解决 syntax 兼容。</p></div>
-        <div class="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 shadow-sm min-w-0"><div class="flex items-center justify-between"><span class="font-bold text-slate-900 dark:text-white font-mono text-xs sm:text-sm">QQ / Migu / YT</span><span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-bold bg-purple-500/10 text-purple-500">全球热备</span></div><p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">QQ音乐、咪咕、YouTube 容灾热备。</p></div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 w-full min-w-0">
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-sky-500/10 text-sky-500">主核心</span></div>
+          <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">GD Studio</div>
+          <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">官方 API 端点，支持无损 320k / FLAC。</p>
+        </div>
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-500/10 text-emerald-500">高保真</span></div>
+          <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">Bodian 波点</div>
+          <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">高保真流媒体，解析成功率超 99%。</p>
+        </div>
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-500/10 text-indigo-500">海外音源</span></div>
+          <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">JOOX</div>
+          <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">港台与海外曲库覆盖，直链稳定。</p>
+        </div>
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-500/10 text-slate-500 dark:text-slate-400">国内大库</span></div>
+          <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">KuGou 酷狗</div>
+          <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">庞大华语曲库，多品质毫秒匹配。</p>
+        </div>
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/10 text-amber-500">无损 FLAC</span></div>
+          <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">Kuwo 酷我</div>
+          <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">高码率音源库，支持无损试听。</p>
+        </div>
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-pink-500/10 text-pink-500">ACG / Live</span></div>
+          <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">BiliVideo</div>
+          <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">高质量现场翻唱与二次元音轨。</p>
+        </div>
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-orange-500/10 text-orange-500">网易云官方</span></div>
+          <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">PyNcmD</div>
+          <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">官方 API 双通道，解决 syntax 兼容。</p>
+        </div>
+        <div class="group p-5 liquid-glass ios-rounded card-hover min-w-0 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2.5"><span class="relative flex w-2 h-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-500/10 text-purple-500">全球热备</span></div>
+          <div class="font-extrabold text-slate-900 dark:text-white font-mono text-sm sm:text-base">QQ / Migu / YT</div>
+          <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5">QQ 音乐、咪咕、YouTube 容灾热备。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pro 生产级部署方案 -->
+    <section id="vip-subscription" class="scroll-mt-24 md:scroll-mt-28 reveal relative w-full min-w-0 overflow-hidden rounded-[2rem]">
+      <div class="absolute inset-0 bg-slate-950 dark:bg-black/70"></div>
+      <div class="absolute inset-0 opacity-70" aria-hidden="true">
+        <div class="aurora-blob w-[420px] h-[420px] top-[-120px] left-[10%] bg-gradient-to-b from-amber-500/25 via-orange-600/15 to-transparent"></div>
+        <div class="aurora-blob aurora-blob-b w-[380px] h-[380px] bottom-[-140px] right-[8%] bg-gradient-to-t from-indigo-600/25 via-purple-600/15 to-transparent"></div>
+      </div>
+      <div class="relative p-6 sm:p-10 lg:p-14 space-y-8 sm:space-y-10 border border-white/10 rounded-[2rem]">
+        <div class="max-w-2xl space-y-3">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold font-mono tracking-widest uppercase">
+            <i data-lucide="crown" class="w-3.5 h-3.5"></i><span>Production Ready</span>
+          </div>
+          <h2 class="text-2xl sm:text-4xl font-black tracking-tight text-white">Pro 生产级<span class="text-gradient-warm">部署方案</span></h2>
+          <p class="text-sm sm:text-base text-slate-400 leading-relaxed">从本地一键启动到集群高可用 —— MIT 开源协议，私有化部署零门槛，全链路可观测开箱即用。</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+          <div class="p-6 rounded-3xl bg-white/[0.05] border border-white/10 backdrop-blur-xl card-hover group">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-sky-500/25 group-hover:scale-110 transition-transform duration-300"><i data-lucide="container" class="w-6 h-6"></i></div>
+            <h3 class="mt-5 font-extrabold text-lg text-white">容器化一键部署</h3>
+            <p class="mt-2 text-sm text-slate-400 leading-relaxed">Docker Compose 单命令拉起，Node 22 精简镜像，<span class="font-mono text-slate-300">pnpm</span> 源码构建同样顺滑。</p>
+            <div class="mt-4 font-mono text-[11px] text-sky-300/90 bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 select-all">docker compose up -d</div>
+          </div>
+          <div class="p-6 rounded-3xl bg-white/[0.05] border border-white/10 backdrop-blur-xl card-hover group">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:scale-110 transition-transform duration-300"><i data-lucide="network" class="w-6 h-6"></i></div>
+            <h3 class="mt-5 font-extrabold text-lg text-white">网关集群高可用</h3>
+            <p class="mt-2 text-sm text-slate-400 leading-relaxed">Nginx / Caddy 反向代理友好，<span class="font-mono text-slate-300">TRUSTED_PROXIES</span> 精确还原客户端 IP，多实例无状态横向扩展。</p>
+            <div class="mt-4 flex items-center gap-2 text-[11px] font-mono text-emerald-300/90"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Stateless · Scale-out ready</div>
+          </div>
+          <div class="p-6 rounded-3xl bg-white/[0.05] border border-white/10 backdrop-blur-xl card-hover group">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-lg shadow-amber-500/25 group-hover:scale-110 transition-transform duration-300"><i data-lucide="activity" class="w-6 h-6"></i></div>
+            <h3 class="mt-5 font-extrabold text-lg text-white">全链路可观测</h3>
+            <p class="mt-2 text-sm text-slate-400 leading-relaxed">内置遥测大盘实时洞察每一次调用，<span class="font-mono text-slate-300">/health</span> 与 <span class="font-mono text-slate-300">/info</span> 对接任意监控体系。</p>
+            <a href="/dashboard" class="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-amber-300 transition">打开遥测大盘<i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></a>
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- REST 契约规范表 -->
-    <section id="specs" class="space-y-4 w-full min-w-0 overflow-hidden">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div>
-          <h2 class="text-lg sm:text-2xl font-extrabold text-slate-900 dark:text-white flex items-center space-x-2"><i data-lucide="book-open" class="w-4 h-4 sm:w-5 sm:h-5 text-sky-500"></i><span>REST API 接口契约规范</span></h2>
-          <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-0.5">响应格式统一遵循 <code>{ code: 200, message: "...", data: ... }</code></p>
+    <section id="specs" class="scroll-mt-24 md:scroll-mt-28 reveal space-y-5 w-full min-w-0 overflow-hidden">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div class="space-y-2">
+          <div class="eyebrow"><span>API Contract</span></div>
+          <h2 class="text-2xl sm:text-[2rem] font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+            <span class="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30"><i data-lucide="book-open" class="w-5 h-5"></i></span>
+            REST API 接口契约规范
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">响应格式统一遵循 <code class="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 font-mono text-[11px] text-sky-600 dark:text-sky-400">{ code: 200, message: "...", data: ... }</code></p>
         </div>
-        <button onclick="toggleSpecsTable()" id="btnSpecsToggle" type="button" title="折叠表格" aria-controls="specsTableContent" aria-expanded="true" class="group flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-sky-500 transition interactive-btn px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 w-fit flex-shrink-0 shadow-sm">
-          <svg class="w-4 h-4 text-slate-500 group-hover:text-sky-500 dark:text-slate-400 dark:group-hover:text-sky-400 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M3 15h18"></path><path d="M9 3v18"></path></svg>
-          <i data-lucide="chevron-up" class="w-3.5 h-3.5 transition-transform duration-300" id="iconSpecsToggle"></i>
+        <button onclick="toggleSpecsTable()" id="btnSpecsToggle" title="折叠表格" class="group flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-sky-500 transition px-3 py-2 rounded-xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 w-fit flex-shrink-0">
+          <i data-lucide="chevron-up" class="w-4 h-4 transition-transform duration-300" id="iconSpecsToggle"></i>
+          <span>收起</span>
         </button>
       </div>
-      <div id="specsTableContent" class="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white/60 dark:bg-slate-900/40 text-xs sm:text-sm transition-all duration-300 w-full min-w-0">
+      <div id="specsTableContent" class="rounded-3xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white/60 dark:bg-white/[0.03] text-xs sm:text-sm transition-all duration-300 w-full min-w-0 backdrop-blur-xl top-glow">
         <div class="overflow-x-auto custom-scroll w-full">
           <table class="w-full text-left min-w-[500px] table-auto">
-            <thead class="bg-slate-100/60 dark:bg-slate-950/60 border-b border-slate-200 dark:border-white/10 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
-              <tr><th class="py-2.5 px-3.5">端点</th><th class="py-2.5 px-3.5">方法</th><th class="py-2.5 px-3.5">参数</th><th class="py-2.5 px-3.5">用途</th></tr>
+            <thead class="bg-slate-100/60 dark:bg-white/[0.04] border-b border-slate-200 dark:border-white/10 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
+              <tr><th class="py-3.5 px-4">端点</th><th class="py-3.5 px-4">方法</th><th class="py-3.5 px-4">参数</th><th class="py-3.5 px-4">用途</th></tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-xs">
-              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/match</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">id, server, br</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">多音源智能解灰，返回直链</td></tr>
-              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/playlist/:id</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">:id, limit, idsOnly</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">批量解析网易云歌单曲目与元数据（支持分块并发完整获取）</td></tr>
-              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/ncmget</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">id, br</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">网易云官方高码率直链</td></tr>
-              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/search</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">name, source, count, page</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">跨平台多音源歌曲与歌手检索</td></tr>
-              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/lyric</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">id, source</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">LRC 逐行同步歌词与翻译</td></tr>
-              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/pic</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">id, source, size</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">高清专辑封面图获取</td></tr>
-              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/health</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">verbose</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">服务健康检查、内存占用与缓存统计</td></tr>
-              <tr class="hover:bg-slate-100/40 dark:hover:bg-slate-800/30 transition"><td class="py-2.5 px-3.5 font-bold text-sky-500">/api/monitor/data</td><td class="py-2.5 px-3.5"><span class="px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-2.5 px-3.5 text-slate-700 dark:text-slate-300">page, limit, path, status</td><td class="py-2.5 px-3.5 font-sans text-slate-600 dark:text-slate-300">实时遥测统计与调用明细日志</td></tr>
+            <tbody class="divide-y divide-slate-100 dark:divide-white/5 font-mono text-xs">
+              <tr class="hover:bg-sky-500/[0.04] transition"><td class="py-3 px-4 font-bold text-sky-500">/match</td><td class="py-3 px-4"><span class="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-3 px-4 text-slate-700 dark:text-slate-300">id, server, br</td><td class="py-3 px-4 font-sans text-slate-600 dark:text-slate-300">多音源智能解灰，返回直链</td></tr>
+              <tr class="hover:bg-sky-500/[0.04] transition"><td class="py-3 px-4 font-bold text-sky-500">/playlist/:id</td><td class="py-3 px-4"><span class="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-3 px-4 text-slate-700 dark:text-slate-300">:id, limit, idsOnly</td><td class="py-3 px-4 font-sans text-slate-600 dark:text-slate-300">批量解析网易云歌单曲目与元数据（支持分块并发完整获取）</td></tr>
+              <tr class="hover:bg-sky-500/[0.04] transition"><td class="py-3 px-4 font-bold text-sky-500">/ncmget</td><td class="py-3 px-4"><span class="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-3 px-4 text-slate-700 dark:text-slate-300">id, br</td><td class="py-3 px-4 font-sans text-slate-600 dark:text-slate-300">网易云官方高码率直链</td></tr>
+              <tr class="hover:bg-sky-500/[0.04] transition"><td class="py-3 px-4 font-bold text-sky-500">/search</td><td class="py-3 px-4"><span class="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-3 px-4 text-slate-700 dark:text-slate-300">name, source, count, page</td><td class="py-3 px-4 font-sans text-slate-600 dark:text-slate-300">跨平台多音源歌曲与歌手检索</td></tr>
+              <tr class="hover:bg-sky-500/[0.04] transition"><td class="py-3 px-4 font-bold text-sky-500">/lyric</td><td class="py-3 px-4"><span class="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-3 px-4 text-slate-700 dark:text-slate-300">id, source</td><td class="py-3 px-4 font-sans text-slate-600 dark:text-slate-300">LRC 逐行同步歌词与翻译</td></tr>
+              <tr class="hover:bg-sky-500/[0.04] transition"><td class="py-3 px-4 font-bold text-sky-500">/pic</td><td class="py-3 px-4"><span class="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-3 px-4 text-slate-700 dark:text-slate-300">id, source, size</td><td class="py-3 px-4 font-sans text-slate-600 dark:text-slate-300">高清专辑封面图获取</td></tr>
+              <tr class="hover:bg-sky-500/[0.04] transition"><td class="py-3 px-4 font-bold text-sky-500">/health</td><td class="py-3 px-4"><span class="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-3 px-4 text-slate-700 dark:text-slate-300">verbose</td><td class="py-3 px-4 font-sans text-slate-600 dark:text-slate-300">服务健康检查、内存占用与缓存统计</td></tr>
+              <tr class="hover:bg-sky-500/[0.04] transition"><td class="py-3 px-4 font-bold text-sky-500">/api/monitor/data</td><td class="py-3 px-4"><span class="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-500 font-bold">GET</span></td><td class="py-3 px-4 text-slate-700 dark:text-slate-300">page, limit, path, status</td><td class="py-3 px-4 font-sans text-slate-600 dark:text-slate-300">实时遥测统计与调用明细日志</td></tr>
             </tbody>
           </table>
         </div>
@@ -578,59 +685,58 @@
     </section>
   </main>
 
-  <!-- 统一高阶架构页脚 -->
-  <!-- 全局统一页脚 (Footer) -->
-  <footer class="w-full border-t border-slate-200/80 dark:border-white/10 glass-panel bg-white/60 dark:bg-slate-950/70 relative z-10 transition-colors mt-12 sm:mt-16">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-10">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10 w-full min-w-0">
-        <div class="lg:col-span-5 space-y-4 min-w-0">
+  <!-- 页脚 -->
+  <footer class="w-full border-t border-slate-200/70 dark:border-white/10 glass-panel bg-white/60 dark:bg-[#05070f]/70 relative z-10 transition-colors mt-16 sm:mt-24 top-glow pb-24 md:pb-0">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 space-y-12">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-12 w-full min-w-0">
+        <div class="lg:col-span-5 space-y-5 min-w-0">
           <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 rounded-2xl bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-white/10 flex items-center justify-center p-2"><img src="/favicon.png" alt="UNM-Server Logo" class="w-full h-full object-contain" /></div>
+            <div class="w-11 h-11 rounded-2xl bg-white dark:bg-slate-900 shadow-lg shadow-sky-500/10 border border-slate-200 dark:border-white/10 flex items-center justify-center p-2"><img src="./favicon.png" alt="UNM-Server Logo" class="w-full h-full object-contain" /></div>
             <div class="flex items-center space-x-2">
-              <span class="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900 dark:text-white">UNM-Server</span>
-              <span class="app-version-badge text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">v3.1.0 PRO</span>
+              <span class="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">UNM<span class="text-gradient">-Server</span></span>
+              <span class="app-version-badge text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-mono">v4.5 PRO</span>
             </div>
           </div>
-          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">企业级跨源音乐流媒体与无损音频解析中台网关。基于 Hono + TypeScript 构建，提供智能解灰、FLAC 24-bit/192kHz 母带直连、实时 LRC 歌词与全链路遥测。</p>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">企业级跨源音乐流媒体与无损音频解析中台网关。Hono + TypeScript 构建 —— 智能解灰、FLAC 24-bit / 192kHz 母带直连、实时 LRC 歌词与全链路遥测。</p>
           <div class="flex flex-wrap items-center gap-2 pt-1 font-mono text-xs">
-            <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span><span>13 Nodes Online</span></span>
-            <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-semibold"><i data-lucide="zap" class="w-3 h-3"></i><span>Zero-Buffer Stream</span></span>
+            <span class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 font-bold"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span><span>13 Nodes Online</span></span>
+            <span class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 font-semibold"><i data-lucide="zap" class="w-3 h-3"></i><span>Zero-Buffer Stream</span></span>
           </div>
         </div>
-        <div class="lg:col-span-2 space-y-3 min-w-0">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">核心特性</h4>
-          <ul class="space-y-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-            <li><a href="/#playlist-station" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>多音源解灰匹配</span></a></li>
-            <li><a href="/#playlist-station" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>歌单完整获取与分页</span></a></li>
-            <li><a href="/#workbench" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>API 在线调试台</span></a></li>
-            <li><a href="/#providers" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>13 大音源矩阵</span></a></li>
+        <div class="lg:col-span-2 space-y-4 min-w-0">
+          <h4 class="text-xs font-bold uppercase tracking-[0.18em] text-slate-900 dark:text-white">探索</h4>
+          <ul class="space-y-2.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
+            <li><a href="#playlist-station" class="hover:text-sky-500 transition inline-flex items-center gap-1.5"><span>歌单视听工坊</span></a></li>
+            <li><a href="#artist-spotlight" class="hover:text-sky-500 transition inline-flex items-center gap-1.5"><span>艺人专栏速搜</span></a></li>
+            <li><a href="#workbench" class="hover:text-sky-500 transition inline-flex items-center gap-1.5"><span>API 在线调试台</span></a></li>
+            <li><a href="#providers" class="hover:text-sky-500 transition inline-flex items-center gap-1.5"><span>13 大音源矩阵</span></a></li>
           </ul>
         </div>
-        <div class="lg:col-span-2 space-y-3 min-w-0">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">开发者 & 中台</h4>
-          <ul class="space-y-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-            <li><a href="/#workbench" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>API 交互调试台</span></a></li>
-            <li><a href="/dashboard" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5 font-semibold text-sky-600 dark:text-sky-400"><span>全链路遥测大盘</span></a></li>
-            <li><a href="/info" target="_blank" rel="noopener noreferrer" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>系统环境配置 (/info)</span></a></li>
-            <li><a href="/health" target="_blank" rel="noopener noreferrer" class="hover:text-sky-500 transition interactive-btn flex items-center space-x-1.5"><span>节点健康检查 (/health)</span></a></li>
+        <div class="lg:col-span-2 space-y-4 min-w-0">
+          <h4 class="text-xs font-bold uppercase tracking-[0.18em] text-slate-900 dark:text-white">开发者</h4>
+          <ul class="space-y-2.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
+            <li><a href="#specs" class="hover:text-sky-500 transition inline-flex items-center gap-1.5"><span>REST 接口规范</span></a></li>
+            <li><a href="/dashboard" class="hover:text-sky-500 transition inline-flex items-center gap-1.5 font-semibold text-sky-600 dark:text-sky-400"><span>全链路遥测大盘</span></a></li>
+            <li><a href="/info" target="_blank" rel="noopener" class="hover:text-sky-500 transition inline-flex items-center gap-1.5"><span>系统环境配置</span><code class="font-mono text-[10px] text-slate-400">/info</code></a></li>
+            <li><a href="/health" target="_blank" rel="noopener" class="hover:text-sky-500 transition inline-flex items-center gap-1.5"><span>节点健康检查</span><code class="font-mono text-[10px] text-slate-400">/health</code></a></li>
           </ul>
         </div>
-        <div class="lg:col-span-3 space-y-3 min-w-0">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">开源生态 & 社区</h4>
-          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">本项目完全遵循 MIT 开源协议，支持私有化部署、Docker 容器化与云原生集群集成。</p>
-          <div class="space-y-1.5 text-xs text-slate-500 dark:text-slate-400 font-mono">
-            <div><span class="text-slate-400">上游核心:</span> <a href="https://github.com/UnblockNeteaseMusic/server" target="_blank" rel="noopener noreferrer" class="text-sky-500 hover:underline">UNM Engine 0.28.0+</a></div>
-            <div><span class="text-slate-400">官方 API:</span> <a href="https://music.gdstudio.xyz" target="_blank" rel="noopener noreferrer" class="text-sky-500 hover:underline">GD Studio XYZ</a></div>
-            <div><span class="text-slate-400">项目作者:</span> <a href="https://imsyy.top/" target="_blank" rel="noopener noreferrer" class="text-slate-800 dark:text-slate-200 font-bold hover:underline">imsyy</a></div>
+        <div class="lg:col-span-3 space-y-4 min-w-0">
+          <h4 class="text-xs font-bold uppercase tracking-[0.18em] text-slate-900 dark:text-white">开源生态</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">MIT 开源协议 —— 私有化部署、Docker 容器化与云原生集群集成。</p>
+          <div class="space-y-2 text-xs text-slate-500 dark:text-slate-400 font-mono">
+            <div><span class="text-slate-400">上游核心:</span> <a href="https://github.com/UnblockNeteaseMusic/server" target="_blank" rel="noopener" class="text-sky-500 hover:underline">UNM Engine 0.28.0+</a></div>
+            <div><span class="text-slate-400">官方 API:</span> <a href="https://music.gdstudio.xyz" target="_blank" rel="noopener" class="text-sky-500 hover:underline">GD Studio XYZ</a></div>
+            <div><span class="text-slate-400">项目作者:</span> <a href="https://imsyy.top/" target="_blank" rel="noopener" class="text-slate-800 dark:text-slate-200 font-bold hover:underline">imsyy</a></div>
           </div>
         </div>
       </div>
-      <div class="pt-6 border-t border-slate-200/60 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400 font-medium">
-        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2"><span>Copyright &copy; <span class="current-year-text">2026</span> <a href="https://imsyy.top/" target="_blank" rel="noopener noreferrer" class="font-bold text-slate-800 dark:text-slate-200 hover:text-sky-500 transition">imsyy</a> · UNM-Server All Rights Reserved.</span></div>
+      <div class="pt-7 border-t border-slate-200/60 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400 font-medium">
+        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2"><span>Copyright &copy; <span class="current-year-text">2026</span> <a href="https://imsyy.top/" target="_blank" rel="noopener" class="font-bold text-slate-800 dark:text-slate-200 hover:text-sky-500 transition">imsyy</a> · UNM-Server All Rights Reserved.</span></div>
         <div class="flex flex-wrap items-center justify-center gap-2 font-mono text-[11px]">
-          <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300">Hono 4.7+</span>
-          <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300">TypeScript 5.7+</span>
-          <span class="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-emerald-500 font-semibold">SLA 99.99%</span>
+          <span class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300">Hono 4.7+</span>
+          <span class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300">TypeScript 5.7+</span>
+          <span class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-emerald-500 font-semibold">SLA 99.99%</span>
         </div>
       </div>
     </div>
@@ -639,29 +745,28 @@
   <!-- HTML5 原生 Audio 引擎 -->
   <audio id="mainAudioPlayer" preload="none"></audio>
 
-  <!-- 展开大视图播放面板（点击迷你播放器封面/标题或展开按钮打开） -->
-  <div id="playerExpand" class="hidden fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-md overflow-y-auto" onclick="if(event.target===this) closePlayerExpand()">
+  <!-- 展开大视图播放面板 -->
+  <div id="playerExpand" class="hidden fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-xl overflow-y-auto" onclick="if(event.target===this) closePlayerExpand()">
     <div class="min-h-full flex items-center justify-center p-4 sm:p-8">
-      <div class="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-950 border border-slate-200/70 dark:border-white/10 shadow-2xl shadow-black/40 p-5 sm:p-7 space-y-5 relative my-auto">
-        <!-- 头部 -->
+      <div class="w-full max-w-lg rounded-t-[2rem] sm:rounded-[2rem] liquid-glass-strong shadow-2xl shadow-black/50 px-5 sm:px-8 pb-6 sm:pb-8 pt-2 space-y-6 relative my-auto">
+        <div class="ios-grabber"></div>
         <div class="flex items-center justify-between">
-          <div class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-sky-500">
+          <div class="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-sky-500 font-mono">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Now Playing · 正在播放</span>
+            <span>Now Playing</span>
           </div>
-          <button onclick="closePlayerExpand()" aria-label="收起播放面板" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition interactive-btn">
+          <button onclick="closePlayerExpand()" aria-label="收起播放面板" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition">
             <i data-lucide="chevron-down" class="w-5 h-5"></i>
           </button>
         </div>
 
-        <!-- 大封面 / 黑胶 -->
         <div class="flex justify-center">
-          <div class="relative w-52 h-52 sm:w-60 sm:h-60 rounded-3xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-slate-900 shadow-2xl shadow-sky-500/10">
+          <div class="relative w-52 h-52 sm:w-64 sm:h-64 rounded-[1.75rem] overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-slate-900 shadow-2xl shadow-sky-500/15">
             <img id="expandCoverImg" alt="" class="hidden absolute inset-0 w-full h-full object-cover" />
             <div class="absolute inset-0 flex items-center justify-center">
-              <div id="expandVinyl" class="w-40 h-40 sm:w-44 sm:h-44 rounded-full vinyl-grooves relative flex items-center justify-center">
-                <div id="expandCoverGlow" class="absolute inset-0 rounded-full opacity-0 transition-opacity duration-700 pointer-events-none" style="box-shadow: 0 0 42px 6px rgba(56,189,248,.45)"></div>
-                <div class="relative w-9 h-9 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 ring-4 ring-slate-900 flex items-center justify-center">
+              <div id="expandVinyl" class="w-40 h-40 sm:w-48 sm:h-48 rounded-full vinyl-grooves relative flex items-center justify-center shadow-2xl">
+                <div id="expandCoverGlow" class="absolute inset-0 rounded-full opacity-0 transition-opacity duration-700 pointer-events-none" style="box-shadow: 0 0 46px 8px rgba(56,189,248,.45)"></div>
+                <div class="relative w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 ring-4 ring-slate-900 flex items-center justify-center">
                   <div class="w-1.5 h-1.5 rounded-full bg-slate-900"></div>
                 </div>
               </div>
@@ -669,50 +774,46 @@
           </div>
         </div>
 
-        <!-- 曲目信息 -->
-        <div class="text-center space-y-1">
-          <h3 id="expandTitle" class="text-xl font-extrabold text-slate-900 dark:text-white truncate">未在播放</h3>
+        <div class="text-center space-y-1.5">
+          <h3 id="expandTitle" class="text-2xl font-black tracking-tight text-slate-900 dark:text-white truncate">未在播放</h3>
           <div class="flex items-center justify-center gap-2">
             <p id="expandArtist" class="text-sm text-slate-500 dark:text-slate-400 truncate">—</p>
             <span id="expandSource" class="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 font-mono uppercase flex-shrink-0">NCM</span>
           </div>
         </div>
 
-        <!-- 歌词滚动面板 -->
-        <div id="expandLyrics" class="h-44 sm:h-52 overflow-y-auto custom-scroll rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/60 dark:border-white/5 px-4 py-3 text-center">
+        <div id="expandLyrics" class="h-44 sm:h-52 overflow-y-auto custom-scroll rounded-3xl bg-slate-50/80 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/10 px-4 py-3 text-center">
           <div class="h-full flex items-center justify-center text-xs text-slate-400">暂无歌词 · 纯音乐欣赏</div>
         </div>
 
-        <!-- 进度 -->
         <div class="flex items-center gap-2.5">
           <span id="expandCurTime" class="font-mono text-[11px] text-slate-400 w-9 text-right flex-shrink-0">00:00</span>
-          <input id="expandProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="播放进度" class="flex-1 h-1 cursor-pointer" />
+          <input id="expandProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="播放进度" class="player-range flex-1 cursor-pointer" />
           <span id="expandDurTime" class="font-mono text-[11px] text-slate-400 w-9 flex-shrink-0">00:00</span>
         </div>
 
-        <!-- 主控制区 -->
         <div class="flex items-center justify-center gap-3 sm:gap-4 pt-1">
-          <button onclick="playerToggleMode()" id="expandModeBtn" title="列表循环" aria-label="循环模式" class="p-2.5 rounded-xl text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn"><i data-lucide="repeat" class="w-5 h-5"></i></button>
-          <button onclick="playerPrev()" aria-label="上一首" class="p-3 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn"><i data-lucide="skip-back" class="w-6 h-6"></i></button>
-          <button onclick="playerTogglePlay()" id="expandPlayBtn" aria-label="播放或暂停" class="w-16 h-16 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white flex items-center justify-center shadow-xl shadow-sky-500/35 transition interactive-btn"><i data-lucide="play" class="w-7 h-7 ml-1"></i></button>
-          <button onclick="playerNext()" aria-label="下一首" class="p-3 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn"><i data-lucide="skip-forward" class="w-6 h-6"></i></button>
+          <button onclick="playerToggleMode()" id="expandModeBtn" title="列表循环" aria-label="循环模式" class="p-2.5 rounded-xl text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition"><i data-lucide="repeat" class="w-5 h-5"></i></button>
+          <button onclick="playerPrev()" aria-label="上一首" class="p-3 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition"><i data-lucide="skip-back" class="w-6 h-6"></i></button>
+          <button onclick="playerTogglePlay()" id="expandPlayBtn" aria-label="播放或暂停" class="w-16 h-16 rounded-full btn-aurora text-white flex items-center justify-center"><i data-lucide="play" class="w-7 h-7 ml-1"></i></button>
+          <button onclick="playerNext()" aria-label="下一首" class="p-3 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition"><i data-lucide="skip-forward" class="w-6 h-6"></i></button>
           <div class="hidden sm:flex items-center gap-2">
-            <button id="expandMuteBtn" aria-label="静音切换" class="p-2.5 rounded-xl text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 transition interactive-btn"><i data-lucide="volume-2" class="w-5 h-5"></i></button>
-            <input id="expandVolSlider" type="range" min="0" max="100" value="80" step="1" aria-label="音量大小" class="w-20 h-1 cursor-pointer" />
+            <button id="expandMuteBtn" aria-label="静音切换" class="p-2.5 rounded-xl text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 transition"><i data-lucide="volume-2" class="w-5 h-5"></i></button>
+            <input id="expandVolSlider" type="range" min="0" max="100" value="80" step="1" aria-label="音量大小" class="w-20 cursor-pointer" />
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 一键回到顶部（播放器可见时自动上移避让） -->
-  <button id="backToTopBtn" onclick="scrollToTopSmooth()" aria-label="回到顶部" title="回到顶部" class="fixed right-5 bottom-5 sm:right-7 sm:bottom-7 z-[85] w-11 h-11 rounded-full bg-slate-900/90 dark:bg-slate-900 border border-white/10 shadow-xl backdrop-blur-xl text-slate-300 hover:text-sky-400 hover:border-sky-500/40 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none hidden items-center justify-center">
+  <!-- 一键回到顶部 -->
+  <button id="backToTopBtn" onclick="scrollToTopSmooth()" aria-label="回到顶部" title="回到顶部" class="fixed right-5 bottom-5 sm:right-7 sm:bottom-7 z-[85] w-11 h-11 rounded-full bg-slate-900/90 dark:bg-white/10 border border-white/10 shadow-xl backdrop-blur-xl text-slate-300 hover:text-sky-400 hover:border-sky-500/40 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none hidden items-center justify-center">
     <i data-lucide="arrow-up" class="w-5 h-5"></i>
   </button>
 
-  <!-- 悬浮玻璃播放器（桌面右下角 / 移动端底部通栏卡片） -->
-  <div id="playerBar" class="fixed bottom-3 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 sm:w-[380px] z-[90] translate-y-8 opacity-0 pointer-events-none transition-all duration-500 ease-out">
-    <div class="rounded-3xl bg-white/90 dark:bg-slate-950/95 border border-slate-200/70 dark:border-white/10 shadow-2xl shadow-slate-900/25 dark:shadow-black/60 backdrop-blur-xl overflow-hidden">
+  <!-- 悬浮玻璃播放器 -->
+  <div id="playerBar" class="fixed left-3 right-3 bottom-[5.75rem] md:left-auto md:right-6 md:bottom-6 md:w-[380px] z-[90] translate-y-8 opacity-0 pointer-events-none transition-all duration-500 ease-out">
+    <div class="rounded-[1.75rem] liquid-glass-strong shadow-2xl shadow-slate-900/25 dark:shadow-black/60 overflow-hidden">
       <div class="p-4 pb-3">
         <div class="flex items-start gap-3.5 min-w-0">
           <div onclick="openPlayerExpand()" title="展开大播放器" class="relative w-[68px] h-[68px] rounded-2xl flex-shrink-0 overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-slate-900 cursor-pointer hover:ring-sky-500/50 transition">
@@ -734,31 +835,31 @@
             <p id="playerLyricLine" class="text-[11px] text-sky-500 dark:text-sky-300/90 truncate mt-1.5 h-4 transition-opacity duration-300"></p>
           </div>
 
-          <button onclick="openPlayerExpand()" aria-label="展开大播放器" title="展开大播放器" class="p-1.5 rounded-xl text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/10 transition interactive-btn flex-shrink-0">
+          <button onclick="openPlayerExpand()" aria-label="展开大播放器" title="展开大播放器" class="p-1.5 rounded-xl text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/10 transition flex-shrink-0">
             <i data-lucide="chevron-up" class="w-4 h-4"></i>
           </button>
-          <button onclick="playerClose()" aria-label="关闭播放器" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition interactive-btn flex-shrink-0">
+          <button onclick="playerClose()" aria-label="关闭播放器" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition flex-shrink-0">
             <i data-lucide="x" class="w-4 h-4"></i>
           </button>
         </div>
 
         <div class="flex items-center gap-2 mt-3">
           <span id="playerCurTime" class="font-mono text-[10px] text-slate-400 w-8 text-right flex-shrink-0">00:00</span>
-          <input id="playerProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="播放进度" class="flex-1 h-1 cursor-pointer" />
+          <input id="playerProgress" type="range" min="0" max="100" value="0" step="0.1" aria-label="播放进度" class="player-range flex-1 cursor-pointer" />
           <span id="playerDurTime" class="font-mono text-[10px] text-slate-400 w-8 flex-shrink-0">00:00</span>
         </div>
 
         <div class="flex items-center justify-between mt-2.5">
           <div class="hidden sm:flex items-center gap-2 flex-1 min-w-0">
-            <button id="playerMuteBtn" aria-label="静音切换" class="p-1.5 rounded-lg text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 transition interactive-btn"><i data-lucide="volume-2" class="w-4 h-4"></i></button>
-            <input id="playerVolSlider" type="range" min="0" max="100" value="80" step="1" aria-label="音量大小" class="w-[76px] h-1 cursor-pointer" />
+            <button id="playerMuteBtn" aria-label="静音切换" class="p-1.5 rounded-lg text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 transition"><i data-lucide="volume-2" class="w-4 h-4"></i></button>
+            <input id="playerVolSlider" type="range" min="0" max="100" value="80" step="1" aria-label="音量大小" class="w-[76px] cursor-pointer" />
           </div>
           <div class="flex items-center gap-1.5 mx-auto sm:mx-0 sm:flex-1 sm:justify-end">
-            <button onclick="playerToggleMode()" id="playerModeBtn" title="列表循环" aria-label="循环模式" class="p-2 rounded-xl text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn"><i data-lucide="repeat" class="w-4 h-4"></i></button>
-            <button onclick="playerPrev()" aria-label="上一首" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn"><i data-lucide="skip-back" class="w-4 h-4"></i></button>
-            <button onclick="playerTogglePlay()" id="playerPlayBtn" aria-label="播放或暂停" class="w-11 h-11 rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-90 text-white flex items-center justify-center shadow-lg shadow-sky-500/30 transition interactive-btn"><i data-lucide="play" class="w-5 h-5 ml-0.5"></i></button>
-            <button onclick="playerNext()" aria-label="下一首" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn"><i data-lucide="skip-forward" class="w-4 h-4"></i></button>
-            <button onclick="playerToggleQueue()" aria-label="播放队列" class="p-2 rounded-xl text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition interactive-btn relative">
+            <button onclick="playerToggleMode()" id="playerModeBtn" title="列表循环" aria-label="循环模式" class="p-2 rounded-xl text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition"><i data-lucide="repeat" class="w-4 h-4"></i></button>
+            <button onclick="playerPrev()" aria-label="上一首" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition"><i data-lucide="skip-back" class="w-4 h-4"></i></button>
+            <button onclick="playerTogglePlay()" id="playerPlayBtn" aria-label="播放或暂停" class="w-11 h-11 rounded-full btn-aurora text-white flex items-center justify-center"><i data-lucide="play" class="w-5 h-5 ml-0.5"></i></button>
+            <button onclick="playerNext()" aria-label="下一首" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition"><i data-lucide="skip-forward" class="w-4 h-4"></i></button>
+            <button onclick="playerToggleQueue()" aria-label="播放队列" class="p-2 rounded-xl text-slate-400 hover:text-sky-500 dark:text-slate-500 dark:hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-white/5 transition relative">
               <i data-lucide="list-music" class="w-4 h-4"></i>
               <span id="playerQueueCount" class="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-sky-500 text-white text-[9px] font-mono font-bold flex items-center justify-center">0</span>
             </button>
@@ -766,10 +867,10 @@
         </div>
       </div>
 
-      <div id="playerQueuePanel" class="hidden border-t border-slate-200/70 dark:border-white/10 bg-slate-50/60 dark:bg-slate-900/60">
+      <div id="playerQueuePanel" class="hidden border-t border-slate-200/70 dark:border-white/10 bg-slate-50/60 dark:bg-black/30">
         <div class="flex items-center justify-between px-4 pt-2.5 pb-1.5">
           <span class="text-[10px] font-bold font-mono uppercase tracking-wider text-slate-400">播放队列</span>
-          <button onclick="clearQueue()" class="text-[10px] font-semibold text-slate-400 hover:text-rose-500 transition interactive-btn">清空</button>
+          <button onclick="clearQueue()" class="text-[10px] font-semibold text-slate-400 hover:text-rose-500 transition">清空</button>
         </div>
         <div id="playerQueueList" class="max-h-44 overflow-y-auto custom-scroll px-2 pb-2 space-y-0.5"></div>
       </div>
@@ -777,10 +878,21 @@
   </div>
 
   <!-- 前端应用逻辑 (ES6+ 零构建) -->
-  <!-- 拆分模块：核心 UI → 播放器 → 曲库 → 调试台（顺序加载，经典脚本共享全局） -->
-  <script src="/assets/js/core.js"></script>
-  <script src="/assets/js/player.js"></script>
-  <script src="/assets/js/catalog.js"></script>
-  <script src="/assets/js/workbench.js"></script>
+
+  <!-- iOS 底部 TabBar（仅手机端） -->
+  <nav id="iosTabBar" class="md:hidden fixed bottom-3 inset-x-3 z-[85] ios-tabbar-safe" aria-label="主导航">
+    <div class="liquid-glass-strong rounded-full px-2 py-1.5 flex items-center justify-around">
+      <a href="#playlist-station" data-tabtarget="playlist-station" class="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-full text-slate-500 dark:text-slate-400 transition min-w-[3.25rem]"><i data-lucide="list-music" class="w-[22px] h-[22px]"></i><span class="text-[10px] font-semibold leading-none">歌单</span></a>
+      <a href="#artist-spotlight" data-tabtarget="artist-spotlight" class="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-full text-slate-500 dark:text-slate-400 transition min-w-[3.25rem]"><i data-lucide="mic-2" class="w-[22px] h-[22px]"></i><span class="text-[10px] font-semibold leading-none">艺人</span></a>
+      <a href="#workbench" data-tabtarget="workbench" class="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-full text-slate-500 dark:text-slate-400 transition min-w-[3.25rem]"><i data-lucide="terminal" class="w-[22px] h-[22px]"></i><span class="text-[10px] font-semibold leading-none">调试</span></a>
+      <a href="#providers" data-tabtarget="providers" class="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-full text-slate-500 dark:text-slate-400 transition min-w-[3.25rem]"><i data-lucide="radio" class="w-[22px] h-[22px]"></i><span class="text-[10px] font-semibold leading-none">音源</span></a>
+      <a href="#vip-subscription" data-tabtarget="vip-subscription" class="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-full text-slate-500 dark:text-slate-400 transition min-w-[3.25rem]"><i data-lucide="crown" class="w-[22px] h-[22px]"></i><span class="text-[10px] font-semibold leading-none">Pro</span></a>
+    </div>
+  </nav>
+
+  <script src="/assets/js/core.js?v=4.5.0-20260926032148"></script>
+  <script src="/assets/js/player.js?v=4.5.0-20260926032148"></script>
+  <script src="/assets/js/catalog.js?v=4.5.0-20260926032148"></script>
+  <script src="/assets/js/workbench.js?v=4.5.0-20260926032148"></script>
 </body>
 </html>

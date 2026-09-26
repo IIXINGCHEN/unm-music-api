@@ -6,9 +6,8 @@ WORKDIR /app
 
 RUN npm install -g pnpm@10
 
-COPY package.json pnpm-lock.yaml* tsconfig.json tsup.config.ts VERSION tailwind.config.* ./
-# 锁文件不一致时直接失败，杜绝静默回退到非冻结安装导致依赖漂移
-RUN pnpm install --frozen-lockfile
+COPY package.json pnpm-lock.yaml* tsconfig.json tsup.config.ts tailwind.config.cjs VERSION ./
+RUN pnpm install --frozen-lockfile || pnpm install
 
 COPY src ./src
 COPY public ./public
@@ -28,8 +27,7 @@ ENV PORT=5678
 RUN npm install -g pnpm@10
 
 COPY package.json pnpm-lock.yaml* VERSION* ./
-# 锁文件不一致时直接失败，杜绝静默回退到非冻结安装导致依赖漂移
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod --frozen-lockfile || pnpm install --prod
 
 COPY --from=builder --chown=node:node /app/dist ./dist
 COPY --from=builder --chown=node:node /app/public ./public

@@ -3,23 +3,23 @@ import { MONITOR_CONFIG } from "../config/index.js";
 import { monitorService } from "../services/serviceMonitor.js";
 import { monitorAuthMiddleware } from "../middlewares/middlewareAuth.js";
 import { successResponse } from "../utils/utilResponse.js";
+import type { AppEnv } from "../types/typeApi.js";
 
-const monitorRoute = new Hono();
+const monitorRoute = new Hono<AppEnv>();
 
 // 挂载监控鉴权中间件（当配置了 MONITOR_SECRET_KEY 时生效）
-// 双路径注册原因：
-//   - /api/monitor/*：独立部署（node/dist/docker）的原始规范路径
-//   - /monitor/*    ：Serverless 平台路径。Vercel 重写排除 /api 前缀、Netlify 转发会剥掉
-//                     /.netlify/functions/api 前缀，导致应用侧收到的是去前缀路径；
-//                     业务路由均挂根路径，唯独监控曾用完整 /api 前缀而在双平台 404
-const dataHandler = (c: any) => {
+monitorRoute.use("/api/monitor/*", monitorAuthMiddleware);
+
+// 获取监控数据与请求明细
+monitorRoute.get("/api/monitor/data", (c) => {
   const query = c.req.query();
-  // page/limit 归一化：NaN 兜底默认值并 clamp，杜绝 ?page=abc 之类的退化分页行为
-  const page = Math.max(1, parseInt(query.page, 10) || MONITOR_CONFIG.DEFAULT_PAGE);
-  const limit = Math.min(
-    MONITOR_CONFIG.MAX_PAGE_LIMIT,
-    Math.max(1, parseInt(query.limit, 10) || MONITOR_CONFIG.DEFAULT_LIMIT)
-  );
+  const pageRaw = parseInt(query.page ?? "", 10);
+  const limitRaw = parseInt(query.limit ?? "", 10);
+  const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : MONITOR_CONFIG.DEFAULT_PAGE;
+  const limit =
+    Number.isInteger(limitRaw) && limitRaw > 0
+      ? Math.min(limitRaw, MONITOR_CONFIG.MAX_LIMIT)
+      : MONITOR_CONFIG.DEFAULT_LIMIT;
   const path = query.path || "";
   const status = query.status || "";
   const keyword = query.keyword || "";
@@ -33,22 +33,12 @@ const dataHandler = (c: any) => {
   });
 
   return c.json(successResponse(data, "获取监控数据成功"));
-};
-
-const clearHandler = (c: any) => {
-  monitorService.clear();
-  return c.json(successResponse({ cleared: true }, "监控日志已清空"));
-};
-
-monitorRoute.use("/api/monitor/*", monitorAuthMiddleware);
-monitorRoute.use("/monitor/*", monitorAuthMiddleware);
-
-// 获取监控数据与请求明细
-monitorRoute.get("/api/monitor/data", dataHandler);
-monitorRoute.get("/monitor/data", dataHandler);
+});
 
 // 清空调用日志
-monitorRoute.post("/api/monitor/clear", clearHandler);
-monitorRoute.post("/monitor/clear", clearHandler);
+monitorRoute.post("/api/monitor/clear", (c) => {
+  monitorService.clear();
+  return c.json(successResponse({ cleared: true }, "监控日志已清空"));
+});
 
 export { monitorRoute };

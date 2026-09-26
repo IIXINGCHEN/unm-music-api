@@ -23,11 +23,14 @@ export const AUDIO_CONFIG = {
   DEFAULT_SEARCH_PAGE: 1,
   DEFAULT_SEARCH_SOURCE: "netease",
   DEFAULT_AUDIO_SOURCE: "joox",
-  DEFAULT_TEST_SONG_ID: "1962165898", // 周杰伦 - 最伟大的作品
+  DEFAULT_TEST_SONG_ID: "158616",
+  DEFAULT_PLAYLIST_LIMIT: 1000,
+  MAX_PLAYLIST_LIMIT: 2000,
 } as const;
 
 export const CACHE_POLICY = {
   DEFAULT_MAX_ITEMS: 2000,
+  TTL_DEFAULT: 3600 * 1000, // 1 小时
   TTL_AUDIO_STREAM: 2 * 3600 * 1000, // 2 小时
   TTL_SEARCH_RESULT: 30 * 60 * 1000, // 30 分钟
   TTL_LYRIC: 12 * 3600 * 1000, // 12 小时
@@ -39,7 +42,6 @@ export const CACHE_POLICY = {
 export const UPSTREAM_APIS = {
   DEFAULT_GDSTUDIO_URL: "https://music-api.gdstudio.xyz/api.php",
   NETEASE_SONG_DETAIL: "https://music.163.com/api/song/detail",
-  NETEASE_SONG_DETAIL_V3: "https://music.163.com/api/v3/song/detail",
   NETEASE_PLAYLIST_DETAIL: "https://music.163.com/api/v6/playlist/detail",
   NETEASE_REFERER: "https://music.163.com/",
 } as const;
@@ -75,19 +77,12 @@ export const HTTP_CONFIG = {
 
 export const MONITOR_CONFIG = {
   DEFAULT_MAX_LOGS: 1000,
+  DEFAULT_MAX_STAT_KEYS: 500,
   DEFAULT_PAGE: 1,
   DEFAULT_LIMIT: 50,
-  MAX_PAGE_LIMIT: 200, // /monitor/data 单页 limit 上限
-  DEFAULT_MAX_STAT_KEYS: 500,
+  MAX_LIMIT: 200,
 } as const;
 
 export const RATE_LIMIT_CONFIG = {
   DEFAULT_CLEANUP_INTERVAL_MS: 120000, // 2 分钟清理周期
-  MAX_IP_KEYS: 10000, // IP 追踪表容量上限：防止伪造 XFF 海量新键导致内存慢性膨胀
-} as const;
-
-export const PLAYLIST_CONFIG = {
-  MAX_LIMIT: 5000, // /playlist 单次最大返回曲目数上限，杜绝无界并发上游请求
-  DETAIL_CHUNK_SIZE: 200, // 网易云批量详情接口单批曲目数
-  DETAIL_CHUNK_CONCURRENCY: 5, // 详情批量拉取的并发 chunk 数上限
 } as const;

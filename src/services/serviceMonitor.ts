@@ -56,6 +56,8 @@ class MonitorService {
   private totalDuration: number = 0;
   private endpointMap: Map<string, number> = new Map();
   private callerMap: Map<string, number> = new Map();
+  // 日志 ID 单调计数器：避免 Math.random() 在同毫秒高并发下的理论碰撞
+  private logSeq: number = 0;
   private sourceMap: Map<string, number> = new Map();
   private statusMap: Map<string, number> = new Map();
   private startTime: number = Date.now();
@@ -105,13 +107,8 @@ class MonitorService {
    * 记录一次请求日志 (自动执行敏感数据脱敏)
    */
   record(logData: RecordLogParams): void {
-    // 忽略监控自身与静态文件的高频打点（/monitor 为 Serverless 双平台兼容别名路径，同样跳过）
-    if (
-      logData.path.startsWith("/api/monitor") ||
-      logData.path.startsWith("/monitor") ||
-      logData.path.endsWith(".png") ||
-      logData.path.endsWith(".ico")
-    ) {
+    // 忽略监控自身与静态文件的高频打点
+    if (logData.path.startsWith("/api/monitor") || logData.path.endsWith(".png") || logData.path.endsWith(".ico")) {
       return;
     }
 
@@ -142,12 +139,13 @@ class MonitorService {
     const cleanedUrl = sanitizeUrl(logData.fullUrl);
     // referer 与 origin 同样是客户端可控的完整 URL，可能携带 ?token= 类凭据；
     // 只脱敏 fullUrl/query 而放过它们，等于把同一份凭据从另一个字段原样回显到大盘。
+    // path 同理：endpointMap 以原始 path 为键，会经 getStats().topEndpoints 回到响应。
     const cleanedReferer = logData.referer ? sanitizeUrl(logData.referer) : "-";
     const cleanedOrigin = logData.origin ? sanitizeUrl(logData.origin) : "-";
     const cleanedPath = sanitizeUrl(logData.path);
 
     const logItem: RequestLog = {
-      id: `req_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      id: `req_${Date.now()}_${(++this.logSeq).toString(36)}`,
       timestamp: now.toISOString(),
       timeStr,
       method: logData.method,
@@ -179,9 +177,7 @@ class MonitorService {
       this.failedRequests++;
     }
 
-    // 统计端点分布
-    // 必须用 cleanedPath：原始 path 会经 topEndpoints 原样回显到大盘，
-    // 绕过 logItem 的脱敏（/;token=SECRET 形态的凭据由此泄露）
+    // 统计端点分布（键已脱敏；bumpCount 带键上限，防伪造路径的慢性内存膨胀）
     this.bumpCount(this.endpointMap, cleanedPath);
 
     // 统计调用方分布

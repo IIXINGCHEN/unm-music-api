@@ -51,6 +51,7 @@ async function startServer(): Promise<void> {
     }
   );
 
+  // 优雅停机
   // 优雅停机：先停止接收新连接并等待存量请求收尾；
   // 若存在长音频流等挂起连接，宽限期到后强制断开退出，避免 SIGTERM 被无限拖延（容器编排超时强杀）
   const handleShutdown = () => {
@@ -83,3 +84,5 @@ startServer().catch((err) => {
   console.error("❌ 服务启动失败:", err);
   process.exit(1);
 });
+
+export default app;

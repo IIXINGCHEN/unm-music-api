@@ -26,6 +26,8 @@ const possibleEnvPaths: string[] = [
 for (const envPath of possibleEnvPaths) {
   if (fs.existsSync(envPath)) {
     dotenv.config({ path: envPath });
+    // 记录实际加载的 .env 来源，便于审计（上级目录探测可能命中非预期的文件）
+    console.log(`[Config] 已加载环境变量文件: ${envPath}`);
     break;
   }
 }
@@ -39,10 +41,7 @@ const envSchema = z.object({
     .default(String(HTTP_CONFIG.DEFAULT_PORT))
     .transform((val) => parseInt(val, 10))
     .pipe(z.number().min(1).max(65535)),
-  ALLOWED_DOMAIN: z
-    .string()
-    .min(1, "ALLOWED_DOMAIN 不可为空字符串，如需开放请显式设为 *")
-    .default(HTTP_CONFIG.DEFAULT_ALLOWED_ORIGIN),
+  ALLOWED_DOMAIN: z.string().min(1, "ALLOWED_DOMAIN 不可为空字符串，如需开放请显式设为 *").default(HTTP_CONFIG.DEFAULT_ALLOWED_ORIGIN),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 
   // 2. GD Studio 音乐 API 配置
@@ -173,38 +172,12 @@ const envSchema = z.object({
     .transform((val) => parseInt(val, 10))
     .pipe(z.number().min(1).max(10000)),
   // 受信反向代理（逗号分隔，支持精确 IP 与 IPv4 CIDR，如 "127.0.0.1,::1,10.0.0.0/8"）。
-  // 仅当直连对端属于受信代理时，才采信 X-Forwarded-For / X-Real-IP 取真实客户端 IP；
+  // 仅当直连对端属于受信代理时，才采信 X-Forwarded-For / X-Real-IP 取真实客户端 IP，
   // 否则一律使用直连对端 IP，防止客户端伪造请求头绕过限流。
-  //
-  // 默认**只含回环**。不要把整个私网段（如 172.16.0.0/12）列为默认：
-  // Docker bridge 下容器看到的对端是网关 IP（172.17.0.1/172.18.0.1），落在该网段内，
-  // 于是网关被判为受信代理、客户端自带的 X-Forwarded-For 被采信 ——
-  // 每请求换一个 XFF 就得到一份新的限流配额，正是本机制要防的绕过。
-  // 同时该网段内的其它主机也能直连本服务并伪造来源。
-  // 反向代理部署请在 .env 中按实际拓扑显式填写（如 "127.0.0.1,10.0.0.0/8"）。
   TRUSTED_PROXIES: z.string().default("127.0.0.1,::1"),
 });
 
 export type Env = z.infer<typeof envSchema>;
-
-/**
- * 布尔开关写入 process.env。
- *
- * true 写入 "true"；false **删除**变量而不是写 "false" ——
- * 消费方（@unblockneteasemusic/server）用真值判断选择调度模式：
- *   if (process.env.SELECT_MAX_BR)            -> 并发取最高码率
- *   else if (process.env.FOLLOW_SOURCE_ORDER) -> 顺序尝试取首个成功
- *   else                                      -> Promise.any 并发竞速
- * 而 Boolean("false") === true，写入 "false" 会误命中第一个分支。
- * 删除同时清掉运行环境可能预设的旧值，保证 .env 是唯一真源。
- */
-function setBoolEnv(key: string, value: boolean): void {
-  if (value) {
-    process.env[key] = "true";
-  } else {
-    delete process.env[key];
-  }
-}
 
 function parseEnv(): Env {
   const result = envSchema.safeParse(process.env);
@@ -215,11 +188,11 @@ function parseEnv(): Env {
 
   const parsed = result.data;
 
-  // 监控接口密钥必须显式配置：不自动生成、不打印、缺省即拒绝启动。
-  // 监控接口会返回调用方 IP、Referer、完整 URL 等审计数据，未受保护时等同公开。
-  // 此前实现为“未配置时生成本次进程临时密钥并打印到启动日志”，
-  // 但日志常被采集、转发与长期归档，把密钥写进日志等于把它持久化到不受控的介质；
-  // 且临时密钥每次重启都变，运维难以稳定使用。改为启动期强校验。
+  // fail-closed：未配置监控密钥时拒绝启动，而不是静默开放 /api/monitor/*。
+  // 该接口返回调用方 IP、Referer 与完整 URL 等审计数据，空密钥默认放行等于对公网开放。
+  // 此前曾考虑“生成临时密钥并打印到启动日志”，但日志常被采集、转发与长期归档，
+  // 把密钥写进日志等于把它持久化到不受控的介质；且临时密钥每次重启都变，运维难以稳定使用。
+  // 改为启动期强校验：运维在 .env 中配置固定密钥后重启。
   if (!parsed.MONITOR_SECRET_KEY?.trim()) {
     console.error(
       "❌ MONITOR_SECRET_KEY 未配置或为空，进程拒绝启动。\n" +
@@ -233,10 +206,10 @@ function parseEnv(): Env {
   // 将 UNM 特性开关同步到 process.env 供 @unblockneteasemusic/server 内部使用
   // 安全注意：Cookie 回写后全局可见（process.env），任何依赖包均可读取。
   // 仅在配置了对应 Cookie 时写入；/info 等端点已核验不暴露这些值。
-  setBoolEnv("ENABLE_FLAC", parsed.ENABLE_FLAC);
-  setBoolEnv("SELECT_MAX_BR", parsed.SELECT_MAX_BR);
-  setBoolEnv("FOLLOW_SOURCE_ORDER", parsed.FOLLOW_SOURCE_ORDER);
-  setBoolEnv("SEARCH_ALBUM", parsed.SEARCH_ALBUM);
+  if (parsed.ENABLE_FLAC) process.env.ENABLE_FLAC = "true";
+  if (parsed.SELECT_MAX_BR) process.env.SELECT_MAX_BR = "true";
+  if (parsed.FOLLOW_SOURCE_ORDER) process.env.FOLLOW_SOURCE_ORDER = "true";
+  if (parsed.SEARCH_ALBUM) process.env.SEARCH_ALBUM = "true";
   if (parsed.QQ_COOKIE) process.env.QQ_COOKIE = parsed.QQ_COOKIE;
   if (parsed.JOOX_COOKIE) process.env.JOOX_COOKIE = parsed.JOOX_COOKIE;
   if (parsed.MIGU_COOKIE) process.env.MIGU_COOKIE = parsed.MIGU_COOKIE;
@@ -246,10 +219,8 @@ function parseEnv(): Env {
 }
 
 /**
- * 生效的监控接口密钥。
- *
- * parseEnv 已在启动期强校验其存在且非空，因此这里的值必定有效；
- * 不存在自动生成或回退分支，也不存在“未配置即放行”。
+ * 生效的监控鉴权密钥（trim 后）。
+ * configEnv 已保证非空（空密钥时进程拒绝启动），此处仅做防御性取值。
  * 返回值仅供鉴权比较使用，**不得写入日志**。
  */
 export function getEffectiveMonitorSecret(): string {
