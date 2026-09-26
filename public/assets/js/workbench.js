@@ -8,6 +8,18 @@ let currentSearchTab = 'match';
 let lastTestedAudioUrl = '';
 let lastRawResponseJson = '';
 
+// HTML 转义：错误信息等拼入 innerHTML 前必须转义（与 catalog.js 实现一致，本地兜底以防加载顺序变化）
+if (typeof escapeHtml === 'undefined') {
+  var escapeHtml = function (value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+}
+
     // --- 方案 A: 在线 API 调试台 ---
     function buildWorkbenchUrl() {
       const val = (document.getElementById('testInput')?.value || '').trim();
@@ -156,7 +168,8 @@ let lastRawResponseJson = '';
         showToast({ type: 'success', title: 'API 请求完成', message: `耗时 ${duration}ms` });
       } catch (err) {
         document.getElementById('resStatus').textContent = 'HTTP 500 ERROR';
-        out.innerHTML = `<span class="text-rose-400">请求异常: ${err.message}</span>`;
+        // L4：错误信息转义后拼入 innerHTML（与 catalog.js 同场景已转义保持一致）
+        out.innerHTML = `<span class="text-rose-400">请求异常: ${escapeHtml(err.message)}</span>`;
         showToast({ type: 'error', title: '请求失败', message: err.message });
       } finally {
         btn.disabled = false;

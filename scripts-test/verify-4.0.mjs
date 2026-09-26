@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 /**
- * v4.0 修复项逻辑验证：跑真实编译产物，不 mock 业务逻辑。
- * 用法：先 pnpm build（或 tsc），再 node scripts-test/verify-4.0.mjs
+ * 修复项逻辑验证：跑真实编译产物，不 mock 业务逻辑。
+ * 用法：node scripts-test/verify-4.0.mjs
+ *   - 默认读取 ./dist 下的 tsc 编译产物（src/utils/utilNet.js）；缺失时自动执行 `npx tsc -p .` 构建
+ *   - 可用 TEST_DIST 环境变量指定其他编译产物目录（须含 src/utils/utilNet.js）
+ * 注意：`pnpm build`（tsup）只产出 dist/index.js 单文件 bundle，不含分模块产物，须用 tsc。
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-// 编译产物目录：默认 dist，可用 TEST_DIST 覆盖（如 tsc --outDir .test-dist）
+// 编译产物目录：默认 dist（tsconfig outDir），可用 TEST_DIST 覆盖
 const testDist = process.env.TEST_DIST || `${root}dist`;
 let pass = 0;
 function ok(name, cond) {
@@ -55,7 +59,19 @@ console.log("[3] Toast 收敛");
 // ---------- 4. utilNet 可信代理链（真实编译产物） ----------
 console.log("[4] utilNet.getClientIp / isTrustedProxy");
 {
-  const { getClientIp, isTrustedProxy, normalizeIp } = await import(`${testDist}/src/utils/utilNet.js`);
+  const utilNetJs = `${testDist}/src/utils/utilNet.js`;
+  if (!existsSync(utilNetJs)) {
+    if (process.env.TEST_DIST) {
+      throw new Error(`找不到 ${utilNetJs}，请先执行 npx tsc -p . --outDir "$TEST_DIST"`);
+    }
+    console.log("  dist 编译产物缺失，自动执行 npx tsc -p . 构建…");
+    execSync("npx tsc -p tsconfig.json", { cwd: root, stdio: "inherit" });
+  }
+  // utilNet 经由 config 链触发 parseEnv；测试用随意密钥，避免启动期 fail-closed 直接退出
+  if (!process.env.MONITOR_SECRET_KEY) {
+    process.env.MONITOR_SECRET_KEY = "verify-script-dummy-key-not-for-production";
+  }
+  const { getClientIp, isTrustedProxy, normalizeIp } = await import(utilNetJs);
 
   ok("normalizeIp 剥离 ::ffff:", normalizeIp("::ffff:1.2.3.4") === "1.2.3.4");
   ok("默认信任 127.0.0.1", isTrustedProxy("127.0.0.1") === true);
@@ -71,31 +87,53 @@ console.log("[4] utilNet.getClientIp / isTrustedProxy");
   // 直连公网：伪造 XFF 必须被忽略
   ok(
     "直连时忽略伪造 XFF",
-    getClientIp(ctx("203.0.113.9", { "x-forwarded-for": "1.1.1.1", "x-real-ip": "2.2.2.2" })) === "203.0.113.9"
+    getClientIp(ctx("203.0.113.9", { "x-forwarded-for": "1.1.1.1" })) === "203.0.113.9"
   );
-  // 受信本地代理：采信 XFF 最左端
+  // 边缘头采信门（M15 修正）：仅"拿不到直连对端（Serverless）"或"对端受信"时采信。
+  // 直连暴露部署下对端不受信，攻击者可自带 X-Real-IP 伪造限流身份——必须忽略，用对端 IP。
   ok(
-    "受信代理采信 XFF",
-    getClientIp(ctx("127.0.0.1", { "x-forwarded-for": "198.51.100.7, 10.0.0.1" })) === "198.51.100.7"
+    "直连不受信时忽略伪造 x-real-ip",
+    getClientIp(ctx("203.0.113.9", { "x-real-ip": "2.2.2.2" })) === "203.0.113.9"
+  );
+  // 受信代理场景下边缘头仍可信（网关覆盖写入）
+  ok(
+    "受信代理时采信 x-real-ip",
+    getClientIp(ctx("127.0.0.1", { "x-real-ip": "2.2.2.2" })) === "2.2.2.2"
+  );
+  // 受信代理 + 附加型 XFF：取最右非受信段（客户端伪造的最左段不再被采信）
+  ok(
+    "受信代理取 XFF 最右非受信段",
+    getClientIp(ctx("127.0.0.1", { "x-forwarded-for": "198.51.100.7, 10.0.0.1" })) === "10.0.0.1"
+  );
+  // 附加语义：客户端伪造左段 "1.2.3.4"，代理追加真实 IP，应取到真实 IP
+  ok(
+    "附加型 XFF 伪造左段被纠正",
+    getClientIp(ctx("127.0.0.1", { "x-forwarded-for": "1.2.3.4, 198.51.100.7" })) === "198.51.100.7"
   );
   // 受信代理无 XFF：退回对端
   ok("受信代理无头退回对端", getClientIp(ctx("127.0.0.1", {})) === "127.0.0.1");
-  // Serverless（无 socket）：退化旧行为
+  // Serverless 边缘头优先（边缘网关覆盖写入，客户端伪造不了）
   ok(
-    "无 socket 退化取 XFF",
-    getClientIp(ctx(null, { "x-forwarded-for": "198.51.100.7" })) === "198.51.100.7"
+    "边缘头 cf-connecting-ip 优先",
+    getClientIp(ctx(null, { "cf-connecting-ip": "198.51.100.7", "x-forwarded-for": "1.2.3.4" })) === "198.51.100.7"
   );
-  ok("无 socket 无头兜底", getClientIp(ctx(null, {})) === "127.0.0.1");
+  // Serverless 无任何来源：诚实返回 "unknown"，不再回退 127.0.0.1，也不再采信客户端 XFF
+  ok("无 socket 无头返回 unknown", getClientIp(ctx(null, {})) === "unknown");
+  ok(
+    "无 socket 时不采信 XFF",
+    getClientIp(ctx(null, { "x-forwarded-for": "198.51.100.7" })) === "unknown"
+  );
 }
 
 // ---------- 5. 版本号 ----------
-console.log("[5] 版本 4.0 对齐");
+console.log("[5] 版本号三处对齐（以根目录 VERSION 为准）");
 {
-  ok("VERSION=4.0.0", readFileSync(`${root}VERSION`, "utf-8").trim() === "4.0.0");
+  const version = readFileSync(`${root}VERSION`, "utf-8").trim();
+  ok(`VERSION=${version} 且为合法 semver`, /^\d+\.\d+\.\d+/.test(version));
   const pkg = JSON.parse(readFileSync(`${root}package.json`, "utf-8"));
-  ok("package.json=4.0.0", pkg.version === "4.0.0");
+  ok(`package.json=${version}`, pkg.version === version);
   const cfg = readFileSync(`${root}src/config/configVersion.ts`, "utf-8");
-  ok("FALLBACK_VERSION=4.0.0", cfg.includes('const FALLBACK_VERSION = "4.0.0";'));
+  ok(`FALLBACK_VERSION=${version}`, cfg.includes(`const FALLBACK_VERSION = "${version}";`));
 }
 
 console.log(`\n全部通过：${pass} 项断言`);

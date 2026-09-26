@@ -39,12 +39,16 @@ try {
   console.warn(`[sync-version] 跳过 package.json 同步: ${err.message}`);
 }
 
-// 2) 同步 configVersion.ts 兜底常量
-const cfgPath = `${root}src/config/configVersion.ts`;
-let cfg = readFileSync(cfgPath, "utf-8");
-cfg = cfg.replace(/const FALLBACK_VERSION = "[^"]+";/, `const FALLBACK_VERSION = "${version}";`);
-writeFileSync(cfgPath, cfg, "utf-8");
-console.log(`[sync-version] configVersion.ts FALLBACK_VERSION -> ${version}`);
+// 2) 同步 configVersion.ts 兜底常量（文件缺失时告警跳过，不阻断构建）
+try {
+  const cfgPath = `${root}src/config/configVersion.ts`;
+  let cfg = readFileSync(cfgPath, "utf-8");
+  cfg = cfg.replace(/const FALLBACK_VERSION = "[^"]+";/, `const FALLBACK_VERSION = "${version}";`);
+  writeFileSync(cfgPath, cfg, "utf-8");
+  console.log(`[sync-version] configVersion.ts FALLBACK_VERSION -> ${version}`);
+} catch (err) {
+  console.warn(`[sync-version] 跳过 configVersion.ts 同步: ${err.message}`);
+}
 
 // 3) 静态资源版本戳：给 public/*.html 里本地 CSS/JS/vendor 引用加 ?v=版本号-构建戳。
 //    每次构建戳都全局唯一（毫秒时间戳 + 6 位随机 hex），发版后浏览器与 CDN 按新 URL 拉取，
@@ -59,14 +63,18 @@ const stamp = `${version}-${buildTs}-${randomBytes(3).toString("hex")}`;
 const htmlFiles = ["public/index.html", "public/dashboard.html"];
 const stampRe = /((?:src|href)="\.?\/(?:assets|vendor)\/[^"?]+)(\?v=[^"]*)?(")/g;
 for (const f of htmlFiles) {
-  const p = `${root}${f}`;
-  const html = readFileSync(p, "utf-8");
-  const stamped = html.replace(stampRe, `$1?v=${stamp}$3`);
-  if (stamped !== html) {
-    writeFileSync(p, stamped, "utf-8");
-    console.log(`[sync-version] ${f} 静态资源已加版本戳 ?v=${stamp}`);
-  } else {
-    console.log(`[sync-version] ${f} 版本戳已是最新: ?v=${stamp}`);
+  try {
+    const p = `${root}${f}`;
+    const html = readFileSync(p, "utf-8");
+    const stamped = html.replace(stampRe, `$1?v=${stamp}$3`);
+    if (stamped !== html) {
+      writeFileSync(p, stamped, "utf-8");
+      console.log(`[sync-version] ${f} 静态资源已加版本戳 ?v=${stamp}`);
+    } else {
+      console.log(`[sync-version] ${f} 版本戳已是最新: ?v=${stamp}`);
+    }
+  } catch (err) {
+    console.warn(`[sync-version] 跳过 ${f} 版本戳同步: ${err.message}`);
   }
 }
 
@@ -76,14 +84,18 @@ for (const f of htmlFiles) {
 const shortVer = version.split(".").slice(0, 2).join(".");
 const badgeRe = /(<span class="app-version-badge[^"]*">)v\d+\.\d+ PRO(<\/span>)/g;
 for (const f of htmlFiles) {
-  const p = `${root}${f}`;
-  const html = readFileSync(p, "utf-8");
-  const updated = html.replace(badgeRe, `$1v${shortVer} PRO$2`);
-  if (updated !== html) {
-    writeFileSync(p, updated, "utf-8");
-    console.log(`[sync-version] ${f} 版本徽标已同步: v${shortVer} PRO`);
-  } else {
-    console.log(`[sync-version] ${f} 版本徽标已对齐: v${shortVer} PRO`);
+  try {
+    const p = `${root}${f}`;
+    const html = readFileSync(p, "utf-8");
+    const updated = html.replace(badgeRe, `$1v${shortVer} PRO$2`);
+    if (updated !== html) {
+      writeFileSync(p, updated, "utf-8");
+      console.log(`[sync-version] ${f} 版本徽标已同步: v${shortVer} PRO`);
+    } else {
+      console.log(`[sync-version] ${f} 版本徽标已对齐: v${shortVer} PRO`);
+    }
+  } catch (err) {
+    console.warn(`[sync-version] 跳过 ${f} 徽标同步: ${err.message}`);
   }
 }
 

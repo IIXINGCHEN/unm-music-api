@@ -10,7 +10,8 @@ import { rateLimitMiddleware } from "./middlewares/middlewareRateLimit.js";
 import { isAllowedDomain } from "./utils/utilSecurity.js";
 import { getClientIp } from "./utils/utilNet.js";
 import { errorResponse, successResponse } from "./utils/utilResponse.js";
-import { resolvePublicFile } from "./utils/utilPath.js";
+import { resolvePublicFile, getModuleDir } from "./utils/utilPath.js";
+import path from "node:path";
 import type { ApiResponse, AppEnv } from "./types/typeApi.js";
 
 const app = new Hono<AppEnv>();
@@ -196,13 +197,29 @@ app.get("/", async (c) => {
   );
 });
 
+// 监控大盘 HTML 内存缓存：/dashboard、/monitor 豁免限流，若每次请求都读盘
+// 即构成轻量 DoS 放大器。按文件 mtime 失效——开发期改文件仍即时生效，
+// 生产期文件不变时零磁盘 I/O。
+const dashboardHtmlCache = new Map<string, { mtimeMs: number; html: string }>();
+
+async function getDashboardHtml(htmlPath: string): Promise<string> {
+  const stat = await fs.stat(htmlPath);
+  const hit = dashboardHtmlCache.get(htmlPath);
+  if (hit && hit.mtimeMs === stat.mtimeMs) {
+    return hit.html;
+  }
+  const raw = await fs.readFile(htmlPath, "utf-8");
+  const html = injectPageCss(raw, await buildPageStyle(["assets/css/tailwind.css", "assets/css/dashboard.css"]));
+  dashboardHtmlCache.set(htmlPath, { mtimeMs: stat.mtimeMs, html });
+  return html;
+}
+
 // 监控大盘路由 (/dashboard & /monitor)
 const handleDashboard = async (c: Context<AppEnv>) => {
   const htmlPath = resolvePublicFile("dashboard.html");
   if (htmlPath) {
     try {
-      let html = await fs.readFile(htmlPath, "utf-8");
-      html = injectPageCss(html, await buildPageStyle(["assets/css/tailwind.css", "assets/css/dashboard.css"]));
+      const html = await getDashboardHtml(htmlPath);
       return new Response(html, {
         status: 200,
         headers: {
@@ -220,7 +237,15 @@ const handleDashboard = async (c: Context<AppEnv>) => {
 app.get("/dashboard", handleDashboard);
 app.get("/monitor", handleDashboard);
 
-app.use("/*", serveStatic({ root: "./public" }));
+// serveStatic 根目录用绝对路径：相对 "./public" 依赖进程 cwd，
+// systemd/PM2 等换启动目录即静默 404。
+// 以 app 模块自身位置为基准（必须传 import.meta.url：无参版本取的是 utilPath 自身位置）：
+// dev 下为 src/（→ ../public = 项目根/public），打包后为 dist/（→ ../public = 运行根/public）。
+const appModuleDir = getModuleDir(import.meta.url);
+const staticRoot = appModuleDir
+  ? path.resolve(appModuleDir, "..", "public")
+  : path.resolve(process.cwd(), "public");
+app.use("/*", serveStatic({ root: staticRoot }));
 
 // 8. 404 兜底处理
 app.notFound(async (c) => {

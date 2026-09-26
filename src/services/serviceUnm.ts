@@ -5,6 +5,7 @@ import {
   PROVIDER_CONFIG,
   UPSTREAM_APIS,
   HTTP_CONFIG,
+  CACHE_POLICY,
   withPlatformCookies,
 } from "../config/index.js";
 import { globalCache } from "./serviceCache.js";
@@ -123,8 +124,11 @@ export async function getNeteaseSongDetail(id: string | number): Promise<SongDet
   if (!cleanId) return null;
 
   const cacheKey = `ncm:detail:${cleanId}`;
-  const cached = globalCache.get(cacheKey) as SongDetail | null;
-  if (cached) return cached;
+  // 用 has() 区分"未缓存"与"缓存的 null"：null 是哨兵，表示该 id 已确认无元数据
+  // （歌曲不存在/下架），5 分钟内不再重复打网易云
+  if (globalCache.has(cacheKey)) {
+    return globalCache.get(cacheKey) as SongDetail | null;
+  }
 
   try {
     const res = await axios.get(`${UPSTREAM_APIS.NETEASE_SONG_DETAIL}?ids=[${encodeURIComponent(cleanId)}]`, {
@@ -147,6 +151,9 @@ export async function getNeteaseSongDetail(id: string | number): Promise<SongDet
       globalCache.set(cacheKey, detail, env.CACHE_TTL_SONG_DETAIL);
       return detail;
     }
+    // 上游明确返回空（歌曲不存在/下架）：写入短 TTL 负缓存，抑制重复上游请求。
+    // 网络异常走下面的 catch，不缓存，避免故障期间锁定错误结果。
+    globalCache.set(cacheKey, null, CACHE_POLICY.TTL_SONG_DETAIL_NEGATIVE);
   } catch (err: any) {
     console.warn(`[NCM Detail] 获取歌曲 ${cleanId} 元数据失败: ${err.message}`);
   }

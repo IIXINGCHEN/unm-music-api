@@ -31,6 +31,16 @@ function parseTrustedProxies(raw: string): TrustedEntry[] {
       if (network !== null && Number.isInteger(bits) && bits >= 0 && bits <= 32) {
         const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
         entries.push({ kind: "cidr", network: (network & mask) >>> 0, mask });
+      } else {
+        // fail-loud：静默丢弃会让运维误以为 IPv6 回源段已受信，
+        // 实际这些来源走非受信分支、全部请求坍缩到对端 IP 限流桶被集体误限流
+        const reason = (addr ?? "").includes(":")
+          ? "IPv6 CIDR 暂不支持（仅支持 IPv4 CIDR）"
+          : `无法解析为合法的 IPv4 CIDR（addr=${addr ?? ""}, bits=${bitsStr ?? ""}）`;
+        console.warn(
+          `[TRUSTED_PROXIES] 条目 "${token}" 已丢弃：${reason}。` +
+            `影响：来自该网段的请求将走"非受信"分支，不采信 XFF，且按直连对端 IP 限流。`
+        );
       }
       continue;
     }
@@ -90,8 +100,10 @@ export function getPeerIp(c: Context): string | null {
 }
 
 /**
- * 平台边缘网关注入的可信客户端 IP 头（按优先级）。
- * 边缘网关会覆盖这些头（而非附加），客户端无法伪造。
+ * 平台边缘网关注入的客户端 IP 头（按优先级）。
+ * 采信前提见 getClientIp：只有"拿不到直连对端（Serverless）"或"直连对端受信"
+ * 时才采信——边缘网关会覆盖写入这些头；直连暴露部署下对端不受信时，
+ * 攻击者可自带 X-Real-IP 等头伪造身份，此时必须忽略。
  */
 const EDGE_CLIENT_IP_HEADERS = [
   "x-vercel-forwarded-for",
@@ -148,17 +160,26 @@ function rightmostUntrustedIp(c: Context, peer: string): string {
 
 /**
  * 真实客户端 IP（限流与遥测共用）：
- * - 平台边缘头优先（Vercel / Cloudflare / Netlify 等边缘网关注入，可信）；
+ * - 平台边缘头（Vercel / Cloudflare / Netlify 等边缘网关注入）**仅在两种情形采信**：
+ *   (1) 拿不到直连对端（Serverless / 边缘运行时无 socket，此时只有平台能写这些头）；
+ *   (2) 直连对端是受信代理（TRUSTED_PROXIES）——网关覆盖写入，客户端伪造会被覆盖。
+ *   直连暴露部署下对端不受信时一律忽略边缘头：攻击者可自带 X-Real-IP 等头
+ *   自选限流身份键，采信即等于把 XFF 伪造从另一扇门 reopen；
  * - 仅当直连对端是受信代理时，才按 XFF 链解析（最右非受信）；
  * - 否则一律使用直连对端 IP，防止客户端伪造请求头绕过限流；
  * - 拿不到任何来源时返回 "unknown" 而非回环地址：诚实表达缺失归因，
  *   避免把不同客户端坍缩到同一个 127.0.0.1 限流键上。
  */
 export function getClientIp(c: Context): string {
-  const edgeIp = edgeClientIp(c);
-  if (edgeIp) return edgeIp;
-
   const peer = getPeerIp(c);
+
+  // 边缘头采信门：serverless（peer === null）或对端受信才可信
+  const edgeTrustworthy = peer === null || isTrustedProxy(peer);
+  if (edgeTrustworthy) {
+    const edgeIp = edgeClientIp(c);
+    if (edgeIp) return edgeIp;
+  }
+
   if (peer) {
     if (isTrustedProxy(peer)) {
       return rightmostUntrustedIp(c, peer);

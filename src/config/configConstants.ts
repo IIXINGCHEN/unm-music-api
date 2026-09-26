@@ -41,11 +41,15 @@ export const CACHE_POLICY = {
   TTL_PICTURE: 24 * 3600 * 1000, // 24 小时
   TTL_PLAYLIST: 2 * 3600 * 1000, // 2 小时
   TTL_SONG_DETAIL: 24 * 3600 * 1000, // 24 小时
+  // 歌曲元数据负缓存 TTL：歌曲不存在/下架时 5 分钟内不再重复打网易云
+  TTL_SONG_DETAIL_NEGATIVE: 5 * 60 * 1000, // 5 分钟
 } as const;
 
 export const UPSTREAM_APIS = {
   DEFAULT_GDSTUDIO_URL: "https://music-api.gdstudio.xyz/api.php",
   NETEASE_SONG_DETAIL: "https://music.163.com/api/song/detail",
+  // 批量歌曲详情与单曲详情同 host：切换上游镜像时只改这一处
+  NETEASE_SONG_DETAIL_BATCH: "https://music.163.com/api/song/detail",
   NETEASE_PLAYLIST_DETAIL: "https://music.163.com/api/v6/playlist/detail",
   NETEASE_REFERER: "https://music.163.com/",
 } as const;

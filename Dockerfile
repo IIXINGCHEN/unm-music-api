@@ -4,7 +4,8 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-RUN npm install -g pnpm@10
+# pnpm 钉死精确版本（10.34.5），避免浮动整个 10.x 引入不可复现的构建
+RUN npm install -g pnpm@10.34.5
 
 COPY package.json pnpm-lock.yaml* tsconfig.json tsup.config.ts tailwind.config.cjs VERSION ./
 RUN pnpm install --frozen-lockfile
@@ -13,6 +14,9 @@ COPY src ./src
 COPY public ./public
 COPY scripts ./scripts
 RUN pnpm build
+# 生产镜像不携带 sourcemap（dist/*.js.map 含完整 TS 源码，150KB+）：构建产物清理，
+# 只影响镜像；本地 pnpm build 仍保留 map 便于调试
+RUN rm -f dist/*.js.map
 
 # ==============================================================================
 # 阶段 2: 生产轻量运行镜像 (支持 linux/amd64 与 linux/arm64 多架构)
@@ -24,7 +28,8 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=5678
 
-RUN npm install -g pnpm@10
+# pnpm 钉死精确版本（与 builder 阶段一致）
+RUN npm install -g pnpm@10.34.5
 
 COPY package.json pnpm-lock.yaml* VERSION* ./
 RUN pnpm install --prod --frozen-lockfile

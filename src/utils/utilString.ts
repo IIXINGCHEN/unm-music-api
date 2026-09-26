@@ -7,6 +7,14 @@ export function sanitizeParam(val: unknown, maxLen: number = 100, defaultVal: st
 }
 
 /**
+ * 日志参数清洗：用户输入直接拼入 console 日志时，换行符可伪造日志行
+ * （如伪造 [GDStudio] 错误行污染审计）。打日志前先过一遍此函数。
+ */
+export function sanitizeLogParam(val: unknown): string {
+  return String(val ?? "").replace(/[\r\n]/g, " ");
+}
+
+/**
  * 格式化代理播放 URL
  */
 export function formatProxyUrl(rawUrl: string, proxyPrefix: string = ""): string {

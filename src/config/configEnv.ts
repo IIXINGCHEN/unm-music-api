@@ -30,6 +30,21 @@ for (const envPath of possibleEnvPaths) {
   }
 }
 
+/**
+ * 校验代理 URL：空字符串表示不启用代理；非空则必须为合法的 http/https URL。
+ * 与相邻 GDSTUDIO_API_URL 的 .url() 语义对齐，非法值在启动期即报错，
+ * 而不是延迟到首次走代理的请求才暴露。
+ */
+function isValidProxyUrl(val: string): boolean {
+  if (val === "") return true;
+  try {
+    const u = new URL(val);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 const envSchema = z.object({
   // 1. 基础服务配置
   HOST: z.string().default(HTTP_CONFIG.DEFAULT_HOST),
@@ -55,7 +70,12 @@ const envSchema = z.object({
     .default(String(HTTP_CONFIG.DEFAULT_TIMEOUT_MS))
     .transform((val) => parseInt(val, 10))
     .pipe(z.number().min(1000).max(60000)),
-  PROXY_URL: z.string().default(""),
+  PROXY_URL: z
+    .string()
+    .default("")
+    .refine(isValidProxyUrl, {
+      message: "PROXY_URL 必须为空（不启用代理）或合法的 http/https URL",
+    }),
 
   // 4. 内存 LRU 缓存策略与 TTL（毫秒）
   // 数值范围校验：TTL 取 1 分钟 ~ 7 天（毫秒），防止误配极大/负值导致缓存语义退化

@@ -1,12 +1,47 @@
-import { Hono } from "hono";
+import { Hono, type Context, type Next } from "hono";
 import { z } from "zod";
 import { env, PROVIDER_CONFIG } from "../config/index.js";
 import { matchSong, getNeteaseSong, getOtherSourceSong } from "../services/serviceUnm.js";
 import { successResponse, errorResponse } from "../utils/utilResponse.js";
+import { sanitizeLogParam } from "../utils/utilString.js";
+import { getClientIp } from "../utils/utilNet.js";
 import type { ApiResponse, AppEnv } from "../types/typeApi.js";
 import type { MatchedAudio, NcmAudioResult } from "../types/typeMusic.js";
 
 const musicRoute = new Hono<AppEnv>();
+
+/**
+ * /test 专用紧限流：该端点公开可调且每次调用都会触发完整匹配链路
+ * （含第三方签名直链 mint），用独立小桶 10 次/分钟/IP 防止匿名滥用。
+ * 与全局限流中间件隔离，避免互相干扰计数。
+ */
+const testRateMap = new Map<string, number[]>();
+const TEST_RATE_WINDOW_MS = 60 * 1000;
+const TEST_RATE_MAX = 10;
+const testRateCleanup = setInterval(() => {
+  const now = Date.now();
+  for (const [ip, ts] of testRateMap.entries()) {
+    const fresh = ts.filter((t) => now - t < TEST_RATE_WINDOW_MS);
+    if (fresh.length === 0) testRateMap.delete(ip);
+    else testRateMap.set(ip, fresh);
+  }
+}, TEST_RATE_WINDOW_MS);
+if (typeof testRateCleanup.unref === "function") testRateCleanup.unref();
+
+async function testRateLimit(c: Context<AppEnv>, next: Next) {
+  const ip = getClientIp(c);
+  const now = Date.now();
+  const ts = (testRateMap.get(ip) ?? []).filter((t) => now - t < TEST_RATE_WINDOW_MS);
+  if (ts.length >= TEST_RATE_MAX) {
+    return c.json<ApiResponse>(
+      errorResponse(429, "Too Many Requests: /test 调用过于频繁，请稍后再试"),
+      429
+    );
+  }
+  ts.push(now);
+  testRateMap.set(ip, ts);
+  await next();
+}
 
 const matchSchema = z.object({
   id: z.string().min(1, "缺少 id 参数").max(50),
@@ -23,8 +58,8 @@ const othergetSchema = z.object({
   name: z.string().min(1, "缺少 name 参数").max(100),
 });
 
-// 快速匹配测试 (/test)
-musicRoute.get("/test", async (c) => {
+// 快速匹配测试 (/test)：保留公开 demo 功能，但加独立紧限流防匿名滥用
+musicRoute.get("/test", testRateLimit, async (c) => {
   try {
     const data = await matchSong(env.DEFAULT_TEST_SONG_ID, [...PROVIDER_CONFIG.PRIMARY_DECRYPT_PROVIDERS]);
     c.set("matchedSource", data.source);
@@ -53,7 +88,7 @@ musicRoute.get("/match", async (c) => {
     c.set("matchedSource", data.source);
     return c.json<ApiResponse<MatchedAudio>>(successResponse(data, "匹配成功"));
   } catch (error: any) {
-    console.error(`[Match Error] id=${id}:`, error.message);
+    console.error(`[Match Error] id=${sanitizeLogParam(id)}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `匹配失败: ${error.message}`), 500);
   }
 });
@@ -74,7 +109,7 @@ musicRoute.get("/ncmget", async (c) => {
     const data = await getNeteaseSong(id, br || env.DEFAULT_BITRATE);
     return c.json<ApiResponse<NcmAudioResult>>(successResponse(data));
   } catch (error: any) {
-    console.error(`[NcmGet Error] id=${id}:`, error.message);
+    console.error(`[NcmGet Error] id=${sanitizeLogParam(id)}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `获取网易云音乐失败: ${error.message}`), 500);
   }
 });
@@ -95,7 +130,7 @@ musicRoute.get("/otherget", async (c) => {
     const data = await getOtherSourceSong(name);
     return c.json<ApiResponse<{ url: string; source: string }>>(successResponse(data));
   } catch (error: any) {
-    console.error(`[OtherGet Error] name=${name}:`, error.message);
+    console.error(`[OtherGet Error] name=${sanitizeLogParam(name)}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `获取其他音源失败: ${error.message}`), 500);
   }
 });

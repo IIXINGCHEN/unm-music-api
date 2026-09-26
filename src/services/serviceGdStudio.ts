@@ -52,26 +52,21 @@ class GDStudioService {
   private baseUrl: string;
 
   /**
-   * 上游 GD Studio api.php 实测拒绝的 source（HTTP 400 "Value of `source` is not supported."）。
-   * 实测支持：search→netease/joox/bilibili/netease_album；url→netease/joox/bilibili；
-   * lyric/pic→netease/joox。被拒绝的 source 提前抛错，让路由返回 400 而非 500。
+   * 各端点实测支持的 source 白名单（GD Studio api.php 实测矩阵）。
+   * 用黑名单会漏网：如 /pic?source=bilibili 不在黑名单内，会透传上游拿 400，
+   * 再被路由层误包装成 500。白名单让非法组合在入口即抛错，路由层映射为 400。
    */
-  private static readonly REJECTED_SOURCES = new Set([
-    "kuwo",
-    "qq",
-    "kugou",
-    "migu",
-    "bodian",
-    "bilivideo",
-    "ytdlp",
-    "youtube",
-    "youtubedl",
-    "pyncmd",
-  ]);
+  private static readonly SUPPORTED_SOURCES_BY_ENDPOINT: Record<string, Set<string>> = {
+    search: new Set(["netease", "joox", "bilibili", "netease_album"]),
+    url: new Set(["netease", "joox", "bilibili"]),
+    lyric: new Set(["netease", "joox"]),
+    pic: new Set(["netease", "joox"]),
+  };
 
-  private assertSourceSupported(source: string): void {
-    if (GDStudioService.REJECTED_SOURCES.has(source)) {
-      throw new Error(`不支持的上游音源: ${source}（GD Studio api.php 会拒绝该 source）`);
+  private assertSourceSupported(source: string, endpoint: string): void {
+    const allowed = GDStudioService.SUPPORTED_SOURCES_BY_ENDPOINT[endpoint];
+    if (!allowed || !allowed.has(source)) {
+      throw new Error(`不支持的上游音源: ${source}（端点 ${endpoint} 不支持该 source）`);
     }
   }
 
@@ -109,6 +104,9 @@ class GDStudioService {
 
     // GD 官方签名：search 签 name，url/lyric/pic 签 id，其他 types 若带 id 则签 id。
     // s=crc32(urlEncode(签名对象))，十进制字符串形式加入 query。
+    // ⚠️ 安全声明：此签名仅为上游 GD Studio 协议要求的字段，CRC32 无密钥、
+    // 完全可预测、可重放，不构成任何安全边界。绝不能将其用作鉴权、防重放或
+    // 防篡改依据——任何需要安全性的场景必须另行设计密钥机制。
     const signTarget =
       types === "search"
         ? params["name"]
@@ -128,9 +126,14 @@ class GDStudioService {
       }
       return data;
     } catch (error: any) {
-      const msg = error.response ? `HTTP ${error.response.status}` : error.message;
+      const status = error.response?.status as number | undefined;
+      const msg = status ? `HTTP ${status}` : error.message;
       console.error(`[GDStudio] 请求失败 (${types}): ${msg} - URL: ${requestUrl}`);
-      throw new Error(`GD Studio API 请求失败: ${msg}`);
+      const wrapped = new Error(`GD Studio API 请求失败: ${msg}`);
+      // 把上游状态码带在错误对象上，供调用方区分错误类型：
+      // 4xx 为确定性失败不应重试，网络错误/超时/5xx 才值得重试
+      (wrapped as any).upstreamStatus = status;
+      throw wrapped;
     }
     });
   }
@@ -151,7 +154,7 @@ class GDStudioService {
     // pages 必须有上界：无上界时会原样透传上游，且每个不同值独占缓存键，可被用来 churn LRU
     const cleanPages = Math.min(Math.max(pages || AUDIO_CONFIG.DEFAULT_SEARCH_PAGE, 1), AUDIO_CONFIG.MAX_SEARCH_PAGES);
     const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
-    this.assertSourceSupported(cleanSource);
+    this.assertSourceSupported(cleanSource, "search");
 
     const data = await this.callApi<GDTrack[]>(
       "search",
@@ -179,7 +182,7 @@ class GDStudioService {
     if (!cleanId) return null;
 
     const cleanSource = sanitizeParam(source, 30, env.DEFAULT_AUDIO_SOURCE).toLowerCase();
-    this.assertSourceSupported(cleanSource);
+    this.assertSourceSupported(cleanSource, "url");
     const cleanBr = (AUDIO_CONFIG.SUPPORTED_BITRATES as readonly number[]).includes(Number(br))
       ? Number(br)
       : env.DEFAULT_BITRATE;
@@ -231,7 +234,7 @@ class GDStudioService {
     if (!cleanId) return null;
 
     const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
-    this.assertSourceSupported(cleanSource);
+    this.assertSourceSupported(cleanSource, "pic");
     const cleanSize = (AUDIO_CONFIG.SUPPORTED_PICTURE_SIZES as readonly number[]).includes(Number(size))
       ? Number(size)
       : env.DEFAULT_PICTURE_SIZE;
@@ -273,7 +276,7 @@ class GDStudioService {
     if (!cleanId) return { lyric: "", tlyric: "" };
 
     const cleanSource = sanitizeParam(source, 30, env.DEFAULT_SEARCH_SOURCE).toLowerCase();
-    this.assertSourceSupported(cleanSource);
+    this.assertSourceSupported(cleanSource, "lyric");
 
     // 歌词结果级缓存（含负缓存）：上游无歌词的歌曲每次请求会打满 2 次 GD + 1 次 lrclib，
     // 空结果与兜底结果只缓存短 TTL，既抑制重复上游消耗又避免长期锁定
@@ -301,8 +304,16 @@ class GDStudioService {
         data = await fetchOnce();
         break;
       } catch (error: any) {
+        const status = (error as any)?.upstreamStatus as number | undefined;
+        // 4xx 为确定性失败（参数非法/无权限/不存在），重试多少次结果都一样，直接降级
+        if (status !== undefined && status >= 400 && status < 500) {
+          console.warn(`[GDStudio] 歌词请求被上游拒绝 (HTTP ${status}, id=${cleanId})，不再重试`);
+          break;
+        }
         if (attempt === 0) {
           console.warn(`[GDStudio] 歌词获取失败，重试一次 (id=${cleanId}): ${error.message}`);
+          // 重试前退避 300ms，避免对抖动中的上游造成突发压力
+          await new Promise((r) => setTimeout(r, 300));
           continue;
         }
         console.error(`[GDStudio] 歌词获取最终失败 (id=${cleanId}): ${error.message}，降级为空歌词`);
@@ -415,7 +426,7 @@ class GDStudioService {
           const CONCURRENCY = 3;
           const fetchChunk = async (chunk: string[]) => {
             try {
-              const batchUrl = `https://music.163.com/api/song/detail?ids=[${chunk.join(",")}]`;
+              const batchUrl = `${UPSTREAM_APIS.NETEASE_SONG_DETAIL_BATCH}?ids=[${chunk.join(",")}]`;
               const batchRes = await this.client.get<{ songs?: Array<any> }>(batchUrl, {
                 headers: {
                   Referer: UPSTREAM_APIS.NETEASE_REFERER,
@@ -516,68 +527,6 @@ class GDStudioService {
     }
 
     return null;
-  }
-
-  /**
-   * 获取网易云歌单或专辑的歌曲 ID 列表
-   */
-  async getPlaylistSongIds(playlistId: string | number): Promise<string[]> {
-    const cleanId = sanitizeParam(playlistId, 50);
-    if (!cleanId) return [];
-
-    const cacheKey = `playlist:ids:${cleanId}`;
-    const cached = globalCache.get(cacheKey) as string[] | null;
-    if (cached) return cached;
-
-    // 1. 优先尝试网易云官方歌单接口
-    try {
-      const ncmUrl = `${UPSTREAM_APIS.NETEASE_PLAYLIST_DETAIL}?id=${encodeURIComponent(cleanId)}`;
-      const res = await this.client.get<{
-        playlist?: {
-          trackIds?: Array<{ id: number | string }>;
-          tracks?: Array<{ id: number | string }>;
-        };
-      }>(ncmUrl, {
-        headers: {
-          Referer: UPSTREAM_APIS.NETEASE_REFERER,
-          "User-Agent": HTTP_CONFIG.BROWSER_USER_AGENT,
-        },
-        timeout: 8000,
-      });
-
-      const playlist = res.data && res.data.playlist;
-      const trackList = playlist?.trackIds || playlist?.tracks;
-      if (Array.isArray(trackList) && trackList.length > 0) {
-        const ids = trackList.map((t) => String(t.id)).filter(Boolean);
-        globalCache.set(cacheKey, ids, env.CACHE_TTL_PLAYLIST);
-        return ids;
-      }
-    } catch (err: any) {
-      console.warn(`[Playlist] 网易云官方歌单拉取失败: ${err.message}，尝试专辑接口回退...`);
-    }
-
-    // 2. 回退尝试 GD Studio netease_album
-    try {
-      const albumData = await this.callApi<GDTrack[]>(
-        "search",
-        {
-          source: "netease_album",
-          name: cleanId,
-        },
-        env.CACHE_TTL_PLAYLIST
-      );
-      if (Array.isArray(albumData) && albumData.length > 0) {
-        const ids = albumData.map((song) => String(song.id)).filter(Boolean);
-        if (ids.length > 0) {
-          globalCache.set(cacheKey, ids, env.CACHE_TTL_PLAYLIST);
-          return ids;
-        }
-      }
-    } catch (err: any) {
-      console.warn(`[Playlist] GD Studio netease_album 获取失败: ${err.message}`);
-    }
-
-    return [];
   }
 }
 

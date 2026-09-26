@@ -13,6 +13,9 @@ let currentPage = 1;
 let totalPages = 1;
 let pageSize = 20;
 
+// L1：搜索/歌单请求序号 —— 异步回调渲染前必须校验序号，阻断先发后至的旧结果覆盖新结果
+let searchSeq = 0;
+
 // HTML 转义：曲目/歌单/搜索词等外部可控字段经 innerHTML 渲染前必须转义，阻断存储型 XSS
 // （与 core.js 的全局 escapeHtml 实现一致，本地兜底以防加载顺序变化）
 if (typeof escapeHtml === 'undefined') {
@@ -28,6 +31,8 @@ if (typeof escapeHtml === 'undefined') {
 
     // --- 搜索与歌单完整获取 + 多端分页管理 ---
     async function executeSearch(page = 1) {
+      // L1：本次搜索的序号，旧请求的异步回调一律作废
+      const mySeq = ++searchSeq;
       const keyword = document.getElementById('searchKeywordInput').value.trim();
       const source = document.getElementById('searchSourceSelect').value;
       if (!keyword) {
@@ -43,6 +48,8 @@ if (typeof escapeHtml === 'undefined') {
       try {
         const res = await fetch(`/search?name=${encodeURIComponent(keyword)}&source=${source}&count=50&page=${page}`);
         const json = await res.json();
+        // L1 序号校验：用户已发起新搜索/切换歌单时，旧响应不再渲染
+        if (mySeq !== searchSeq) return;
         if (json.code === 200 && Array.isArray(json.data) && json.data.length > 0) {
           allFullTracks = json.data.map(item => ({
             id: item.id || item.song_id || item.mid,
@@ -67,6 +74,8 @@ if (typeof escapeHtml === 'undefined') {
     }
 
     async function loadPresetPlaylist(playlistId, title) {
+      // L1：本次歌单加载的序号，旧请求的异步回调一律作废
+      const mySeq = ++searchSeq;
       currentMode = 'playlist';
       showToast({ type: 'info', title: '正在载入歌单', message: `正在完整获取《${title}》全部曲目...` });
       const tbody = document.getElementById('trackListBody');
@@ -76,6 +85,8 @@ if (typeof escapeHtml === 'undefined') {
       try {
         const res = await fetch(`/playlist/${playlistId}?limit=1000`);
         const json = await res.json();
+        // L1 序号校验：用户已发起新搜索/切换歌单时，旧响应不再渲染
+        if (mySeq !== searchSeq) return;
         if (json.code === 200 && json.data) {
           const detail = json.data;
           let tracks = [];

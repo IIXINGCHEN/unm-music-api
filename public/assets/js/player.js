@@ -408,7 +408,7 @@ let playGeneration = 0;
         fallbackAttempt = 0;
         lastAudioSource = track.source || '';
         if (!audioUrl && track.id) {
-          const matchRes = await fetch(`/match?id=${track.id}&br=999`);
+          const matchRes = await fetch(`/match?id=${encodeURIComponent(track.id)}&br=999`);
           const matchData = await matchRes.json();
           if (matchData.code === 200 && matchData.data?.url) {
             audioUrl = matchData.data.url;
@@ -445,7 +445,8 @@ let playGeneration = 0;
       lyricsData = [];
       currentLyricIndex = -1;
       try {
-        const res = await fetch(`/lyric?id=${id}&source=${source}`);
+        // L2：id/source 统一 encodeURIComponent（与 tryFallbackSource 一致），防 &/# 截断参数
+        const res = await fetch(`/lyric?id=${encodeURIComponent(id)}&source=${encodeURIComponent(source)}`);
         const json = await res.json();
         // M3 归属校验：返回时已切歌则丢弃，避免旧歌词覆盖新曲目
         if (!currentTrack || currentTrack.id !== id) return;
@@ -457,12 +458,18 @@ let playGeneration = 0;
       lyricsData = [];
       const timeExp = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
       for (const line of lrcText.split('\n')) {
-        const m = timeExp.exec(line);
-        if (m) {
-          const time = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + parseFloat('0.' + m[3]);
-          const text = line.replace(timeExp, '').trim();
-          if (text) lyricsData.push({ time, text });
+        // L5：一行可能含多个时间戳（如 [00:10.00][00:20.00]副歌），循环收集全部；
+        // 每次处理新行前重置 lastIndex，避免 /g 正则跨行状态污染
+        timeExp.lastIndex = 0;
+        const times = [];
+        let m;
+        while ((m = timeExp.exec(line)) !== null) {
+          times.push(parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + parseFloat('0.' + m[3]));
         }
+        if (times.length === 0) continue;
+        const text = line.replace(timeExp, '').trim();
+        if (!text) continue;
+        for (const time of times) lyricsData.push({ time, text });
       }
       lyricsData.sort((a, b) => a.time - b.time);
     }

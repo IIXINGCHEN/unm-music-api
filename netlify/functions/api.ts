@@ -51,6 +51,19 @@ function buildRequestFromEvent(ev: LegacyEvent): Request {
       }
     }
   }
+  // Netlify legacy 事件的多值参数（?id=1&id=2）：queryStringParameters 只保留最后一个值，
+  // 需从 multiValueQueryStringParameters 补回全部值；已存在的相同 key+value 去重跳过
+  if (ev.multiValueQueryStringParameters) {
+    for (const [k, values] of Object.entries(ev.multiValueQueryStringParameters)) {
+      if (!Array.isArray(values)) continue;
+      for (const v of values) {
+        if (v === undefined || v === null) continue;
+        const sv = String(v);
+        if (searchParams.getAll(k).includes(sv)) continue;
+        searchParams.append(k, sv);
+      }
+    }
+  }
 
   const search = searchParams.toString();
   const fullUrl = `https://netlify.local${cleanPath}${search ? "?" + search : ""}`;

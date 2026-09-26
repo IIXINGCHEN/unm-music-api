@@ -615,6 +615,12 @@ document.getElementById('year').textContent = new Date().getFullYear();
       document.getElementById('labelCurrentPage').textContent = currentPage;
 
       const tbody = document.getElementById('logsTableContent');
+      // L3：行点击事件委托（替代内联 onclick）—— l.id 不再拼入属性，阻断属性注入；
+      // escapeHtml 会转义引号，data-logid 取值安全
+      tbody.onclick = (e) => {
+        const row = e.target.closest('tr[data-logid]');
+        if (row) openDrawer(row.dataset.logid);
+      };
       if (!logs || logs.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center py-10 text-slate-400 font-medium">未检索到匹配的请求调用记录</td></tr>';
         return;
@@ -633,7 +639,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
           : `<span class="text-slate-400 font-medium">Direct API</span>`;
 
         return `
-          <tr class="hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition cursor-pointer" onclick="openDrawer('${l.id}')">
+          <tr class="hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition cursor-pointer" data-logid="${escapeHtml(l.id)}">
             <td class="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap text-xs sm:text-sm">${escapeHtml(l.timeStr)}</td>
             <td class="py-3.5 px-4 font-mono font-semibold text-slate-800 dark:text-slate-200 text-xs sm:text-sm">
               <span class="text-sky-500 font-bold">${escapeHtml(l.method)}</span> ${escapeHtml(l.path)}
@@ -646,7 +652,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
             </td>
             <td class="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400 text-xs sm:text-sm">${escapeHtml(l.ip)}</td>
             <td class="py-3.5 px-4 text-right">
-              <button onclick="event.stopPropagation(); openDrawer('${l.id}')" class="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sky-500 hover:text-white transition text-xs font-bold interactive-btn">查看</button>
+              <button class="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-sky-500 hover:text-white transition text-xs font-bold interactive-btn">查看</button>
             </td>
           </tr>
         `;

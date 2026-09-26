@@ -27,11 +27,28 @@ function checkPort(port: number, host = env.HOST): Promise<boolean> {
 
 // 启动服务
 async function startServer(): Promise<void> {
+  // 端口递增尝试上限：无上界漂移会让服务静默跑在非预期端口，
+  // 健康检查与反代上游全部指向旧端口，故障极难排查
+  const MAX_PORT_ATTEMPTS = 20;
   let targetPort = env.PORT;
   let isAvailable = await checkPort(targetPort, env.HOST);
-  while (!isAvailable) {
+  let attempts = 1;
+  while (!isAvailable && attempts < MAX_PORT_ATTEMPTS) {
     targetPort++;
+    attempts++;
     isAvailable = await checkPort(targetPort, env.HOST);
+  }
+  if (!isAvailable) {
+    console.error(
+      `❌ 连续 ${MAX_PORT_ATTEMPTS} 个端口（${env.PORT}~${targetPort}）均被占用，服务拒绝启动。请检查端口冲突后重试。`
+    );
+    process.exit(1);
+  }
+  if (targetPort !== env.PORT) {
+    console.warn(
+      `⚠️ 配置端口 ${env.PORT} 被占用，服务已漂移到 ${targetPort}。` +
+        `请检查反向代理/健康检查的上游端口配置是否同步。`
+    );
   }
 
   const server = serve(
@@ -50,6 +67,14 @@ async function startServer(): Promise<void> {
       console.log(`====================================================`);
     }
   );
+
+  // 监听失败兜底：checkPort 与 serve 之间存在 TOCTOU 窗口（端口被其他进程抢占），
+  // 此时 listen 的 error 事件若无人监听，进程会以未捕获异常神秘崩溃。
+  // 此处收敛为清晰报错 + exit(1)。
+  server.on("error", (err: unknown) => {
+    console.error(`❌ 服务监听失败（端口可能在启动瞬间被抢占）:`, err);
+    process.exit(1);
+  });
 
   // 优雅停机
   // 优雅停机：先停止接收新连接并等待存量请求收尾；

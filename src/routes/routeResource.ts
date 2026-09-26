@@ -3,6 +3,7 @@ import { z } from "zod";
 import { env, AUDIO_CONFIG } from "../config/index.js";
 import { gdStudio } from "../services/serviceGdStudio.js";
 import { successResponse, errorResponse } from "../utils/utilResponse.js";
+import { sanitizeLogParam } from "../utils/utilString.js";
 import type { ApiResponse, AppEnv } from "../types/typeApi.js";
 import type { GDTrack, GDPicResponse, LyricResult, PlaylistDetail } from "../types/typeMusic.js";
 
@@ -73,7 +74,7 @@ resourceRoute.get("/search", async (c) => {
   } catch (error: any) {
     const bad = unsupportedSourceResponse(c, error);
     if (bad) return bad;
-    console.error(`[Search Error] name=${name}:`, error.message);
+    console.error(`[Search Error] name=${sanitizeLogParam(name)}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `搜索失败: ${error.message}`), 500);
   }
 });
@@ -100,7 +101,7 @@ const handlePicture = async (c: Context) => {
   } catch (error: any) {
     const bad = unsupportedSourceResponse(c, error);
     if (bad) return bad;
-    console.error(`[Picture Error] id=${id}:`, error.message);
+    console.error(`[Picture Error] id=${sanitizeLogParam(id)}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `获取封面失败: ${error.message}`), 500);
   }
 };
@@ -131,7 +132,7 @@ resourceRoute.get("/lyric", async (c) => {
   } catch (error: any) {
     const bad = unsupportedSourceResponse(c, error);
     if (bad) return bad;
-    console.error(`[Lyric Error] id=${id}:`, error.message);
+    console.error(`[Lyric Error] id=${sanitizeLogParam(id)}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `获取歌词失败: ${error.message}`), 500);
   }
 });
@@ -163,7 +164,7 @@ resourceRoute.get("/playlist/:id", async (c) => {
 
     return c.json<ApiResponse<PlaylistDetail>>(successResponse(detail, "获取歌单详情成功"));
   } catch (error: any) {
-    console.error(`[Playlist Error] id=${playlistParam}:`, error.message);
+    console.error(`[Playlist Error] id=${sanitizeLogParam(playlistParam)}:`, error.message);
     return c.json<ApiResponse>(errorResponse(500, `获取歌单失败: ${error.message}`), 500);
   }
 });
