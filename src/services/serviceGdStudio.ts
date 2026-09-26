@@ -303,23 +303,18 @@ class GDStudioService {
             }
           }
 
-          // 补充占位对象以保证总数与原歌单一致
-          if (tracks.length < neededIds.length) {
-            const existingIdSet = new Set(tracks.map(t => t.id));
-            for (const id of rawSongIds.slice(0, limit)) {
-              if (!existingIdSet.has(id)) {
-                tracks.push({
-                  id: String(id),
-                  name: `歌单曲目 #${id}`,
-                  artist: "网易云音乐",
-                  album: playlist.name || "精选歌单",
-                  picUrl: "",
-                  duration: 0,
-                });
-              }
-            }
+          // 只保留**真实取到元数据**的曲目，不再合成占位对象。
+          // 原实现在缺失时填充 "歌单曲目 #id" / artist="网易云音乐" / duration=0，
+          // 其形状与真实条目一致，消费端无法区分成功与降级，等于把降级结果伪装成成功。
+          // 改为如实返回已获取到的曲目，并通过 missingCount 显式声明缺失数量。
+          const __missingInBatch = Math.max(0, neededIds.length - tracks.length);
+          if (__missingInBatch > 0) {
+            console.warn(`[Playlist] 歌单 ${cleanId} 批量详情有 ${__missingInBatch} 首曲目元数据缺失`);
           }
         }
+
+        // 相对请求 limit 的缺失数（如实声明，不再用占位对象伪装）
+        const missingCount = Math.max(0, Math.min(rawSongIds.length, limit) - tracks.length);
 
         const result: PlaylistDetail = {
           id: cleanId,
@@ -330,6 +325,7 @@ class GDStudioService {
           trackCount: playlist.trackCount || rawSongIds.length,
           tracks,
           songIds: rawSongIds,
+          partialLoaded: missingCount > 0 ? missingCount : undefined,
         };
 
         globalCache.set(cacheKey, result, env.CACHE_TTL_PLAYLIST);

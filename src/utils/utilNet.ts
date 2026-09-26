@@ -114,7 +114,9 @@ export function getClientIp(c: Context): string {
     }
     return peer;
   }
-  // Serverless 环境：平台可信头优先，否则不采信客户端头
+  // Serverless 环境：平台可信头优先，否则不采信客户端头。
+  // 拿不到任何来源时返回 "unknown" 而非回环地址：诚实表达缺失归因，
+  // 避免把不同客户端坍缩到同一个 127.0.0.1 限流键上。
   const platformIp = c.req.header("x-nf-client-connection-ip")?.trim();
-  return platformIp || "127.0.0.1";
+  return platformIp || "unknown";
 }

@@ -47,6 +47,8 @@ export interface MonitorStats {
 
 class MonitorService {
   private maxLogs: number = MONITOR_CONFIG.DEFAULT_MAX_LOGS;
+  // 聚合统计键空间上限：防止攻击者伪造海量 XFF/IP / Referer 键导致统计 Map 慢性内存膨胀
+  private maxStatKeys: number = MONITOR_CONFIG.DEFAULT_MAX_STAT_KEYS;
   private logs: RequestLog[] = [];
   private totalRequests: number = 0;
   private successRequests: number = 0;
@@ -59,6 +61,18 @@ class MonitorService {
   private sourceMap: Map<string, number> = new Map();
   private statusMap: Map<string, number> = new Map();
   private startTime: number = Date.now();
+
+  /** 带容量上限的计数器：超出上限时丢弃新键（已有键照常累加），保障 TopN 统计仍有效 */
+  private bumpCount(map: Map<string, number>, key: string): void {
+    const current = map.get(key);
+    if (current !== undefined) {
+      map.set(key, current + 1);
+      return;
+    }
+    if (map.size < this.maxStatKeys) {
+      map.set(key, 1);
+    }
+  }
 
   /**
    * 解析客户端类型
@@ -105,12 +119,15 @@ class MonitorService {
     if (logData.referer) {
       try {
         const refUrl = new URL(logData.referer.includes("://") ? logData.referer : `http://${logData.referer}`);
+        // 只取 protocol//host：path/query 里的凭据不会进入 topCallers
         callerName = `${refUrl.protocol}//${refUrl.host}`;
       } catch {
-        callerName = logData.referer.slice(0, 40);
+        // 无法解析为 URL 时按文本兜底，必须脱敏 —— 直接截断原串会让
+        // /;token=SECRET 这类形态的原样凭据进入 topCallers
+        callerName = sanitizeUrl(logData.referer).slice(0, 40);
       }
     } else if (logData.origin) {
-      callerName = logData.origin;
+      callerName = sanitizeUrl(logData.origin);
     } else if (logData.ip) {
       callerName = `IP: ${logData.ip}`;
     }
@@ -120,20 +137,26 @@ class MonitorService {
 
     const cleanedQuery = sanitizeQuery(logData.query);
     const cleanedUrl = sanitizeUrl(logData.fullUrl);
+    // referer 与 origin 同样是客户端可控的完整 URL，可能携带 ?token= 类凭据；
+    // 只脱敏 fullUrl/query 而放过它们，等于把同一份凭据从另一个字段原样回显到大盘。
+    // path 同理：endpointMap 以原始 path 为键，会经 getStats().topEndpoints 回到响应。
+    const cleanedReferer = logData.referer ? sanitizeUrl(logData.referer) : "-";
+    const cleanedOrigin = logData.origin ? sanitizeUrl(logData.origin) : "-";
+    const cleanedPath = sanitizeUrl(logData.path);
 
     const logItem: RequestLog = {
       id: `req_${Date.now()}_${(++this.logSeq).toString(36)}`,
       timestamp: now.toISOString(),
       timeStr,
       method: logData.method,
-      path: logData.path,
+      path: cleanedPath,
       fullUrl: cleanedUrl,
       query: cleanedQuery,
       status: logData.status,
       duration: logData.duration,
       ip: logData.ip || "127.0.0.1",
-      referer: logData.referer || "-",
-      origin: logData.origin || "-",
+      referer: cleanedReferer,
+      origin: cleanedOrigin,
       userAgent: logData.userAgent || "-",
       clientType,
       source: audioSource,
@@ -154,24 +177,19 @@ class MonitorService {
       this.failedRequests++;
     }
 
-    // 统计端点分布
-    const epCount = this.endpointMap.get(logData.path) || 0;
-    this.endpointMap.set(logData.path, epCount + 1);
+    // 统计端点分布（键已脱敏；bumpCount 带键上限，防伪造路径的慢性内存膨胀）
+    this.bumpCount(this.endpointMap, cleanedPath);
 
     // 统计调用方分布
-    const cCount = this.callerMap.get(callerName) || 0;
-    this.callerMap.set(callerName, cCount + 1);
+    this.bumpCount(this.callerMap, callerName);
 
     // 统计音源命中分布
     if (audioSource && audioSource !== "-") {
-      const sCount = this.sourceMap.get(audioSource) || 0;
-      this.sourceMap.set(audioSource, sCount + 1);
+      this.bumpCount(this.sourceMap, audioSource);
     }
 
     // 统计状态码
-    const stKey = String(logData.status || 200);
-    const stCount = this.statusMap.get(stKey) || 0;
-    this.statusMap.set(stKey, stCount + 1);
+    this.bumpCount(this.statusMap, String(logData.status || 200));
   }
 
   /**

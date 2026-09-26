@@ -150,6 +150,9 @@ const envSchema = z.object({
   KUWO_COOKIE: z.string().default(""),
 
   // 8. 安全加固与速率限制配置
+  // 监控接口密钥：**必须显式配置且非空**，否则进程拒绝启动（见 parseEnv）。
+  // 不使用默认值、不自动生成、不打印到任何日志 —— 日志会被采集与归档，
+  // 把密钥写进日志等同于把它持久化到不受控的介质上。
   MONITOR_SECRET_KEY: z.string().default(""),
   ENABLE_RATE_LIMIT: z
     .string()
@@ -185,6 +188,21 @@ function parseEnv(): Env {
 
   const parsed = result.data;
 
+  // fail-closed：未配置监控密钥时拒绝启动，而不是静默开放 /api/monitor/*。
+  // 该接口返回调用方 IP、Referer 与完整 URL 等审计数据，空密钥默认放行等于对公网开放。
+  // 此前曾考虑“生成临时密钥并打印到启动日志”，但日志常被采集、转发与长期归档，
+  // 把密钥写进日志等于把它持久化到不受控的介质；且临时密钥每次重启都变，运维难以稳定使用。
+  // 改为启动期强校验：运维在 .env 中配置固定密钥后重启。
+  if (!parsed.MONITOR_SECRET_KEY?.trim()) {
+    console.error(
+      "❌ MONITOR_SECRET_KEY 未配置或为空，进程拒绝启动。\n" +
+        "   该密钥用于保护 /api/monitor/*（返回调用方 IP、Referer 与完整 URL 等审计数据）。\n" +
+        "   请在 .env 中设置 MONITOR_SECRET_KEY='<一段足够长的随机字符串>' 后重启。\n" +
+        "   生成示例：node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+    );
+    process.exit(1);
+  }
+
   // 将 UNM 特性开关同步到 process.env 供 @unblockneteasemusic/server 内部使用
   // 安全注意：Cookie 回写后全局可见（process.env），任何依赖包均可读取。
   // 仅在配置了对应 Cookie 时写入；/info 等端点已核验不暴露这些值。
@@ -198,6 +216,15 @@ function parseEnv(): Env {
   if (parsed.KUWO_COOKIE) process.env.KUWO_COOKIE = parsed.KUWO_COOKIE;
 
   return parsed;
+}
+
+/**
+ * 生效的监控鉴权密钥（trim 后）。
+ * configEnv 已保证非空（空密钥时进程拒绝启动），此处仅做防御性取值。
+ * 返回值仅供鉴权比较使用，**不得写入日志**。
+ */
+export function getEffectiveMonitorSecret(): string {
+  return env.MONITOR_SECRET_KEY.trim();
 }
 
 export const env = parseEnv();

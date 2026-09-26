@@ -84,4 +84,6 @@ export interface PlaylistDetail {
   trackCount: number;
   tracks: PlaylistTrack[];
   songIds: string[];
+  /** 部分加载：元数据缺失的曲目数（全部成功时为 undefined） */
+  partialLoaded?: number;
 }
